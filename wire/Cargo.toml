@@ -1,0 +1,17 @@
+[package]
+name = "wire"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { workspace = true }
+clap-verbosity-flag = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-indicatif = { workspace = true }
+tracing-log = { workspace = true }
+tracing-subscriber = { workspace = true }
+lib = { path = "../lib" }
+serde_json = { workspace = true }
+anyhow = "1.0.86"
