@@ -27,7 +27,7 @@
         modules = [
           {
             languages.rust.enable = true;
-            languages.rust.channel = "stable";
+            languages.rust.channel = "nightly";
 
             pre-commit.hooks = {
               clippy.enable = true;
