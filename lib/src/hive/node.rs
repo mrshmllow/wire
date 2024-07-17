@@ -7,6 +7,8 @@ use tokio::process::Command;
 use tracing::{info, info_span, instrument, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+use crate::nix::{get_eval_command, EvalGoal};
+
 use super::HiveLibError;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -42,14 +44,7 @@ impl Display for Derivation {
 
 impl Evaluatable for (String, Node) {
     async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
-        let mut command = Command::new("nix")
-            .arg("eval")
-            .arg("--json")
-            .arg("--impure")
-            .arg("--verbose")
-            .arg("--print-build-logs")
-            .arg("--expr")
-            .arg(format!("let evaluate = import ./lib/src/evaluate.nix; hive = evaluate {{hivePath = {path};}}; in hive.getTopLevel \"{node}\"", path = hivepath.to_str().unwrap(), node = self.0))
+        let mut command = get_eval_command(hivepath, EvalGoal::GetTopLevel(&self.0))
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()

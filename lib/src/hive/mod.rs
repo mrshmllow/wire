@@ -10,6 +10,7 @@ use tracing::{debug, error, info, instrument, trace};
 
 use serde::{Deserialize, Serialize};
 
+use crate::nix::{get_eval_command, EvalGoal};
 pub mod node;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -51,13 +52,7 @@ impl HiveBuilder for Hive {
         let filepath = find_hive(path).ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
         info!("Using hive {}", filepath.display());
 
-        let command = Command::new("nix")
-            .arg("eval")
-            .arg("--json")
-            .arg("--impure")
-            .arg("--verbose")
-            .arg("--expr")
-            .arg(format!("let evaluate = import ./lib/src/evaluate.nix; hive = evaluate {{hivePath = {path};}}; in hive.inspect", path = filepath.to_str().unwrap()))
+        let command = get_eval_command(filepath, EvalGoal::Inspect)
             .output()
             .await
             .map_err(HiveLibError::NixExecError)?;
