@@ -15,11 +15,11 @@ pub enum HiveLibError {
     #[error("failed to execute nix command")]
     NixExecError(#[source] tokio::io::Error),
 
-    #[error("failed to evaluate nix expression: {0}")]
-    NixEvalError(String),
+    #[error("failed to evaluate nix expression (last 20 lines):\n{}", .0[.0.len() - 20..].join("\n"))]
+    NixEvalError(Vec<String>),
 
-    #[error("failed to evaluate nix build deriviation {0}: {1}")]
-    NixBuildError(Derivation, String),
+    #[error("failed to build deriviation {0} (last 20 lines):\n{}", .1[.1.len() - 20..].join("\n"))]
+    NixBuildError(Derivation, Vec<String>),
 
     #[error("node {0} not exist in hive")]
     NodeDoesNotExist(String),

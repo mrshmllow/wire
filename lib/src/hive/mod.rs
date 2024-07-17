@@ -52,7 +52,9 @@ impl HiveBuilder for Hive {
             return Ok(hive);
         }
 
-        Err(HiveLibError::NixEvalError(stderr.to_string()))
+        Err(HiveLibError::NixEvalError(
+            stderr.split("\n").map(|s| s.to_string()).collect(),
+        ))
     }
 }
 
