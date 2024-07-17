@@ -18,6 +18,10 @@
   in {
     packages = forAllSystems (system: {
       devenv-up = self.devShells.${system}.default.config.procfileScript;
+
+      wire = nixpkgs.legacyPackages.${system}.callPackage ./default.nix {};
+
+      default = self.packages.${system}.wire;
     });
 
     devShells = forAllSystems (system: {
