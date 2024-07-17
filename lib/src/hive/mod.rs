@@ -1,37 +1,21 @@
-use node::{Derivation, Node};
+use node::Node;
 use std::collections::hash_map::OccupiedEntry;
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
-use thiserror::Error;
-use tokio::process::Command;
 use tracing::{debug, error, info, instrument, trace};
 
 use serde::{Deserialize, Serialize};
 
 use crate::nix::{get_eval_command, EvalGoal};
+use crate::HiveLibError;
 pub mod node;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Hive {
     pub nodes: HashMap<String, Node>,
     pub path: PathBuf,
-}
-
-#[derive(Debug, Error)]
-pub enum HiveLibError {
-    #[error("no hive could be found in {}", .0.display())]
-    NoHiveFound(PathBuf),
-
-    #[error("failed to execute nix command")]
-    NixExecError(#[source] tokio::io::Error),
-
-    #[error("failed to evaluate nix expression: {0}")]
-    NixEvalError(String),
-
-    #[error("failed to evaluate nix build deriviation {0}: {1}")]
-    NixBuildError(Derivation, String),
 }
 
 pub enum HiveAction<'a> {
