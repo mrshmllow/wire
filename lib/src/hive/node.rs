@@ -48,16 +48,23 @@ impl Evaluatable for (String, Node) {
 
         stream.log_stderr(true);
 
-        let (status, stdout, stderr) = stream.execute().instrument(info_span!("evaluate")).await?;
+        let (status, stdout_vec, stderr) =
+            stream.execute().instrument(info_span!("evaluate")).await?;
 
         if status.success() {
+            let stdout: Vec<String> = stdout_vec
+                .into_iter()
+                .map(|l| l.to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+
             let derivation: Derivation =
                 serde_json::from_str(&stdout.join("\n")).expect("failed to parse derivation");
 
             return Ok(derivation);
         }
 
-        Err(HiveLibError::NixEvalError(stderr))
+        Err(HiveLibError::NixEvalInteralError(stderr))
     }
 
     #[instrument(skip(self, span, hivepath), fields(node = %self.0))]
@@ -78,13 +85,19 @@ impl Evaluatable for (String, Node) {
 
         stream.log_stderr(true);
 
-        let (status, stdout, stderr) = stream.execute().in_current_span().await?;
+        let (status, stdout, stderr_vec) = stream.execute().in_current_span().await?;
 
-        info!("Built output: {stdout}", stdout = stdout.join("\n"));
+        info!("Built output: {stdout:?}", stdout = stdout);
 
         if status.success() {
             return Ok(self);
         }
+
+        let stderr: Vec<String> = stderr_vec
+            .into_iter()
+            .map(|l| l.to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
 
         Err(HiveLibError::NixBuildError(top_level, stderr))
     }

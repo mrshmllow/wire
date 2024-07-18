@@ -41,8 +41,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
 pub fn setup_logging(verbosity: Verbosity<ErrorLevel>) {
     let indicatif_layer = IndicatifLayer::new().with_progress_style(
-        ProgressStyle::with_template("{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}}")
-            .unwrap(),
+        ProgressStyle::with_template(
+            "{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}} {wide_msg}",
+        )
+        .unwrap(),
     );
 
     tracing_subscriber::registry()

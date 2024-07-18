@@ -1,10 +1,18 @@
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::process::ExitStatus;
 use std::{path::PathBuf, process::Stdio};
 use tokio::io::{AsyncBufReadExt, AsyncRead};
 use tokio::{io::BufReader, process::Command};
-use tracing::{info, Instrument};
+use tracing::{info, trace, Instrument, Span};
+use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+use crate::nix_log::{InternalNixLog, NixLog, NixLogAction, Trace};
 use crate::HiveLibError;
+
+lazy_static! {
+    static ref DIGEST_RE: Regex = Regex::new(r"[0-9a-z]{32}").unwrap();
+}
 
 pub enum EvalGoal<'a> {
     Inspect,
@@ -27,7 +35,7 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> Command {
     command
 }
 
-async fn handle_io<R>(reader: R, log: bool) -> Result<Vec<String>, HiveLibError>
+async fn handle_io<R>(reader: R, should_trace: bool) -> Result<Vec<NixLog>, HiveLibError>
 where
     R: AsyncRead + Unpin,
 {
@@ -39,11 +47,32 @@ where
         .await
         .map_err(HiveLibError::SpawnFailed)?
     {
-        if log {
-            info!("{line}");
+        let log =
+            serde_json::from_str::<InternalNixLog>(line.strip_prefix("@nix ").unwrap_or(&line))
+                .map(NixLog::Internal)
+                .unwrap_or(NixLog::Raw(line.to_string()));
+
+        trace!(line);
+
+        if should_trace {
+            match log {
+                NixLog::Raw(ref string) => info!("{string}"),
+                NixLog::Internal(ref internal) => internal.trace(),
+            }
+
+            // We do this to ignore any "stop" logs, preventing flashing
+            if let NixLog::Internal(ref log) = log {
+                if let NixLogAction::Message {
+                    level: _,
+                    message: _,
+                } = &log.action
+                {
+                    Span::current().pb_set_message(&DIGEST_RE.replace_all(&log.to_string(), "…"))
+                }
+            }
         }
 
-        collect.push(line);
+        collect.push(log);
     }
 
     Ok(collect)
@@ -64,14 +93,15 @@ impl<'a> From<&'a mut Command> for CommandTracer<'a> {
 }
 
 pub trait StreamTracing {
-    async fn execute(self) -> Result<(ExitStatus, Vec<String>, Vec<String>), HiveLibError>;
+    async fn execute(self) -> Result<(ExitStatus, Vec<NixLog>, Vec<NixLog>), HiveLibError>;
     fn log_stderr(&mut self, log: bool) -> &mut Self;
 }
 
 impl<'a> StreamTracing for CommandTracer<'a> {
-    async fn execute(self) -> Result<(ExitStatus, Vec<String>, Vec<String>), HiveLibError> {
+    async fn execute(self) -> Result<(ExitStatus, Vec<NixLog>, Vec<NixLog>), HiveLibError> {
         let mut child = self
             .command
+            .args(["--log-format", "internal-json"])
             .stderr(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
