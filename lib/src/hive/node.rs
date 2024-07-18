@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
+use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::{collections::HashSet, fmt::Display};
 use tokio::process::Command;
 use tracing::{info, info_span, instrument, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
@@ -17,10 +17,10 @@ pub struct NodeName(Arc<str>);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Node {
     #[serde(rename = "targetHosts")]
-    pub target_hosts: HashSet<String>,
+    pub target_hosts: im::HashSet<String>,
 
     #[serde(default)]
-    pub tags: HashSet<String>,
+    pub tags: im::HashSet<String>,
 }
 
 pub trait Evaluatable {
