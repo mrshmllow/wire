@@ -1,4 +1,4 @@
-use node::Node;
+use node::{Node, NodeName};
 use std::collections::hash_map::OccupiedEntry;
 use std::{
     collections::HashMap,
@@ -14,7 +14,7 @@ pub mod node;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Hive {
-    pub nodes: HashMap<String, Node>,
+    pub nodes: HashMap<NodeName, Node>,
     pub path: PathBuf,
 }
 

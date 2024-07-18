@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::borrow::BorrowMut;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{collections::HashSet, fmt::Display};
 use tokio::process::Command;
 use tracing::{info, info_span, instrument, Instrument, Span};
@@ -9,6 +10,9 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 use crate::nix::{get_eval_command, CommandTracer, EvalGoal, StreamTracing};
 
 use super::HiveLibError;
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
+pub struct NodeName(Arc<str>);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Node {
@@ -29,7 +33,7 @@ pub trait Evaluatable {
         self,
         hivepath: PathBuf,
         span: Span,
-    ) -> impl std::future::Future<Output = Result<(String, Node), HiveLibError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(NodeName, Node), HiveLibError>> + Send;
 }
 
 #[derive(Deserialize, Debug)]
@@ -41,7 +45,7 @@ impl Display for Derivation {
     }
 }
 
-impl Evaluatable for (String, Node) {
+impl Evaluatable for (NodeName, Node) {
     async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
         let mut command = get_eval_command(hivepath, EvalGoal::GetTopLevel(&self.0));
         let mut stream: CommandTracer = command.borrow_mut().into();
@@ -68,7 +72,7 @@ impl Evaluatable for (String, Node) {
     }
 
     #[instrument(skip(self, span, hivepath), fields(node = %self.0))]
-    async fn build(self, hivepath: PathBuf, span: Span) -> Result<(String, Node), HiveLibError> {
+    async fn build(self, hivepath: PathBuf, span: Span) -> Result<(NodeName, Node), HiveLibError> {
         let top_level = self.clone().evaluate(hivepath).await?;
         span.pb_inc(1);
 

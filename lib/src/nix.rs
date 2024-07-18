@@ -7,6 +7,7 @@ use tokio::{io::BufReader, process::Command};
 use tracing::{info, trace, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+use crate::hive::node::NodeName;
 use crate::nix_log::{InternalNixLog, NixLog, NixLogAction, Trace};
 use crate::HiveLibError;
 
@@ -16,7 +17,7 @@ lazy_static! {
 
 pub enum EvalGoal<'a> {
     Inspect,
-    GetTopLevel(&'a String),
+    GetTopLevel(&'a NodeName),
 }
 
 pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> Command {
