@@ -5,9 +5,9 @@ use indicatif::style::ProgressStyle;
 use lib::hive::{Hive, HiveBuilder};
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
-use tracing_subscriber::fmt::writer::MakeWriterExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::Layer;
 
 #[macro_use]
 extern crate enum_display_derive;
@@ -44,20 +44,15 @@ pub fn setup_logging(verbosity: Verbosity<ErrorLevel>) {
         ProgressStyle::with_template(
             "{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}} {wide_msg}",
         )
-        .unwrap(),
+        .expect("Failed to create progress style"),
     );
 
     tracing_subscriber::registry()
         .with(
-            tracing_subscriber::fmt::layer().without_time().with_writer(
-                indicatif_layer.get_stderr_writer().with_max_level(
-                    verbosity
-                        .log_level_filter()
-                        .as_trace()
-                        .into_level()
-                        .unwrap(),
-                ),
-            ),
+            tracing_subscriber::fmt::layer()
+                .without_time()
+                .with_writer(indicatif_layer.get_stderr_writer())
+                .with_filter(verbosity.log_level_filter().as_trace()),
         )
         .with(indicatif_layer)
         .init();
