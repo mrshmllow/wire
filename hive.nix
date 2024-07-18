@@ -12,6 +12,8 @@
   node-a = {
     deployment = {
       targetHost = "node-a";
+
+      tags = ["test" "arm"];
     };
 
     system.stateVersion = "24.11";
@@ -28,6 +30,8 @@
   node-b = {
     deployment = {
       targetHost = "node-b";
+
+      tags = ["test" "x86"];
     };
 
     system.stateVersion = "24.11";
@@ -35,9 +39,9 @@
     boot.loader.grub.enable = true;
     boot.loader.grub.device = "/dev/vdc";
 
-    fileSystems."/" = {
-      device = "/dev/disk/by-uuid/11111";
-      fsType = "ext4";
-    };
+    # fileSystems."/" = {
+    #   device = "/dev/disk/by-uuid/11111";
+    #   fsType = "ext4";
+    # };
   };
 }

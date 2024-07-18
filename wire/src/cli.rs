@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
+use lib::hive::node::NodeName;
 
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 #[derive(Parser)]
 #[command(
@@ -20,15 +21,30 @@ pub struct WireCli {
     pub path: std::path::PathBuf,
 }
 
+#[derive(Clone, Debug)]
+pub enum ApplyTarget {
+    Node(NodeName),
+    Tag(String),
+}
+
+impl From<String> for ApplyTarget {
+    fn from(value: String) -> Self {
+        match value.starts_with("@") {
+            true => ApplyTarget::Tag(value[1..].to_string()),
+            false => ApplyTarget::Node(NodeName(Arc::from(value.as_str()))),
+        }
+    }
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     Apply {
         #[arg(value_enum, default_value_t)]
         goal: Goal,
 
-        /// Target hosts
+        /// List of literal node names or `@` prefixed tags.
         #[arg(short, long)]
-        on: Vec<String>,
+        on: Vec<ApplyTarget>,
     },
     /// Inspect hive
     Inspect {

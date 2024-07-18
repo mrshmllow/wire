@@ -12,9 +12,9 @@ use crate::nix::{get_eval_command, CommandTracer, EvalGoal, StreamTracing};
 use super::HiveLibError;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
-pub struct NodeName(Arc<str>);
+pub struct NodeName(pub Arc<str>);
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Node {
     #[serde(rename = "targetHosts")]
     pub target_hosts: im::HashSet<String>,
@@ -33,7 +33,7 @@ pub trait Evaluatable {
         self,
         hivepath: PathBuf,
         span: Span,
-    ) -> impl std::future::Future<Output = Result<(NodeName, Node), HiveLibError>> + Send;
+    ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 }
 
 #[derive(Deserialize, Debug)]
@@ -45,7 +45,7 @@ impl Display for Derivation {
     }
 }
 
-impl Evaluatable for (NodeName, Node) {
+impl Evaluatable for (&NodeName, &Node) {
     async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
         let mut command = get_eval_command(hivepath, EvalGoal::GetTopLevel(&self.0));
         let mut stream: CommandTracer = command.borrow_mut().into();
@@ -68,12 +68,12 @@ impl Evaluatable for (NodeName, Node) {
             return Ok(derivation);
         }
 
-        Err(HiveLibError::NixEvalInteralError(stderr))
+        Err(HiveLibError::NixEvalInteralError(self.0.clone(), stderr))
     }
 
     #[instrument(skip(self, span, hivepath), fields(node = %self.0))]
-    async fn build(self, hivepath: PathBuf, span: Span) -> Result<(NodeName, Node), HiveLibError> {
-        let top_level = self.clone().evaluate(hivepath).await?;
+    async fn build(self, hivepath: PathBuf, span: Span) -> Result<(), HiveLibError> {
+        let top_level = self.evaluate(hivepath).await?;
         span.pb_inc(1);
 
         let mut command = Command::new("nix");
@@ -93,8 +93,10 @@ impl Evaluatable for (NodeName, Node) {
 
         info!("Built output: {stdout:?}", stdout = stdout);
 
+        span.pb_inc(1);
+
         if status.success() {
-            return Ok(self);
+            return Ok(());
         }
 
         let stderr: Vec<String> = stderr_vec
@@ -103,6 +105,6 @@ impl Evaluatable for (NodeName, Node) {
             .filter(|s| !s.is_empty())
             .collect();
 
-        Err(HiveLibError::NixBuildError(top_level, stderr))
+        Err(HiveLibError::NixBuildError(self.0.clone(), stderr))
     }
 }

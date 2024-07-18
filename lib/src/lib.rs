@@ -1,5 +1,5 @@
 #![feature(async_closure)]
-use hive::node::Derivation;
+use hive::node::NodeName;
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -20,11 +20,11 @@ pub enum HiveLibError {
     #[error("failed to evaluate nix expression (last 20 lines):\n{}", .0[.0.len() - 20..].join("\n"))]
     NixEvalError(Vec<String>),
 
-    #[error("failed to evaluate nix expression (filtered logs, run with -vv to see all):\n{}", .0.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
-    NixEvalInteralError(Vec<NixLog>),
+    #[error("failed to evaluate node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
+    NixEvalInteralError(NodeName, Vec<NixLog>),
 
-    #[error("failed to build deriviation {0} (last 20 lines):\n{}", .1[.1.len() - 20..].join("\n"))]
-    NixBuildError(Derivation, Vec<String>),
+    #[error("failed to build node {0} (last 20 lines):\n{}", .1[.1.len() - 20..].join("\n"))]
+    NixBuildError(NodeName, Vec<String>),
 
     #[error("node {0} not exist in hive")]
     NodeDoesNotExist(String),
