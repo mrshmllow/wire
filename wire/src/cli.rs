@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand, ValueEnum};
+use clap_num::number_range;
 use lib::hive::node::NodeName;
 
 use std::{fmt::Display, sync::Arc};
@@ -17,7 +18,7 @@ pub struct WireCli {
     pub verbose: clap_verbosity_flag::Verbosity,
 
     /// Path to directory containing hive
-    #[arg(short, long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]
+    #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]
     pub path: std::path::PathBuf,
 }
 
@@ -36,6 +37,10 @@ impl From<String> for ApplyTarget {
     }
 }
 
+fn more_than_zero(s: &str) -> Result<usize, String> {
+    number_range(s, 1, usize::MAX)
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     Apply {
@@ -45,6 +50,9 @@ pub enum Commands {
         /// List of literal node names or `@` prefixed tags.
         #[arg(short, long)]
         on: Vec<ApplyTarget>,
+
+        #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
+        parallel: usize,
     },
     /// Inspect hive
     Inspect {

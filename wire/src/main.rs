@@ -23,7 +23,9 @@ async fn main() -> Result<(), anyhow::Error> {
     let hive = Hive::new_from_path(args.path.as_path()).await?;
 
     match args.command {
-        cli::Commands::Apply { goal, on } => apply::apply(hive, goal, on).await?,
+        cli::Commands::Apply { goal, on, parallel } => {
+            apply::apply(hive, goal, on, parallel).await?
+        }
         cli::Commands::Inspect { online: _, json } => println!(
             "{}",
             match json {

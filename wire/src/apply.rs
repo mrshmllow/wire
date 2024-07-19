@@ -10,7 +10,12 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 use crate::cli::{ApplyTarget, Goal};
 
 #[instrument(skip_all, fields(goal = %goal, on = ?on))]
-pub async fn apply(hive: Hive, goal: Goal, on: Vec<ApplyTarget>) -> Result<(), HiveLibError> {
+pub async fn apply(
+    hive: Hive,
+    goal: Goal,
+    on: Vec<ApplyTarget>,
+    parallel: usize,
+) -> Result<(), HiveLibError> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
     header_span.pb_set_length(4);
@@ -46,7 +51,8 @@ pub async fn apply(hive: Hive, goal: Goal, on: Vec<ApplyTarget>) -> Result<(), H
         warn!("There are no nodes selected for deployment");
     }
 
-    let result: Result<(), _> = join_all(set).await.into_iter().collect();
+    let futures = futures::stream::iter(set).buffer_unordered(parallel);
+    let result: Result<(), _> = futures.collect::<Vec<_>>().await.into_iter().collect();
 
     std::mem::drop(header_span_enter);
     std::mem::drop(header_span);
