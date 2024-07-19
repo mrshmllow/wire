@@ -1,4 +1,4 @@
-use futures::{future::join_all, StreamExt};
+use futures::StreamExt;
 use indicatif::ProgressStyle;
 use lib::hive::node::Evaluatable;
 use lib::hive::Hive;
@@ -18,7 +18,7 @@ pub async fn apply(
 ) -> Result<(), HiveLibError> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
-    header_span.pb_set_length(4);
+    header_span.pb_set_length(1);
 
     let header_span_enter = header_span.enter();
 
@@ -43,7 +43,7 @@ pub async fn apply(
             let path = hive.path.clone();
             let span = header_span.clone();
 
-            node.build(path, span)
+            node.switch_to_configuration(path, span)
         })
         .peekable();
 

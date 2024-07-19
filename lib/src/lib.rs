@@ -23,6 +23,9 @@ pub enum HiveLibError {
     #[error("failed to evaluate node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
     NixEvalInteralError(NodeName, Vec<NixLog>),
 
+    #[error("failed to copy drv to node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
+    NixCopyError(NodeName, Vec<NixLog>),
+
     #[error("failed to build node {0} (last 20 lines):\n{}", .1[.1.len() - 20..].join("\n"))]
     NixBuildError(NodeName, Vec<String>),
 

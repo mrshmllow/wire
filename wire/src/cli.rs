@@ -87,6 +87,6 @@ pub enum Goal {
     Keys,
     /// Activate system profile on next boot
     Boot,
-    Test,
-    DryActivate,
+    // Test,
+    // DryActivate,
 }

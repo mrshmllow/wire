@@ -12,10 +12,26 @@
         default = name;
       };
 
-      targetHosts = lib.mkOption {
-        type = types.listOf types.str;
-        default = lib.singleton name;
-        apply = list: lib.unique ([name] ++ list);
+      target = lib.mkOption {
+        type = types.submodule {
+          options = {
+            host = lib.mkOption {
+              type = types.str;
+            };
+            user = lib.mkOption {
+              type = types.str;
+            };
+            port = lib.mkOption {
+              type = types.int;
+              default = 22;
+            };
+          };
+        };
+      };
+
+      buildOnTarget = lib.mkOption {
+        type = types.bool;
+        default = true;
       };
 
       tags = lib.mkOption {

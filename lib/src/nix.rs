@@ -1,9 +1,9 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::path::PathBuf;
 use std::process::ExitStatus;
-use std::{path::PathBuf, process::Stdio};
+use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
-use tokio::{io::BufReader, process::Command};
 use tracing::{info, trace, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
@@ -20,8 +20,8 @@ pub enum EvalGoal<'a> {
     GetTopLevel(&'a NodeName),
 }
 
-pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> Command {
-    let mut command = Command::new("nix");
+pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Command {
+    let mut command = tokio::process::Command::new("nix");
     command.args(["eval", "--json", "--impure", "--verbose", "--expr"]);
 
     command.arg(format!(
@@ -36,7 +36,7 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> Command {
     command
 }
 
-async fn handle_io<R>(reader: R, should_trace: bool) -> Result<Vec<NixLog>, HiveLibError>
+pub async fn handle_io<R>(reader: R, should_trace: bool) -> Result<Vec<NixLog>, HiveLibError>
 where
     R: AsyncRead + Unpin,
 {
@@ -79,39 +79,29 @@ where
     Ok(collect)
 }
 
-pub struct CommandTracer<'a> {
-    command: &'a mut Command,
-    log_stderr: bool,
-}
-
-impl<'a> From<&'a mut Command> for CommandTracer<'a> {
-    fn from(command: &'a mut Command) -> Self {
-        CommandTracer {
-            command,
-            log_stderr: false,
-        }
-    }
-}
-
 pub trait StreamTracing {
-    async fn execute(self) -> Result<(ExitStatus, Vec<NixLog>, Vec<NixLog>), HiveLibError>;
-    fn log_stderr(&mut self, log: bool) -> &mut Self;
+    async fn execute(
+        &mut self,
+        log_stderr: bool,
+    ) -> Result<(ExitStatus, Vec<NixLog>, Vec<NixLog>), HiveLibError>;
 }
 
-impl<'a> StreamTracing for CommandTracer<'a> {
-    async fn execute(self) -> Result<(ExitStatus, Vec<NixLog>, Vec<NixLog>), HiveLibError> {
+impl StreamTracing for tokio::process::Command {
+    async fn execute(
+        &mut self,
+        log_stderr: bool,
+    ) -> Result<(ExitStatus, Vec<NixLog>, Vec<NixLog>), HiveLibError> {
         let mut child = self
-            .command
             .args(["--log-format", "internal-json"])
-            .stderr(Stdio::piped())
-            .stdout(Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
             .spawn()
             .map_err(HiveLibError::SpawnFailed)?;
 
         let stdout_handle = child.stdout.take().ok_or(HiveLibError::NoHandle)?;
         let stderr_handle = child.stderr.take().ok_or(HiveLibError::NoHandle)?;
 
-        let stderr_task = tokio::spawn(handle_io(stderr_handle, self.log_stderr).in_current_span());
+        let stderr_task = tokio::spawn(handle_io(stderr_handle, log_stderr).in_current_span());
         let stdout_task = tokio::spawn(handle_io(stdout_handle, false));
 
         let handle =
@@ -121,10 +111,5 @@ impl<'a> StreamTracing for CommandTracer<'a> {
             tokio::try_join!(handle, stdout_task, stderr_task).map_err(HiveLibError::JoinError)?;
 
         Ok((result?, stdout?, stderr?))
-    }
-
-    fn log_stderr(&mut self, log: bool) -> &mut Self {
-        self.log_stderr = log;
-        self
     }
 }

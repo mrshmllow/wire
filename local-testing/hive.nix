@@ -11,25 +11,23 @@
 
   node-a = {
     deployment = {
-      targetHost = "node-a";
+      target = {
+        host = "192.168.122.96";
+        user = "root";
+      };
 
       tags = ["test" "arm"];
     };
 
-    system.stateVersion = "24.11";
-
-    boot.loader.grub.enable = true;
-    boot.loader.grub.device = "/dev/vda";
-
-    fileSystems."/" = {
-      device = "/dev/disk/by-uuid/22222";
-      fsType = "ext4";
-    };
+    imports = [./node-a.nix];
   };
 
   node-b = {
     deployment = {
-      targetHost = "node-b";
+      target = {
+        host = "node-b";
+        user = "nixos";
+      };
 
       tags = ["test" "x86"];
     };
@@ -39,9 +37,9 @@
     boot.loader.grub.enable = true;
     boot.loader.grub.device = "/dev/vdc";
 
-    # fileSystems."/" = {
-    #   device = "/dev/disk/by-uuid/11111";
-    #   fsType = "ext4";
-    # };
+    fileSystems."/" = {
+      device = "/dev/disk/by-uuid/11111";
+      fsType = "ext4";
+    };
   };
 }
