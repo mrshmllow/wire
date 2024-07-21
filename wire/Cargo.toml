@@ -1,7 +1,7 @@
 [package]
 name = "wire"
-version = "0.1.0"
-edition = "2021"
+version.workspace = true
+edition.workspace = true
 
 [dependencies]
 clap = { workspace = true }
@@ -20,3 +20,4 @@ enum-display-derive = "0.1.1"
 im = "15.1.0"
 futures = "0.3.30"
 clap-num = "1.1.1"
+clap-markdown = "0.1.4"

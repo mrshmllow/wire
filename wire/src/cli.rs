@@ -21,6 +21,9 @@ pub struct WireCli {
     /// Path to directory containing hive
     #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]
     pub path: std::path::PathBuf,
+
+    #[arg(long, hide = true, global = true)]
+    pub markdown_help: bool,
 }
 
 #[derive(Clone, Debug)]

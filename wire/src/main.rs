@@ -20,6 +20,11 @@ async fn main() -> Result<(), anyhow::Error> {
     let args = WireCli::parse();
     setup_logging(args.verbose);
 
+    if args.markdown_help {
+        clap_markdown::print_help_markdown::<WireCli>();
+        return Ok(());
+    }
+
     let hive = Hive::new_from_path(args.path.as_path()).await?;
 
     match args.command {

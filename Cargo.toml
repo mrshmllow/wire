@@ -2,6 +2,13 @@
 members = ["lib", "wire"]
 resolver = "2"
 
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace.metadata.crane]
+name = "wire"
+
 [workspace.dependencies]
 clap = { version = "4.5.9", features = ["derive", "string"] }
 clap-verbosity-flag = "2.2.0"
