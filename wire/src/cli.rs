@@ -1,6 +1,7 @@
+use anyhow::anyhow;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
-use lib::hive::node::NodeName;
+use lib::hive::node::{NodeGoal, NodeName, SwitchToConfigurationGoal};
 
 use std::{fmt::Display, sync::Arc};
 
@@ -77,9 +78,10 @@ pub enum Commands {
 
 #[derive(Clone, Debug, Default, ValueEnum, Display)]
 pub enum Goal {
+    /// Make the configuration the boot default and activate now
     #[default]
     Switch,
-    /// Build system profiles
+    /// Make the configuration the boot default
     Build,
     /// Copy closures to remote hosts
     Push,
@@ -87,6 +89,32 @@ pub enum Goal {
     Keys,
     /// Activate system profile on next boot
     Boot,
-    // Test,
-    // DryActivate,
+    /// Activate the configuration, but don't make it the boot default
+    Test,
+    /// Show what would be done if this configuration were activated.
+    DryActivate,
+}
+
+impl TryFrom<Goal> for NodeGoal {
+    type Error = anyhow::Error;
+
+    fn try_from(value: Goal) -> Result<Self, Self::Error> {
+        match value {
+            Goal::Build => Ok(NodeGoal::Build),
+            Goal::Push => Ok(NodeGoal::Push),
+            Goal::Boot => Ok(NodeGoal::SwitchToConfiguration(
+                SwitchToConfigurationGoal::Boot,
+            )),
+            Goal::Switch => Ok(NodeGoal::SwitchToConfiguration(
+                SwitchToConfigurationGoal::Switch,
+            )),
+            Goal::Test => Ok(NodeGoal::SwitchToConfiguration(
+                SwitchToConfigurationGoal::Test,
+            )),
+            Goal::DryActivate => Ok(NodeGoal::SwitchToConfiguration(
+                SwitchToConfigurationGoal::DryActivate,
+            )),
+            Goal::Keys => Err(anyhow!("Keys is not a node goal")),
+        }
+    }
 }

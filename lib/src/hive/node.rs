@@ -38,6 +38,12 @@ pub struct Node {
     pub tags: im::HashSet<String>,
 }
 
+#[derive(derive_more::Display)]
+pub enum Push<'a> {
+    Derivation(&'a Derivation),
+    Path(&'a String),
+}
+
 pub trait Evaluatable {
     fn evaluate(
         self,
@@ -50,10 +56,30 @@ pub trait Evaluatable {
         span: &Span,
     ) -> impl std::future::Future<Output = Result<String, HiveLibError>> + Send;
 
+    fn achieve_goal(
+        self,
+        hivepath: PathBuf,
+        span: Span,
+        goal: &NodeGoal,
+    ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
+
     fn switch_to_configuration(
         self,
         hivepath: PathBuf,
         span: Span,
+        goal: &SwitchToConfigurationGoal,
+    ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
+
+    fn eval_and_push(
+        self,
+        hivepath: PathBuf,
+        span: &Span,
+    ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
+
+    fn push(
+        self,
+        span: &Span,
+        push: Push<'_>,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 }
 
@@ -66,7 +92,23 @@ impl Display for Derivation {
     }
 }
 
+#[derive(derive_more::Display, Debug)]
+pub enum SwitchToConfigurationGoal {
+    Switch,
+    Boot,
+    Test,
+    DryActivate,
+}
+
+#[derive(derive_more::Display)]
+pub enum NodeGoal {
+    SwitchToConfiguration(SwitchToConfigurationGoal),
+    Build,
+    Push,
+}
+
 impl Evaluatable for (&NodeName, &Node) {
+    /// Evaluate the node and returns the top level Deriviation
     async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
         let mut command = get_eval_command(hivepath, EvalGoal::GetTopLevel(self.0));
 
@@ -91,48 +133,58 @@ impl Evaluatable for (&NodeName, &Node) {
         Err(HiveLibError::NixEvalInteralError(self.0.clone(), stderr))
     }
 
+    /// Pushes a path or derivation to the node
+    #[instrument(skip_all)]
+    async fn push(self, span: &Span, push: Push<'_>) -> Result<(), HiveLibError> {
+        span.pb_inc_length(1);
+        let mut command = Command::new("nix");
+
+        command
+            .arg("copy")
+            .arg("--substitute-on-destination")
+            .arg("--to")
+            .arg(format!(
+                "ssh://{}@{}",
+                self.1.target.user, self.1.target.host
+            ))
+            .arg("--derivation");
+
+        match push {
+            Push::Derivation(drv) => command.arg(drv.to_string()),
+            Push::Path(path) => command.arg(path),
+        };
+
+        let (status, _stdout, stderr_vec) =
+            command.execute(true).instrument(info_span!("copy")).await?;
+
+        span.pb_inc(1);
+
+        if !status.success() {
+            return Err(HiveLibError::NixCopyError(self.0.clone(), stderr_vec));
+        }
+
+        Ok(())
+    }
+
+    /// Builds the evaluated node remotely or locally. Pushes the derivation / the build output as required.
     #[instrument(skip_all)]
     async fn build(self, hivepath: PathBuf, span: &Span) -> Result<String, HiveLibError> {
-        span.pb_inc_length(1);
+        span.pb_inc_length(2);
         let top_level = self.evaluate(hivepath).await?;
         span.pb_inc(1);
 
         info!("Top level: {top_level}");
 
-        if self.1.build_remotely {
-            span.pb_inc_length(1);
-            let mut command = Command::new("nix");
-
-            command
-                .arg("copy")
-                .arg("--substitute-on-destination")
-                .arg("--derivation")
-                .arg("--to")
-                .arg(format!(
-                    "ssh://{}@{}",
-                    self.1.target.user, self.1.target.host
-                ))
-                .arg(top_level.to_string());
-
-            let (status, _stdout, stderr_vec) =
-                command.execute(true).instrument(info_span!("copy")).await?;
-
-            span.pb_inc(1);
-
-            if !status.success() {
-                return Err(HiveLibError::NixCopyError(self.0.clone(), stderr_vec));
-            }
-        }
-
         let mut command = match self.1.build_remotely {
             true => {
+                self.push(span, Push::Derivation(&top_level)).await?;
+
                 let mut command = Command::new("ssh");
 
                 command
                     .arg("-l")
                     .arg(self.1.target.user.as_ref())
                     .arg(self.1.target.host.as_ref())
-                    .args(["sudo", "-H", "--"])
                     .arg("nix")
                     .arg("--extra-experimental-features")
                     .arg("nix-command");
@@ -144,7 +196,6 @@ impl Evaluatable for (&NodeName, &Node) {
 
         command
             .arg("build")
-            .arg("--verbose")
             .arg("--print-build-logs")
             .arg("--print-out-paths")
             .arg(top_level.to_string());
@@ -156,13 +207,18 @@ impl Evaluatable for (&NodeName, &Node) {
         if status.success() {
             info!("Built output: {stdout:?}", stdout = stdout);
 
-            let stdout: Vec<String> = stdout
+            let stdout = stdout
                 .into_iter()
                 .map(|l| l.to_string())
                 .filter(|s| !s.is_empty())
-                .collect();
+                .collect::<Vec<String>>()
+                .join("\n");
 
-            return Ok(stdout.join("\n"));
+            if !self.1.build_remotely {
+                self.push(span, Push::Path(&stdout)).await?;
+            };
+
+            return Ok(stdout);
         }
 
         let stderr: Vec<String> = stderr_vec
@@ -175,14 +231,28 @@ impl Evaluatable for (&NodeName, &Node) {
     }
 
     #[instrument(skip_all)]
+    async fn eval_and_push(self, hivepath: PathBuf, span: &Span) -> Result<(), HiveLibError> {
+        span.pb_inc_length(1);
+        let top_level = self.evaluate(hivepath).await?;
+        span.pb_inc(1);
+
+        self.push(span, Push::Derivation(&top_level)).await?;
+
+        Ok(())
+    }
+
+    #[instrument(skip_all)]
     async fn switch_to_configuration(
         self,
         hivepath: PathBuf,
         span: Span,
+        goal: &SwitchToConfigurationGoal,
     ) -> Result<(), HiveLibError> {
-        span.pb_inc_length(2);
         let built_path = self.build(hivepath, &span).await?;
-        span.pb_inc(1);
+
+        span.pb_inc_length(1);
+
+        info!("Running switch-to-configuration {goal:?}");
 
         let cmd = format!("{built_path}/bin/switch-to-configuration");
         let mut command = Command::new("ssh");
@@ -190,11 +260,18 @@ impl Evaluatable for (&NodeName, &Node) {
         command
             .arg("-l")
             .arg(self.1.target.user.as_ref())
-            .arg(self.1.target.host.as_ref())
-            .args(["sudo", "-H", "--"])
-            .arg(cmd);
+            .arg(self.1.target.host.as_ref());
 
-        command.arg("switch");
+        if self.1.target.user != "root".into() {
+            command.args(["sudo", "-H", "--"]);
+        };
+
+        command.arg(cmd).arg(match goal {
+            SwitchToConfigurationGoal::Switch => "switch",
+            SwitchToConfigurationGoal::Boot => "boot",
+            SwitchToConfigurationGoal::Test => "test",
+            SwitchToConfigurationGoal::DryActivate => "dry-activate",
+        });
 
         let (status, _, stderr_vec) = command.execute(true).in_current_span().await?;
 
@@ -213,5 +290,25 @@ impl Evaluatable for (&NodeName, &Node) {
             .collect();
 
         Err(HiveLibError::NixBuildError(self.0.clone(), stderr))
+    }
+
+    #[instrument(skip_all)]
+    async fn achieve_goal(
+        self,
+        hivepath: PathBuf,
+        span: Span,
+        goal: &NodeGoal,
+    ) -> Result<(), HiveLibError> {
+        match goal {
+            NodeGoal::SwitchToConfiguration(goal) => {
+                self.switch_to_configuration(hivepath, span, goal).await
+            }
+            NodeGoal::Build => {
+                self.build(hivepath, &span).await?;
+
+                Ok(())
+            }
+            NodeGoal::Push => self.eval_and_push(hivepath, &span).await,
+        }
     }
 }

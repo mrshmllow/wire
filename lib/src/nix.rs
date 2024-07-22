@@ -22,7 +22,7 @@ pub enum EvalGoal<'a> {
 
 pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Command {
     let mut command = tokio::process::Command::new("nix");
-    command.args(["eval", "--json", "--impure", "--verbose", "--expr"]);
+    command.args(["eval", "--json", "--impure", "--expr"]);
 
     command.arg(format!(
         "let evaluate = import ./lib/src/evaluate.nix; hive = evaluate {{hivePath = {path};}}; in {goal}",

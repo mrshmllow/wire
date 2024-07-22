@@ -1,18 +1,18 @@
 use futures::StreamExt;
 use indicatif::ProgressStyle;
-use lib::hive::node::Evaluatable;
+use lib::hive::node::{Evaluatable, NodeGoal};
 use lib::hive::Hive;
 use lib::HiveLibError;
 use std::collections::HashSet;
 use tracing::{instrument, warn, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
-use crate::cli::{ApplyTarget, Goal};
+use crate::cli::ApplyTarget;
 
 #[instrument(skip_all, fields(goal = %goal, on = ?on))]
 pub async fn apply(
     hive: Hive,
-    goal: Goal,
+    goal: NodeGoal,
     on: Vec<ApplyTarget>,
     parallel: usize,
 ) -> Result<(), HiveLibError> {
@@ -43,7 +43,7 @@ pub async fn apply(
             let path = hive.path.clone();
             let span = header_span.clone();
 
-            node.switch_to_configuration(path, span)
+            node.achieve_goal(path, span, &goal)
         })
         .peekable();
 
