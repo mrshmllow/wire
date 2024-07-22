@@ -16,17 +16,17 @@ pub enum NixLogAction {
     Stop,
 }
 
-// TODO: Sometimes non-errors have a level 0
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
 #[repr(u8)]
 pub enum NixLogLevel {
     Error = 0,
-    Info = 1,
-    Talkative = 2,
-    Chatty = 3,
-    Debug = 4,
-    Vomit = 5,
-    UndocumentedLevel = 6,
+    Warn = 1,
+    Notice = 2,
+    Info = 3,
+    Talkative = 4,
+    Chatty = 5,
+    Debug = 6,
+    Vomit = 7,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -60,11 +60,10 @@ impl Trace for InternalNixLog {
                     NixLogLevel::Info | NixLogLevel::Talkative | NixLogLevel::Chatty => {
                         event!(Level::INFO, "{text}")
                     }
-                    NixLogLevel::Debug | NixLogLevel::Vomit => {
-                        event!(Level::DEBUG, "{text}")
-                    }
-                    NixLogLevel::UndocumentedLevel => event!(Level::TRACE, "{text}"),
+                    NixLogLevel::Warn | NixLogLevel::Notice => event!(Level::WARN, "{text}"),
                     NixLogLevel::Error => event!(Level::ERROR, "{text}"),
+                    NixLogLevel::Debug => event!(Level::DEBUG, "{text}"),
+                    NixLogLevel::Vomit => event!(Level::TRACE, "{text}"),
                 }
             }
             NixLogAction::Stop => {}
