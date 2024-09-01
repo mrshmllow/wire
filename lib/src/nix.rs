@@ -1,5 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::env;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 use tokio::io::BufReader;
@@ -21,11 +22,16 @@ pub enum EvalGoal<'a> {
 }
 
 pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Command {
+    let runtime = match env::var_os("WIRE_RUNTIME") {
+        Some(runtime) => runtime.into_string().unwrap(),
+        None => panic!("WIRE_RUNTIME environment variable not set"),
+    };
+
     let mut command = tokio::process::Command::new("nix");
     command.args(["eval", "--json", "--impure", "--expr"]);
 
     command.arg(format!(
-        "let evaluate = import ./lib/src/evaluate.nix; hive = evaluate {{hivePath = {path};}}; in {goal}",
+        "let evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hivePath = {path};}}; in {goal}",
         path = path.to_str().unwrap(),
         goal = match goal {
             EvalGoal::Inspect => "hive.inspect".to_string(),

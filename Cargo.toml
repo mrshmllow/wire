@@ -1,6 +1,8 @@
 [workspace]
 members = ["lib", "wire"]
 resolver = "2"
+package.edition = "2021"
+package.version = "0.1.0"
 
 [workspace.dependencies]
 clap = { version = "4.5.9", features = ["derive", "string"] }

@@ -6,12 +6,21 @@
       url = "github:nix-community/fenix";
       inputs = {nixpkgs.follows = "nixpkgs";};
     };
+    crane = {
+      url = "github:ipetkov/crane";
+      inputs = {
+        flake-utils.follows = "flake-utils";
+        nixpkgs.follows = "nixpkgs";
+      };
+    };
   };
 
   outputs = {
     self,
     nixpkgs,
     devenv,
+    fenix,
+    crane,
     ...
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
@@ -19,7 +28,34 @@
     packages = forAllSystems (system: {
       devenv-up = self.devShells.${system}.default.config.procfileScript;
 
-      wire = nixpkgs.legacyPackages.${system}.callPackage ./default.nix {};
+      wire = let
+        pkgs = nixpkgs.legacyPackages.${system};
+        craneLib =
+          (crane.mkLib pkgs).overrideToolchain (_p:
+            fenix.packages.${system}.minimal.toolchain);
+
+        src = craneLib.cleanCargoSource ./.;
+        commonArgs = {
+          inherit src;
+          strictDeps = true;
+          pname = "wire";
+          WIRE_RUNTIME = ./runtime;
+        };
+
+        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        package = craneLib.buildPackage (commonArgs
+          // {
+            inherit cargoArtifacts;
+          });
+      in
+        pkgs.symlinkJoin {
+          name = "wire";
+          paths = [package];
+          buildInputs = [pkgs.makeWrapper];
+          postBuild = ''
+            wrapProgram $out/bin/wire --set WIRE_RUNTIME ${./runtime}
+          '';
+        };
 
       default = self.packages.${system}.wire;
     });
