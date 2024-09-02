@@ -1,6 +1,8 @@
-{hivePath}: let
+{
+  hive,
+  path,
+}: let
   modules = import ./modules.nix;
-  hive = import hivePath;
 
   mergedHive =
     {
@@ -12,7 +14,11 @@
 
   nodeNames = with builtins; filter (name: !elem name ["meta" "defaults"]) (attrNames hive);
 
-  nixpkgs = import mergedHive.meta.nixpkgs {};
+  # support '<nixpkgs>' and 'import <nixpkgs> {}'
+  nixpkgs =
+    if builtins.isPath mergedHive.meta.nixpkgs
+    then import mergedHive.meta.nixpkgs {}
+    else mergedHive.meta.nixpkgs;
 
   evaluateNode = name: let
     evalConfig = import (nixpkgs.path + "/nixos/lib/eval-config.nix");
@@ -46,7 +52,7 @@ in rec {
       nodeNames);
 
   inspect = {
+    inherit path;
     nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
-    path = hivePath;
   };
 }

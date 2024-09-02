@@ -27,12 +27,20 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Comman
         None => panic!("WIRE_RUNTIME environment variable not set"),
     };
 
+    let canon_path = path.canonicalize().unwrap();
+
     let mut command = tokio::process::Command::new("nix");
-    command.args(["eval", "--json", "--impure", "--expr"]);
+    command.args(["eval", "--json", "--impure", "--show-trace", "--expr"]);
 
     command.arg(format!(
-        "let evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hivePath = {path};}}; in {goal}",
-        path = path.to_str().unwrap(),
+        "let evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = {hive}; path = {path};}}; in {goal}",
+        hive = match canon_path.ends_with("flake.nix") {
+            true => format!("(builtins.getFlake \"git+file://{path}\").colmena",
+                path = canon_path.parent().unwrap().to_str().unwrap(),
+            ),
+            false => format!("import {path}", path = canon_path.to_str().unwrap()),
+        },
+        path = canon_path.to_str().unwrap(),
         goal = match goal {
             EvalGoal::Inspect => "hive.inspect".to_string(),
             EvalGoal::GetTopLevel(node) => format!("hive.getTopLevel \"{node}\"", node = node),
