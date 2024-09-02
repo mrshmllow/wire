@@ -9,7 +9,7 @@ use crate::nix::{get_eval_command, EvalGoal};
 use crate::HiveLibError;
 pub mod node;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Hive {
     pub nodes: im::HashMap<NodeName, Node>,
     pub path: PathBuf,
@@ -75,4 +75,93 @@ fn find_hive(path: &Path) -> Option<PathBuf> {
 
     error!("No hive found");
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use std::fs::File;
+
+    #[test]
+    fn test_hive_priority() {
+        let tmpdir = env::temp_dir();
+
+        let mut path = PathBuf::new();
+        path.push(tmpdir);
+        path.push("test_hive_priority");
+
+        fs::create_dir_all(&path).unwrap();
+
+        path.push("hive.nix");
+
+        File::create(path.clone()).unwrap();
+
+        assert!(path.exists());
+
+        path.pop();
+        path.push("flake.nix");
+
+        assert!(path.exists());
+
+        File::create(path.clone()).unwrap();
+
+        let hive = find_hive(&path).unwrap();
+
+        assert!(hive.ends_with("hive.nix"));
+    }
+
+    #[tokio::test]
+    async fn test_hive_file() {
+        let tmpdir = env::temp_dir();
+
+        let mut path = PathBuf::new();
+        path.push(tmpdir);
+        path.push("test_hive_file");
+
+        fs::create_dir_all(&path).unwrap();
+
+        path.push("hive.nix");
+
+        fs::write(
+            path.clone(),
+            "{
+  meta = {
+    nixpkgs = <nixpkgs>;
+  };
+
+  node-a = {
+    deployment = {
+      target = {
+        host = \"192.168.122.96\";
+        user = \"root\";
+      };
+    };
+  };
+}",
+        )
+        .unwrap();
+
+        path.pop();
+
+        let hive = Hive::new_from_path(&path).await.unwrap();
+
+        let node = Node {
+            tags: im::HashSet::new(),
+            target: node::Target {
+                host: "192.168.122.96".into(),
+                user: "root".into(),
+                port: 22,
+            },
+            build_remotely: true,
+        };
+
+        let mut nodes = im::HashMap::new();
+        nodes.insert(NodeName("node-a".into()), node);
+
+        path.push("hive.nix");
+
+        assert_eq!(hive, Hive { path, nodes });
+    }
 }

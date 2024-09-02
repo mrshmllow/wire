@@ -15,19 +15,6 @@
         ];
       };
 
-      node-a = {
-        deployment = {
-          target = {
-            host = "192.168.122.96";
-            user = "root";
-          };
-
-          tags = ["test" "arm"];
-        };
-
-        imports = [./node-a.nix];
-      };
-
       node-b = {
         deployment = {
           target = {
