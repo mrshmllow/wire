@@ -41,6 +41,7 @@ in {
         };
       };
       description = "Describes the target for this node";
+      default = {};
     };
 
     buildOnTarget = lib.mkOption {
