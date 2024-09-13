@@ -104,6 +104,11 @@ in {
             type = types.oneOf [types.str types.path (types.listOf types.str)];
             description = "Source of the key. Either a path to a file, a literal string, or a command to generate the key.";
           };
+          uploadAt = lib.mkOption {
+            type = types.enum ["pre-activation" "post-activation"];
+            default = "pre-activation";
+            description = "When to upload the key. Either `pre-activation` or `post-activation`.";
+          };
         };
       }));
       description = "Secrets to be deployed to the node.";
