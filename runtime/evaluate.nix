@@ -2,7 +2,7 @@
   hive,
   path,
 }: let
-  module = import ./modules.nix;
+  module = import ./module.nix;
 
   mergedHive =
     {

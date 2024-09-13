@@ -9,7 +9,7 @@
 }: let
   eval = lib.evalModules {
     modules = [
-      ../lib/src/modules.nix
+      ../lib/src/module.nix
       {
         options._module.args = lib.mkOption {
           internal = true;
