@@ -2,7 +2,7 @@
   hive,
   path,
 }: let
-  modules = import ./modules.nix;
+  module = import ./modules.nix;
 
   mergedHive =
     {
@@ -25,7 +25,7 @@
   in
     evalConfig {
       modules = [
-        modules.deploymentOptions
+        module
 
         mergedHive.defaults
         mergedHive.${name}

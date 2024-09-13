@@ -13,14 +13,16 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
+    catppuccin.url = "github:catppuccin/mdBook";
   };
 
   outputs = {
     self,
     nixpkgs,
+    crane,
     devenv,
     fenix,
-    crane,
+    catppuccin,
     ...
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
@@ -57,6 +59,11 @@
           '';
         };
 
+      docs = nixpkgs.legacyPackages.${system}.callPackage ./doc {
+        inherit catppuccin;
+        inherit (self.packages.${system}) wire;
+      };
+
       default = self.packages.${system}.wire;
     });
 
@@ -68,6 +75,8 @@
           {
             languages.rust.enable = true;
             languages.rust.channel = "nightly";
+
+            packages = with nixpkgs.legacyPackages.${system}; [mdbook catppuccin.packages.${system}.default];
 
             pre-commit.hooks = {
               clippy.enable = true;

@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 use hive::node::NodeName;
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
