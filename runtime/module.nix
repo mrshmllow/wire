@@ -23,7 +23,7 @@ in {
             default = name;
           };
           hosts = lib.mkOption {
-            type = types.str;
+            type = types.listOf types.str;
             description = "Additional hosts to attempt to connect to, if `deployment.target.host` cannot be reached.";
             default = lib.singleton name;
             apply = list: lib.unique ([name] ++ list);
