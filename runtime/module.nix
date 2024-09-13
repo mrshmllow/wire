@@ -31,6 +31,7 @@ in {
           user = lib.mkOption {
             type = types.str;
             description = "User to use for ssh.";
+            default = "root";
           };
           port = lib.mkOption {
             type = types.int;
