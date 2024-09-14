@@ -79,6 +79,8 @@
             languages.rust.enable = true;
             languages.rust.channel = "nightly";
 
+            env.WIRE_RUNTIME = ./runtime;
+
             packages = with nixpkgs.legacyPackages.${system}; [mdbook catppuccin.packages.${system}.default];
 
             pre-commit.hooks = {
