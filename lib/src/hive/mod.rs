@@ -103,6 +103,8 @@ mod tests {
         path.pop();
         path.push("flake.nix");
 
+        File::create(path.clone()).unwrap();
+
         assert!(path.exists());
 
         File::create(path.clone()).unwrap();
