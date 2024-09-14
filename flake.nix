@@ -57,6 +57,9 @@
           postBuild = ''
             wrapProgram $out/bin/wire --set WIRE_RUNTIME ${./runtime}
           '';
+          meta = {
+            mainProgram = "wire";
+          };
         };
 
       docs = nixpkgs.legacyPackages.${system}.callPackage ./doc {
