@@ -42,6 +42,9 @@
           strictDeps = true;
           pname = "wire";
           WIRE_RUNTIME = ./runtime;
+          nativeBuildInputs = with pkgs; [
+            pkgs.nix
+          ];
         };
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
