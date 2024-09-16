@@ -3,6 +3,9 @@ name = "lib"
 version.workspace = true
 edition.workspace = true
 
+[features]
+no_web_tests = []
+
 [dependencies]
 tokio = { workspace = true }
 serde = { workspace = true }

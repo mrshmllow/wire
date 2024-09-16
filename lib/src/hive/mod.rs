@@ -95,6 +95,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn test_hive_file() {
         let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
         path.push("test_hive_file");

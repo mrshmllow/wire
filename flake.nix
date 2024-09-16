@@ -41,6 +41,8 @@
           inherit src;
           strictDeps = true;
           pname = "wire";
+          cargoTestExtraArgs = "--features no_web_tests";
+
           WIRE_RUNTIME = ./runtime;
           WIRE_TEST_DIR = ./tests;
 
@@ -85,6 +87,7 @@
             languages.rust.channel = "nightly";
 
             env.WIRE_RUNTIME = ./runtime;
+            env.WIRE_TEST_DIR = ./tests;
 
             packages = with nixpkgs.legacyPackages.${system}; [mdbook catppuccin.packages.${system}.default];
 
