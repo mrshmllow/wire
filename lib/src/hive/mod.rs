@@ -85,29 +85,9 @@ mod tests {
     use std::fs::File;
 
     #[test]
-    fn test_hive_priority() {
-        let tmpdir = env::temp_dir();
-
-        let mut path = PathBuf::new();
-        path.push(tmpdir);
-        path.push("test_hive_priority");
-
-        fs::create_dir_all(&path).unwrap();
-
-        path.push("hive.nix");
-
-        File::create(path.clone()).unwrap();
-
-        assert!(path.exists());
-
-        path.pop();
-        path.push("flake.nix");
-
-        File::create(path.clone()).unwrap();
-
-        assert!(path.exists());
-
-        File::create(path.clone()).unwrap();
+    fn test_hive_dot_nix_priority() {
+        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
+        path.push("test_hive_dot_nix_priority");
 
         let hive = find_hive(&path).unwrap();
 
@@ -116,36 +96,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_hive_file() {
-        let tmpdir = env::temp_dir();
-
-        let mut path = PathBuf::new();
-        path.push(tmpdir);
+        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
         path.push("test_hive_file");
-
-        fs::create_dir_all(&path).unwrap();
-
-        path.push("hive.nix");
-
-        fs::write(
-            path.clone(),
-            "{
-  meta = {
-    nixpkgs = <nixpkgs>;
-  };
-
-  node-a = {
-    deployment = {
-      target = {
-        host = \"192.168.122.96\";
-        user = \"root\";
-      };
-    };
-  };
-}",
-        )
-        .unwrap();
-
-        path.pop();
 
         let hive = Hive::new_from_path(&path).await.unwrap();
 

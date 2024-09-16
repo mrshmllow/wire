@@ -42,6 +42,8 @@
           strictDeps = true;
           pname = "wire";
           WIRE_RUNTIME = ./runtime;
+          WIRE_TEST_DIR = ./tests;
+
           nativeBuildInputs = with pkgs; [
             pkgs.nix
           ];
