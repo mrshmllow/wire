@@ -2,10 +2,10 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
 use std::path::PathBuf;
-use std::process::ExitStatus;
+use std::process::{Command, ExitStatus};
 use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
-use tracing::{info, trace, Instrument, Span};
+use tracing::{error, info, trace, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::hive::node::NodeName;
@@ -21,11 +21,32 @@ pub enum EvalGoal<'a> {
     GetTopLevel(&'a NodeName),
 }
 
+fn check_nix_available() -> bool {
+    match Command::new("nix").spawn() {
+        Ok(_) => true,
+        Err(e) => {
+            if let std::io::ErrorKind::NotFound = e.kind() {
+                false
+            } else {
+                error!(
+                    "Something weird happened checking for nix availability, {}",
+                    e.kind()
+                );
+                false
+            }
+        }
+    }
+}
+
 pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Command {
     let runtime = match env::var_os("WIRE_RUNTIME") {
         Some(runtime) => runtime.into_string().unwrap(),
         None => panic!("WIRE_RUNTIME environment variable not set"),
     };
+
+    if !check_nix_available() {
+        panic!("nix is not available on this system");
+    }
 
     let canon_path = path.canonicalize().unwrap();
 
