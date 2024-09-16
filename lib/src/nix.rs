@@ -51,6 +51,8 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Comman
     let canon_path = path.canonicalize().unwrap();
 
     let mut command = tokio::process::Command::new("nix");
+    command.args(["--extra-experimental-features", "nix-command"]);
+    command.args(["--extra-experimental-features", "flakes"]);
     command.args(["eval", "--json", "--impure", "--show-trace", "--expr"]);
 
     command.arg(format!(
