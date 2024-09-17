@@ -81,8 +81,6 @@ fn find_hive(path: &Path) -> Option<PathBuf> {
 mod tests {
     use super::*;
     use std::env;
-    use std::fs;
-    use std::fs::File;
 
     #[test]
     fn test_hive_dot_nix_priority() {
