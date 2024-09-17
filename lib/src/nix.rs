@@ -22,7 +22,11 @@ pub enum EvalGoal<'a> {
 }
 
 fn check_nix_available() -> bool {
-    match Command::new("nix").spawn() {
+    match Command::new("nix")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
         Ok(_) => true,
         Err(e) => {
             if let std::io::ErrorKind::NotFound = e.kind() {
@@ -30,7 +34,7 @@ fn check_nix_available() -> bool {
             } else {
                 error!(
                     "Something weird happened checking for nix availability, {}",
-                    e.kind()
+                    e
                 );
                 false
             }
