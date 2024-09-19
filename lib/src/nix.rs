@@ -94,6 +94,14 @@ where
                 .map(NixLog::Internal)
                 .unwrap_or(NixLog::Raw(line.to_string()));
 
+        // Throw out stop logs
+        if let NixLog::Internal(InternalNixLog {
+            action: NixLogAction::Stop,
+        }) = log
+        {
+            continue;
+        }
+
         trace!(line);
 
         if should_trace {
@@ -102,19 +110,10 @@ where
                 NixLog::Internal(ref internal) => internal.trace(),
             }
 
-            // We do this to ignore any "stop" logs, preventing flashing
-            if let NixLog::Internal(ref log) = log {
-                if let NixLogAction::Message {
-                    level: _,
-                    message: _,
-                } = &log.action
-                {
-                    Span::current().pb_set_message(&DIGEST_RE.replace_all(&log.to_string(), "…"))
-                }
-            }
+            Span::current().pb_set_message(&DIGEST_RE.replace_all(&log.to_string(), "…"));
         }
 
-        collect.push(log);
+        collect.push(log)
     }
 
     Ok(collect)
