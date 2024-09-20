@@ -13,10 +13,8 @@ jobs:
     - uses: https://github.com/cachix/install-nix-action@v27
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-    - uses: https://github.com/cachix/install-nix-action@v27
     - uses: https://github.com/cachix/cachix-action@v14
       with:
         name: wires
-        signingKey: '${{ secrets.CACHIX_SIGNING_KEY }}'
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - run: nix build .#${{ matrix.package }}
