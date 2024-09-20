@@ -113,7 +113,7 @@ where
             Span::current().pb_set_message(&DIGEST_RE.replace_all(&log.to_string(), "…"));
         }
 
-        collect.push(log)
+        collect.push(log);
     }
 
     Ok(collect)
