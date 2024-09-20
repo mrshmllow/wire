@@ -26,6 +26,36 @@ pub struct Target {
     pub port: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
+#[serde(untagged)]
+pub enum KeySource {
+    String(Arc<str>),
+    Path(PathBuf),
+    Command(Vec<String>),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
+pub enum UploadKeyAt {
+    #[serde(rename = "pre-activation")]
+    PreActivation,
+    #[serde(rename = "post-activation")]
+    PostActivation,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct Key {
+    pub name: Arc<str>,
+    #[serde(rename = "destDir")]
+    pub dest_dir: Arc<str>,
+    pub path: PathBuf,
+    pub group: Arc<str>,
+    pub user: Arc<str>,
+    pub permissions: Arc<str>,
+    pub source: KeySource,
+    #[serde(rename = "uploadAt")]
+    pub upload_at: UploadKeyAt,
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Node {
     #[serde(rename = "target")]
@@ -36,6 +66,8 @@ pub struct Node {
 
     #[serde(default)]
     pub tags: im::HashSet<String>,
+
+    pub keys: im::HashMap<String, Key>,
 }
 
 #[derive(derive_more::Display)]

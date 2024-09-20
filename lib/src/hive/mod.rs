@@ -108,6 +108,7 @@ mod tests {
                 port: 22,
             },
             build_remotely: true,
+            keys: im::HashMap::new(),
         };
 
         let mut nodes = im::HashMap::new();
