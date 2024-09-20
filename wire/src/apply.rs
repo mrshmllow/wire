@@ -4,7 +4,7 @@ use lib::hive::node::{Evaluatable, NodeGoal};
 use lib::hive::Hive;
 use lib::HiveLibError;
 use std::collections::HashSet;
-use tracing::{instrument, warn, Span};
+use tracing::{error, info, instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::cli::ApplyTarget;
@@ -43,12 +43,14 @@ pub async fn apply(
             let path = hive.path.clone();
             let span = header_span.clone();
 
+            info!("Resolved {on:?} to include {}", node.0);
+
             node.achieve_goal(path, span, &goal)
         })
         .peekable();
 
     if set.peek().is_none() {
-        warn!("There are no nodes selected for deployment");
+        error!("There are no nodes selected for deployment");
     }
 
     let futures = futures::stream::iter(set).buffer_unordered(parallel);
