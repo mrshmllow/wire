@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
+use clap_verbosity_flag::WarnLevel;
 use lib::hive::node::{NodeGoal, NodeName, SwitchToConfigurationGoal};
 
 use std::{fmt::Display, sync::Arc};
@@ -16,7 +17,7 @@ pub struct WireCli {
     pub command: Commands,
 
     #[command(flatten)]
-    pub verbose: clap_verbosity_flag::Verbosity,
+    pub verbose: clap_verbosity_flag::Verbosity<WarnLevel>,
 
     /// Path to directory containing hive
     #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]

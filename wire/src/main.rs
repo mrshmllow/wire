@@ -1,6 +1,6 @@
 use crate::cli::WireCli;
 use clap::Parser;
-use clap_verbosity_flag::{ErrorLevel, Verbosity};
+use clap_verbosity_flag::{Verbosity, WarnLevel};
 use indicatif::style::ProgressStyle;
 use lib::hive::{Hive, HiveBuilder};
 use tracing_indicatif::IndicatifLayer;
@@ -47,7 +47,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub fn setup_logging(verbosity: Verbosity<ErrorLevel>) {
+pub fn setup_logging(verbosity: Verbosity<WarnLevel>) {
     let indicatif_layer = IndicatifLayer::new().with_progress_style(
         ProgressStyle::with_template(
             "{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}} {wide_msg}",
