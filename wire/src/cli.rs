@@ -3,7 +3,10 @@ use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
 use lib::hive::node::{NodeGoal, NodeName, SwitchToConfigurationGoal};
 
-use std::{fmt::Display, sync::Arc};
+use std::{
+    fmt::{self, Display, Formatter},
+    sync::Arc,
+};
 
 #[derive(Parser)]
 #[command(
@@ -37,6 +40,15 @@ impl From<String> for ApplyTarget {
         match value.starts_with("@") {
             true => ApplyTarget::Tag(value[1..].to_string()),
             false => ApplyTarget::Node(NodeName(Arc::from(value.as_str()))),
+        }
+    }
+}
+
+impl Display for ApplyTarget {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            ApplyTarget::Node(name) => name.fmt(f),
+            ApplyTarget::Tag(tag) => write!(f, "@{tag}"),
         }
     }
 }

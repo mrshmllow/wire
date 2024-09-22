@@ -1635,6 +1635,7 @@ dependencies = [
  "futures",
  "im",
  "indicatif",
+ "itertools 0.13.0",
  "lib",
  "serde",
  "serde_json",
