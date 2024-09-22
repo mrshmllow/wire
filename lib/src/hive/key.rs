@@ -178,7 +178,10 @@ impl PushKeys for (&NodeName, &Node) {
             .1
             .keys
             .iter()
-            .filter(|(_, key)| target != UploadKeyAt::All && key.upload_at != target)
+            .filter(|(_, key)| {
+                target == UploadKeyAt::All
+                    || (target != UploadKeyAt::All && key.upload_at != target)
+            })
             .map(|(name, key)| async move { process_key(name, key).await });
 
         let (keys, bufs): (Vec<key_agent::keys::Key>, Vec<Vec<u8>>) = join_all(futures)
