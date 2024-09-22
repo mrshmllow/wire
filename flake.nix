@@ -110,7 +110,7 @@
                 PROTOC = nixpkgs.lib.getExe pkgs.protobuf;
               };
 
-              packages = with pkgs; [mdbook catppuccin.packages.${system}.default protobuf];
+              packages = with pkgs; [mdbook catppuccin.packages.${system}.default protobuf just];
 
               pre-commit.hooks = {
                 clippy.enable = true;

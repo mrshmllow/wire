@@ -3,6 +3,9 @@ name = "wire"
 version.workspace = true
 edition.workspace = true
 
+[features]
+dhat-heap = []
+
 [dependencies]
 clap = { workspace = true }
 clap-verbosity-flag = { workspace = true }
@@ -21,3 +24,4 @@ im = { workspace = true }
 futures = "0.3.30"
 clap-num = "1.1.1"
 clap-markdown = "0.1.4"
+dhat = "0.3.2"
