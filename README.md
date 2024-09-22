@@ -10,6 +10,8 @@ wire
 │  └── Rust library containing business logic, consumed by `wire`
 ├── wire
 │  └── Rust binary, using `lib`
+├── key-agent
+│  └── Rust binary ran on a target node. recieves key file bytes and metadata w/ protobuf over SSH stdin
 ├── doc
 │  └── an [mdBook](https://rust-lang.github.io/mdBook/)
 ├── runtime
