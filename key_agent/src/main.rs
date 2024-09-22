@@ -39,11 +39,13 @@ async fn main() -> Result<(), anyhow::Error> {
             group.map(|group| group.gid.into()),
         )?;
 
-        let mut file_buf = Vec::with_capacity(
+        let mut file_buf = vec![
+            0u8;
             key.length
                 .try_into()
-                .expect("failed to convert byte size to usize"),
-        );
+                .expect("failed to convert size to usize")
+        ];
+
         stdin.read_exact(&mut file_buf)?;
         file.write_all(&file_buf).await?;
 
