@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package key_agent.keys;
+
+message Key {
+  string destination = 1;
+  string user = 2;
+  string group = 3;
+  uint32 permissions = 4;
+  int64 length = 5;
+}
+
+message Keys {
+  repeated Key keys = 1;
+}

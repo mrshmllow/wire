@@ -14,7 +14,7 @@ tracing-log = { workspace = true }
 tracing-subscriber = { workspace = true }
 lib = { path = "../lib" }
 serde_json = { workspace = true }
-anyhow = "1.0.86"
+anyhow = { workspace = true }
 indicatif = "0.17.8"
 enum-display-derive = "0.1.1"
 im = { workspace = true }

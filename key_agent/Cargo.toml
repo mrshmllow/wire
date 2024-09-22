@@ -1,0 +1,13 @@
+[package]
+name = "key_agent"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+anyhow = { workspace = true }
+prost = { workspace = true }
+nix = { version = "0.29.0", features = ["user"] }
+
+[build-dependencies]
+prost-build = "0.5"

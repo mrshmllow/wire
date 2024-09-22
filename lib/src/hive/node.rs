@@ -9,6 +9,7 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::nix::{get_eval_command, EvalGoal, StreamTracing};
 
+use super::key::{Key, PushKeys, UploadKeyAt};
 use super::HiveLibError;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
@@ -24,36 +25,6 @@ pub struct Target {
 
     #[serde(rename = "port")]
     pub port: u32,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum KeySource {
-    String(Arc<str>),
-    Path(PathBuf),
-    Command(Vec<String>),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
-pub enum UploadKeyAt {
-    #[serde(rename = "pre-activation")]
-    PreActivation,
-    #[serde(rename = "post-activation")]
-    PostActivation,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
-pub struct Key {
-    pub name: Arc<str>,
-    #[serde(rename = "destDir")]
-    pub dest_dir: Arc<str>,
-    pub path: PathBuf,
-    pub group: Arc<str>,
-    pub user: Arc<str>,
-    pub permissions: Arc<str>,
-    pub source: KeySource,
-    #[serde(rename = "uploadAt")]
-    pub upload_at: UploadKeyAt,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
@@ -93,12 +64,13 @@ pub trait Evaluatable {
         hivepath: PathBuf,
         span: Span,
         goal: &NodeGoal,
+        no_keys: bool,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 
     fn switch_to_configuration(
         self,
         hivepath: PathBuf,
-        span: Span,
+        span: &Span,
         goal: &SwitchToConfigurationGoal,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 
@@ -137,6 +109,7 @@ pub enum NodeGoal {
     SwitchToConfiguration(SwitchToConfigurationGoal),
     Build,
     Push,
+    Keys,
 }
 
 impl Evaluatable for (&NodeName, &Node) {
@@ -178,11 +151,10 @@ impl Evaluatable for (&NodeName, &Node) {
             .arg(format!(
                 "ssh://{}@{}",
                 self.1.target.user, self.1.target.host
-            ))
-            .arg("--derivation");
+            ));
 
         match push {
-            Push::Derivation(drv) => command.arg(drv.to_string()),
+            Push::Derivation(drv) => command.args([drv.to_string(), "--derivation".to_string()]),
             Push::Path(path) => command.arg(path),
         };
 
@@ -277,10 +249,10 @@ impl Evaluatable for (&NodeName, &Node) {
     async fn switch_to_configuration(
         self,
         hivepath: PathBuf,
-        span: Span,
+        span: &Span,
         goal: &SwitchToConfigurationGoal,
     ) -> Result<(), HiveLibError> {
-        let built_path = self.build(hivepath, &span).await?;
+        let built_path = self.build(hivepath, span).await?;
 
         span.pb_inc_length(1);
 
@@ -330,10 +302,25 @@ impl Evaluatable for (&NodeName, &Node) {
         hivepath: PathBuf,
         span: Span,
         goal: &NodeGoal,
+        no_keys: bool,
     ) -> Result<(), HiveLibError> {
         match goal {
             NodeGoal::SwitchToConfiguration(goal) => {
-                self.switch_to_configuration(hivepath, span, goal).await
+                if let SwitchToConfigurationGoal::Switch = goal
+                    && !no_keys
+                {
+                    self.push_keys(UploadKeyAt::PreActivation, &span).await?
+                }
+
+                self.switch_to_configuration(hivepath, &span, goal).await?;
+
+                if let SwitchToConfigurationGoal::Switch = goal
+                    && !no_keys
+                {
+                    self.push_keys(UploadKeyAt::PostActivation, &span).await?
+                }
+
+                Ok(())
             }
             NodeGoal::Build => {
                 self.build(hivepath, &span).await?;
@@ -341,6 +328,7 @@ impl Evaluatable for (&NodeName, &Node) {
                 Ok(())
             }
             NodeGoal::Push => self.eval_and_push(hivepath, &span).await,
+            NodeGoal::Keys => self.push_keys(UploadKeyAt::All, &span).await,
         }
     }
 }

@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
@@ -58,6 +57,10 @@ pub enum Commands {
 
         #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
         parallel: usize,
+
+        /// Skip key uploads. noop when [GOAL] = Keys
+        #[arg(short, long, default_value_t = false)]
+        no_keys: bool,
     },
     /// Inspect hive
     Inspect {
@@ -118,7 +121,7 @@ impl TryFrom<Goal> for NodeGoal {
             Goal::DryActivate => Ok(NodeGoal::SwitchToConfiguration(
                 SwitchToConfigurationGoal::DryActivate,
             )),
-            Goal::Keys => Err(anyhow!("Keys is not a node goal")),
+            Goal::Keys => Ok(NodeGoal::Keys),
         }
     }
 }

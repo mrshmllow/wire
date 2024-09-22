@@ -28,10 +28,12 @@ async fn main() -> Result<(), anyhow::Error> {
     let hive = Hive::new_from_path(args.path.as_path()).await?;
 
     match args.command {
-        cli::Commands::Apply { goal, on, parallel } => match goal {
-            cli::Goal::Keys => todo!(),
-            _ => apply::apply(hive, goal.try_into()?, on, parallel).await?,
-        },
+        cli::Commands::Apply {
+            goal,
+            on,
+            parallel,
+            no_keys,
+        } => apply::apply(hive, goal.try_into()?, on, parallel, no_keys).await?,
         cli::Commands::Inspect { online: _, json } => println!(
             "{}",
             match json {

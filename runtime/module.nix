@@ -89,17 +89,17 @@ in {
           group = lib.mkOption {
             type = types.str;
             default = "root";
-            description = "Group to own the key.";
+            description = "Group to own the key. If this group does not exist this will silently fail and the key will be owned by gid 0.";
           };
           user = lib.mkOption {
             type = types.str;
             default = "root";
-            description = "User to own the key.";
+            description = "User to own the key. If this user does not exist this will silently fail and the key will be owned by uid 0.";
           };
           permissions = lib.mkOption {
             type = types.str;
             default = "0600";
-            description = "Permissions for the key.";
+            description = "Unix Octal permissions, in string format, for the key.";
           };
           source = lib.mkOption {
             type = types.oneOf [types.str types.path (types.listOf types.str)];

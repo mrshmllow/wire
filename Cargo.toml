@@ -1,5 +1,5 @@
 [workspace]
-members = ["lib", "wire"]
+members = ["key_agent", "lib", "wire"]
 resolver = "2"
 package.edition = "2021"
 package.version = "0.1.0"
@@ -18,3 +18,5 @@ tracing-indicatif = "0.3.6"
 tracing-log = "0.2.0"
 tracing-subscriber = "0.3.18"
 im = { version = "15.1.0", features = ["serde"] }
+anyhow = "1.0.86"
+prost = "0.13.2"

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::nix::{get_eval_command, EvalGoal};
 use crate::HiveLibError;
+pub mod key;
 pub mod node;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

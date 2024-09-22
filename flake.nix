@@ -32,29 +32,45 @@
 
       wire = let
         pkgs = nixpkgs.legacyPackages.${system};
+        inherit (pkgs) lib;
         craneLib =
           (crane.mkLib pkgs).overrideToolchain (_p:
             fenix.packages.${system}.minimal.toolchain);
 
-        src = craneLib.cleanCargoSource ./.;
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter = path: type:
+            (lib.hasSuffix "\.proto" path)
+            || (craneLib.filterCargoSources path type);
+        };
+
         commonArgs = {
           inherit src;
           strictDeps = true;
-          pname = "wire";
-          cargoTestExtraArgs = "--features no_web_tests";
 
           WIRE_RUNTIME = ./runtime;
           WIRE_TEST_DIR = ./tests;
+          PROTOC = lib.getExe pkgs.protobuf;
 
           nativeBuildInputs = with pkgs; [
-            pkgs.nix
+            nix
           ];
         };
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+        agent = craneLib.buildPackage (commonArgs
+          // {
+            inherit cargoArtifacts;
+            pname = "key_agent";
+            cargoExtraArgs = "-p key_agent";
+          });
+
         package = craneLib.buildPackage (commonArgs
           // {
             inherit cargoArtifacts;
+            pname = "wire";
+            cargoExtraArgs = "-p wire";
           });
       in
         pkgs.symlinkJoin {
@@ -62,7 +78,7 @@
           paths = [package];
           buildInputs = [pkgs.makeWrapper];
           postBuild = ''
-            wrapProgram $out/bin/wire --set WIRE_RUNTIME ${./runtime}
+            wrapProgram $out/bin/wire --set WIRE_RUNTIME ${./runtime} --set WIRE_KEY_AGENT ${agent}
           '';
           meta = {
             mainProgram = "wire";
@@ -78,29 +94,34 @@
     });
 
     devShells = forAllSystems (system: {
-      default = devenv.lib.mkShell {
-        inherit inputs;
+      default = let
         pkgs = nixpkgs.legacyPackages.${system};
-        modules = [
-          {
-            languages.rust.enable = true;
-            languages.rust.channel = "nightly";
+      in
+        devenv.lib.mkShell {
+          inherit inputs pkgs;
+          modules = [
+            {
+              languages.rust.enable = true;
+              languages.rust.channel = "nightly";
 
-            env.WIRE_RUNTIME = ./runtime;
-            env.WIRE_TEST_DIR = ./tests;
+              env = {
+                WIRE_RUNTIME = ./runtime;
+                WIRE_TEST_DIR = ./tests;
+                PROTOC = nixpkgs.lib.getExe pkgs.protobuf;
+              };
 
-            packages = with nixpkgs.legacyPackages.${system}; [mdbook catppuccin.packages.${system}.default];
+              packages = with pkgs; [mdbook catppuccin.packages.${system}.default protobuf];
 
-            pre-commit.hooks = {
-              clippy.enable = true;
-              cargo-check.enable = true;
-              alejandra.enable = true;
-              statix.enable = true;
-              deadnix.enable = true;
-            };
-          }
-        ];
-      };
+              pre-commit.hooks = {
+                clippy.enable = true;
+                cargo-check.enable = true;
+                alejandra.enable = true;
+                statix.enable = true;
+                deadnix.enable = true;
+              };
+            }
+          ];
+        };
     });
   };
 }

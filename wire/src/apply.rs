@@ -15,6 +15,7 @@ pub async fn apply(
     goal: NodeGoal,
     on: Vec<ApplyTarget>,
     parallel: usize,
+    no_keys: bool,
 ) -> Result<(), HiveLibError> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
@@ -45,7 +46,7 @@ pub async fn apply(
 
             info!("Resolved {on:?} to include {}", node.0);
 
-            node.achieve_goal(path, span, &goal)
+            node.achieve_goal(path, span, &goal, no_keys)
         })
         .peekable();
 

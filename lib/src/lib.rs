@@ -1,4 +1,6 @@
-use hive::node::NodeName;
+#![feature(let_chains)]
+use core::error;
+use hive::{key::KeyError, node::NodeName};
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -39,6 +41,12 @@ pub enum HiveLibError {
     #[error("failed to build node {0} (last 20 lines):\n{}", format_error_lines(.1))]
     NixBuildError(NodeName, Vec<String>),
 
+    #[error("failed to push keys to {0} (last 20 lines):\n{}", format_error_lines(.1))]
+    KeyCommandError(NodeName, Vec<String>),
+
+    #[error("failed to push a key")]
+    KeyError(#[source] KeyError),
+
     #[error("node {0} not exist in hive")]
     NodeDoesNotExist(String),
 
@@ -53,4 +61,7 @@ pub enum HiveLibError {
 
     #[error("failed to parse nix log \"{0}\"")]
     ParseLogError(String, #[source] serde_json::Error),
+
+    #[error("an operation failed in regards to buffers")]
+    BufferOperationError(#[source] tokio::io::Error),
 }
