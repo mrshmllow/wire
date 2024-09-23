@@ -60,12 +60,24 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Comman
     command.args(["eval", "--json", "--impure", "--show-trace", "--expr"]);
 
     command.arg(format!(
-        "let evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = {hive}; path = {path};}}; in {goal}",
+        "let evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = {hive}; path = {path}; nixosConfigurations = {nixosConfigurations}; nixpkgs = {nixpkgs};}}; in {goal}",
         hive = match canon_path.ends_with("flake.nix") {
             true => format!("(builtins.getFlake \"git+file://{path}\").colmena",
                 path = canon_path.parent().unwrap().to_str().unwrap(),
             ),
             false => format!("import {path}", path = canon_path.to_str().unwrap()),
+        },
+        nixosConfigurations = match canon_path.ends_with("flake.nix") { 
+            true => format!("(builtins.getFlake \"git+file://{path}\").nixosConfigurations or {{}}",
+                path = canon_path.parent().unwrap().to_str().unwrap()
+            ),
+            false => "{}".to_string(),
+        },
+        nixpkgs = match canon_path.ends_with("flake.nix") { 
+            true => format!("(builtins.getFlake \"git+file://{path}\").inputs.nixpkgs.outPath or null",
+                path = canon_path.parent().unwrap().to_str().unwrap()
+            ),
+            false => "null".to_string(),
         },
         path = canon_path.to_str().unwrap(),
         goal = match goal {

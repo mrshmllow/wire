@@ -15,6 +15,14 @@
         ];
       };
 
+      node-native.deployment = {
+        keys.a = {
+          source = "hi";
+        };
+
+        tags = ["colmena"];
+      };
+
       node-b = {
         deployment = {
           target = {
