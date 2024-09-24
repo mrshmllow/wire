@@ -14,7 +14,7 @@ use std::{
     bin_name = "wire",
     about = "a tool to deploy nixos systems"
 )]
-pub struct WireCli {
+pub struct Cli {
     #[command(subcommand)]
     pub command: Commands,
 

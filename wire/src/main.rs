@@ -1,4 +1,4 @@
-use crate::cli::WireCli;
+use crate::cli::Cli;
 use clap::Parser;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use indicatif::style::ProgressStyle;
@@ -24,11 +24,11 @@ async fn main() -> Result<(), anyhow::Error> {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
-    let args = WireCli::parse();
+    let args = Cli::parse();
     setup_logging(args.verbose);
 
     if args.markdown_help {
-        clap_markdown::print_help_markdown::<WireCli>();
+        clap_markdown::print_help_markdown::<Cli>();
         return Ok(());
     }
 
