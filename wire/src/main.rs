@@ -1,3 +1,5 @@
+#![deny(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)]
 use crate::cli::Cli;
 use clap::Parser;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
