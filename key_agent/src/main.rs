@@ -1,3 +1,4 @@
+#![deny(clippy::pedantic)]
 use nix::unistd::{Group, User};
 use prost::Message;
 use std::env;
@@ -49,7 +50,7 @@ async fn main() -> Result<(), anyhow::Error> {
         stdin.read_exact(&mut file_buf)?;
         file.write_all(&file_buf).await?;
 
-        println!("Wrote to {:?}", file);
+        println!("Wrote to {file:?}");
     }
 
     Ok(())
