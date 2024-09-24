@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
-use std::path::PathBuf;
+use std::path::Path;
 use std::process::{Command, ExitStatus};
 use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
@@ -42,7 +42,7 @@ fn check_nix_available() -> bool {
     }
 }
 
-pub fn get_eval_command(path: &PathBuf, goal: &EvalGoal) -> tokio::process::Command {
+pub fn get_eval_command(path: &Path, goal: &EvalGoal) -> tokio::process::Command {
     let runtime = match env::var_os("WIRE_RUNTIME") {
         Some(runtime) => runtime.into_string().unwrap(),
         None => panic!("WIRE_RUNTIME environment variable not set"),
