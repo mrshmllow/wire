@@ -58,11 +58,9 @@ impl Trace for Internal {
 
                 match level {
                     Level::Info | Level::Talkative | Level::Chatty => {
-                        event!(tracing_level::INFO, "{text}")
+                        event!(tracing_level::INFO, "{text}");
                     }
-                    Level::Warn | Level::Notice => {
-                        event!(tracing_level::WARN, "{text}")
-                    }
+                    Level::Warn | Level::Notice => event!(tracing_level::WARN, "{text}"),
                     Level::Error => event!(tracing_level::ERROR, "{text}"),
                     Level::Debug => event!(tracing_level::DEBUG, "{text}"),
                     Level::Vomit => event!(tracing_level::TRACE, "{text}"),

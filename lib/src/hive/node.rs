@@ -309,7 +309,7 @@ impl Evaluatable for (&Name, &Node) {
                 if let SwitchToConfigurationGoal::Switch = goal
                     && !no_keys
                 {
-                    self.push_keys(UploadKeyAt::PreActivation, &span).await?
+                    self.push_keys(UploadKeyAt::PreActivation, &span).await?;
                 }
 
                 self.switch_to_configuration(hivepath, &span, goal).await?;
@@ -317,7 +317,7 @@ impl Evaluatable for (&Name, &Node) {
                 if let SwitchToConfigurationGoal::Switch = goal
                     && !no_keys
                 {
-                    self.push_keys(UploadKeyAt::PostActivation, &span).await?
+                    self.push_keys(UploadKeyAt::PostActivation, &span).await?;
                 }
 
                 Ok(())
