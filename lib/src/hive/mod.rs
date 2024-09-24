@@ -113,4 +113,57 @@ mod tests {
 
         assert_eq!(hive, Hive { path, nodes });
     }
+
+    #[tokio::test]
+    #[cfg_attr(feature = "no_web_tests", ignore)]
+    async fn non_trivial_hive() {
+        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
+        path.push("non_trivial_hive");
+
+        let hive = Hive::new_from_path(&path).await.unwrap();
+
+        let mut node = Node {
+            tags: im::HashSet::new(),
+            target: node::Target {
+                host: "name".into(),
+                user: "root".into(),
+                port: 22,
+            },
+            build_remotely: true,
+            keys: im::HashMap::new(),
+        };
+
+        node.keys.insert(
+            "a".into(),
+            key::Key {
+                name: "different-than-a".into(),
+                dest_dir: "/run/keys/".into(),
+                path: "/run/keys/different-than-a".into(),
+                group: "root".into(),
+                user: "root".into(),
+                permissions: "0600".into(),
+                source: key::KeySource::String("hi".into()),
+                upload_at: key::UploadKeyAt::PreActivation,
+            },
+        );
+
+        let mut nodes = im::HashMap::new();
+        nodes.insert(NodeName("node-a".into()), node);
+
+        path.push("hive.nix");
+
+        assert_eq!(hive, Hive { path, nodes });
+    }
+
+    #[tokio::test]
+    #[cfg_attr(feature = "no_web_tests", ignore)]
+    async fn no_nixpkgs() {
+        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
+        path.push("no_nixpkgs");
+
+        assert!(matches!(
+            Hive::new_from_path(&path).await,
+            Err(HiveLibError::NixEvalError(..))
+        ));
+    }
 }
