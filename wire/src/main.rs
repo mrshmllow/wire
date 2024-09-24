@@ -49,7 +49,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 format!("{hive:#?}")
             }
         ),
-        _ => {
+        cli::Commands::Log { .. } => {
             todo!()
         }
     };
