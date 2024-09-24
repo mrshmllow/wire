@@ -25,7 +25,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let _profiler = dhat::Profiler::new_heap();
 
     let args = Cli::parse();
-    setup_logging(args.verbose);
+    setup_logging(&args.verbose);
 
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();
@@ -57,7 +57,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub fn setup_logging(verbosity: Verbosity<WarnLevel>) {
+pub fn setup_logging(verbosity: &Verbosity<WarnLevel>) {
     let indicatif_layer = IndicatifLayer::new().with_progress_style(
         ProgressStyle::with_template(
             "{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}} {wide_msg}",
