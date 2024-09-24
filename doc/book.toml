@@ -16,3 +16,6 @@ assets_version = "2.2.0" # DO NOT EDIT: Managed by `mdbook-catppuccin install`
 additional-css = ["./theme/catppuccin.css", "./theme/catppuccin-admonish.css"]
 default-theme = "latte"
 preferred-dark-theme = "mocha"
+git-repository-url = "https://git.althaea.zone/wires/wire"
+git-repository-icon = "fa-code-fork"
+edit-url-template = "https://git.althaea.zone/wires/wire/_edit/main/doc/{path}"
