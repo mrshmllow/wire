@@ -1,10 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
-use lib::hive::{
-    node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal},
-    Hive,
-};
+use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
 
 use std::{
     fmt::{self, Display, Formatter},
