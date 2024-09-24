@@ -21,15 +21,9 @@ pub enum HiveAction<'a> {
     EvaluateNode(OccupiedEntry<'a, String, Node>),
 }
 
-pub trait HiveBuilder {
-    fn new_from_path(
-        path: &Path,
-    ) -> impl std::future::Future<Output = Result<Hive, HiveLibError>> + Send;
-}
-
-impl HiveBuilder for Hive {
+impl Hive {
     #[instrument]
-    async fn new_from_path(path: &Path) -> Result<Hive, HiveLibError> {
+    pub async fn new_from_path(path: &Path) -> Result<Hive, HiveLibError> {
         info!("Searching upwards for hive in {}", path.display());
         let filepath = find_hive(path).ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
         info!("Using hive {}", filepath.display());

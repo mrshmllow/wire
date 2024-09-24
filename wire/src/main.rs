@@ -2,7 +2,7 @@ use crate::cli::WireCli;
 use clap::Parser;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use indicatif::style::ProgressStyle;
-use lib::hive::{Hive, HiveBuilder};
+use lib::hive::Hive;
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
 use tracing_subscriber::layer::SubscriberExt;
