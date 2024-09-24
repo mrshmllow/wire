@@ -179,23 +179,22 @@ impl Evaluatable for (&Name, &Node) {
 
         info!("Top level: {top_level}");
 
-        let mut command = match self.1.build_remotely {
-            true => {
-                self.push(span, Push::Derivation(&top_level)).await?;
+        let mut command = if self.1.build_remotely {
+            self.push(span, Push::Derivation(&top_level)).await?;
 
-                let mut command = Command::new("ssh");
+            let mut command = Command::new("ssh");
 
-                command
-                    .arg("-l")
-                    .arg(self.1.target.user.as_ref())
-                    .arg(self.1.target.host.as_ref())
-                    .arg("nix")
-                    .arg("--extra-experimental-features")
-                    .arg("nix-command");
+            command
+                .arg("-l")
+                .arg(self.1.target.user.as_ref())
+                .arg(self.1.target.host.as_ref())
+                .arg("nix")
+                .arg("--extra-experimental-features")
+                .arg("nix-command");
 
-                command
-            }
-            false => Command::new("nix"),
+            command
+        } else {
+            Command::new("nix")
         };
 
         command

@@ -58,24 +58,31 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Comman
     command.args(["eval", "--json", "--impure", "--show-trace", "--expr"]);
 
     command.arg(format!(
-        "let flake = {flake}; evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = {hive}; path = {path}; nixosConfigurations = {nixosConfigurations}; nixpkgs = {nixpkgs};}}; in {goal}",
-        flake = match canon_path.ends_with("flake.nix") {
-            true => format!("(builtins.getFlake \"git+file://{path}\")",
+        "let flake = {flake}; evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = \
+         {hive}; path = {path}; nixosConfigurations = {nixosConfigurations}; nixpkgs = \
+         {nixpkgs};}}; in {goal}",
+        flake = if canon_path.ends_with("flake.nix") {
+            format!(
+                "(builtins.getFlake \"git+file://{path}\")",
                 path = canon_path.parent().unwrap().to_str().unwrap(),
-            ),
-            false => "null".to_string(),
+            )
+        } else {
+            "null".to_string()
         },
-        hive = match canon_path.ends_with("flake.nix") {
-            true => "flake.colmena".to_string(),
-            false => format!("import {path}", path = canon_path.to_str().unwrap()),
+        hive = if canon_path.ends_with("flake.nix") {
+            "flake.colmena".to_string()
+        } else {
+            format!("import {path}", path = canon_path.to_str().unwrap())
         },
-        nixosConfigurations = match canon_path.ends_with("flake.nix") { 
-            true => "flake.nixosConfigurations or {}".to_string(),
-            false => "{}".to_string(),
+        nixosConfigurations = if canon_path.ends_with("flake.nix") {
+            "flake.nixosConfigurations or {}".to_string()
+        } else {
+            "{}".to_string()
         },
-        nixpkgs = match canon_path.ends_with("flake.nix") { 
-            true => "flake.inputs.nixpkgs.outPath or null".to_string(),
-            false => "null".to_string(),
+        nixpkgs = if canon_path.ends_with("flake.nix") {
+            "flake.inputs.nixpkgs.outPath or null".to_string()
+        } else {
+            "null".to_string()
         },
         path = canon_path.to_str().unwrap(),
         goal = match goal {
