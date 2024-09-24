@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
-use lib::hive::node::{NodeGoal, NodeName, SwitchToConfigurationGoal};
+use lib::hive::node::{Goal, Name, SwitchToConfigurationGoal};
 
 use std::{
     fmt::{self, Display, Formatter},
@@ -31,7 +31,7 @@ pub struct WireCli {
 
 #[derive(Clone, Debug)]
 pub enum ApplyTarget {
-    Node(NodeName),
+    Node(Name),
     Tag(String),
 }
 
@@ -39,7 +39,7 @@ impl From<String> for ApplyTarget {
     fn from(value: String) -> Self {
         match value.starts_with("@") {
             true => ApplyTarget::Tag(value[1..].to_string()),
-            false => ApplyTarget::Node(NodeName(Arc::from(value.as_str()))),
+            false => ApplyTarget::Node(Name(Arc::from(value.as_str()))),
         }
     }
 }
@@ -61,7 +61,7 @@ fn more_than_zero(s: &str) -> Result<usize, String> {
 pub enum Commands {
     Apply {
         #[arg(value_enum, default_value_t)]
-        goal: Goal,
+        goal: CliGoal,
 
         /// List of literal node names or `@` prefixed tags.
         #[arg(short, long)]
@@ -96,7 +96,7 @@ pub enum Commands {
 }
 
 #[derive(Clone, Debug, Default, ValueEnum, Display)]
-pub enum Goal {
+pub enum CliGoal {
     /// Make the configuration the boot default and activate now
     #[default]
     Switch,
@@ -114,26 +114,22 @@ pub enum Goal {
     DryActivate,
 }
 
-impl TryFrom<Goal> for NodeGoal {
+impl TryFrom<CliGoal> for Goal {
     type Error = anyhow::Error;
 
-    fn try_from(value: Goal) -> Result<Self, Self::Error> {
+    fn try_from(value: CliGoal) -> Result<Self, Self::Error> {
         match value {
-            Goal::Build => Ok(NodeGoal::Build),
-            Goal::Push => Ok(NodeGoal::Push),
-            Goal::Boot => Ok(NodeGoal::SwitchToConfiguration(
-                SwitchToConfigurationGoal::Boot,
-            )),
-            Goal::Switch => Ok(NodeGoal::SwitchToConfiguration(
+            CliGoal::Build => Ok(Goal::Build),
+            CliGoal::Push => Ok(Goal::Push),
+            CliGoal::Boot => Ok(Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Boot)),
+            CliGoal::Switch => Ok(Goal::SwitchToConfiguration(
                 SwitchToConfigurationGoal::Switch,
             )),
-            Goal::Test => Ok(NodeGoal::SwitchToConfiguration(
-                SwitchToConfigurationGoal::Test,
-            )),
-            Goal::DryActivate => Ok(NodeGoal::SwitchToConfiguration(
+            CliGoal::Test => Ok(Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Test)),
+            CliGoal::DryActivate => Ok(Goal::SwitchToConfiguration(
                 SwitchToConfigurationGoal::DryActivate,
             )),
-            Goal::Keys => Ok(NodeGoal::Keys),
+            CliGoal::Keys => Ok(Goal::Keys),
         }
     }
 }

@@ -1,6 +1,6 @@
 #![feature(let_chains)]
-use core::error;
-use hive::{key::KeyError, node::NodeName};
+#![deny(clippy::pedantic)]
+use hive::{key::Error, node::Name};
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
 use thiserror::Error;
@@ -33,19 +33,19 @@ pub enum HiveLibError {
     NixEvalError(Vec<String>),
 
     #[error("failed to evaluate node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
-    NixEvalInteralError(NodeName, Vec<NixLog>),
+    NixEvalInteralError(Name, Vec<NixLog>),
 
     #[error("failed to copy drv to node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
-    NixCopyError(NodeName, Vec<NixLog>),
+    NixCopyError(Name, Vec<NixLog>),
 
     #[error("failed to build node {0} (last 20 lines):\n{}", format_error_lines(.1))]
-    NixBuildError(NodeName, Vec<String>),
+    NixBuildError(Name, Vec<String>),
 
     #[error("failed to push keys to {0} (last 20 lines):\n{}", format_error_lines(.1))]
-    KeyCommandError(NodeName, Vec<String>),
+    KeyCommandError(Name, Vec<String>),
 
     #[error("failed to push a key")]
-    KeyError(#[source] KeyError),
+    KeyError(#[source] Error),
 
     #[error("node {0} not exist in hive")]
     NodeDoesNotExist(String),

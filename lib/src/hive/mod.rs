@@ -1,4 +1,4 @@
-use node::{Node, NodeName};
+use node::{Name, Node};
 use std::collections::hash_map::OccupiedEntry;
 use std::path::{Path, PathBuf};
 use tracing::{debug, error, info, instrument, trace};
@@ -12,11 +12,11 @@ pub mod node;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Hive {
-    pub nodes: im::HashMap<NodeName, Node>,
+    pub nodes: im::HashMap<Name, Node>,
     pub path: PathBuf,
 }
 
-pub enum HiveAction<'a> {
+pub enum Action<'a> {
     Inspect,
     EvaluateNode(OccupiedEntry<'a, String, Node>),
 }
@@ -107,7 +107,7 @@ mod tests {
         };
 
         let mut nodes = im::HashMap::new();
-        nodes.insert(NodeName("node-a".into()), node);
+        nodes.insert(Name("node-a".into()), node);
 
         path.push("hive.nix");
 
@@ -142,13 +142,13 @@ mod tests {
                 group: "root".into(),
                 user: "root".into(),
                 permissions: "0600".into(),
-                source: key::KeySource::String("hi".into()),
+                source: key::Source::String("hi".into()),
                 upload_at: key::UploadKeyAt::PreActivation,
             },
         );
 
         let mut nodes = im::HashMap::new();
-        nodes.insert(NodeName("node-a".into()), node);
+        nodes.insert(Name("node-a".into()), node);
 
         path.push("hive.nix");
 

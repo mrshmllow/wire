@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
 use serde_repr::*;
 use std::fmt::{Debug, Display};
-use tracing::{event, info, Level};
+use tracing::{event, info, Level as tracing_level};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
-pub enum NixLogAction {
+pub enum Action {
     #[serde(rename = "msg", alias = "start")]
     Message {
-        level: NixLogLevel,
+        level: Level,
         #[serde(rename = "msg", alias = "text")]
         message: Option<String>,
     },
@@ -18,7 +18,7 @@ pub enum NixLogAction {
 
 #[derive(Serialize_repr, Deserialize_repr, PartialEq, Debug)]
 #[repr(u8)]
-pub enum NixLogLevel {
+pub enum Level {
     Error = 0,
     Warn = 1,
     Notice = 2,
@@ -30,14 +30,14 @@ pub enum NixLogLevel {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct InternalNixLog {
+pub struct Internal {
     #[serde(flatten)]
-    pub action: NixLogAction,
+    pub action: Action,
 }
 
 #[derive(Debug)]
 pub enum NixLog {
-    Internal(InternalNixLog),
+    Internal(Internal),
     Raw(String),
 }
 
@@ -46,10 +46,10 @@ pub(crate) trait Trace {
     fn is_error(&self) -> bool;
 }
 
-impl Trace for InternalNixLog {
+impl Trace for Internal {
     fn trace(&self) {
         match &self.action {
-            NixLogAction::Message { level, message } => {
+            Action::Message { level, message } => {
                 let text = match message {
                     Some(text) if text.is_empty() => return,
                     None => return,
@@ -57,21 +57,23 @@ impl Trace for InternalNixLog {
                 };
 
                 match level {
-                    NixLogLevel::Info | NixLogLevel::Talkative | NixLogLevel::Chatty => {
-                        event!(Level::INFO, "{text}")
+                    Level::Info | Level::Talkative | Level::Chatty => {
+                        event!(tracing_level::INFO, "{text}")
                     }
-                    NixLogLevel::Warn | NixLogLevel::Notice => event!(Level::WARN, "{text}"),
-                    NixLogLevel::Error => event!(Level::ERROR, "{text}"),
-                    NixLogLevel::Debug => event!(Level::DEBUG, "{text}"),
-                    NixLogLevel::Vomit => event!(Level::TRACE, "{text}"),
+                    Level::Warn | Level::Notice => {
+                        event!(tracing_level::WARN, "{text}")
+                    }
+                    Level::Error => event!(tracing_level::ERROR, "{text}"),
+                    Level::Debug => event!(tracing_level::DEBUG, "{text}"),
+                    Level::Vomit => event!(tracing_level::TRACE, "{text}"),
                 }
             }
-            NixLogAction::Stop => {}
+            Action::Stop => {}
         }
     }
 
     fn is_error(&self) -> bool {
-        matches!(&self.action, NixLogAction::Message { level, message: _ } if matches!(level, NixLogLevel::Error))
+        matches!(&self.action, Action::Message { level, message: _ } if matches!(level, Level::Error))
     }
 }
 
@@ -91,10 +93,10 @@ impl Trace for NixLog {
     }
 }
 
-impl Display for InternalNixLog {
+impl Display for Internal {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self.action {
-            NixLogAction::Message { level, message } => {
+            Action::Message { level, message } => {
                 write!(
                     f,
                     "{level:?}: {}",

@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use indicatif::ProgressStyle;
 use itertools::Itertools;
-use lib::hive::node::{Evaluatable, NodeGoal};
+use lib::hive::node::{Evaluatable, Goal};
 use lib::hive::Hive;
 use lib::HiveLibError;
 use std::collections::HashSet;
@@ -13,7 +13,7 @@ use crate::cli::ApplyTarget;
 #[instrument(skip_all, fields(goal = %goal, on = %on.iter().join(", ")))]
 pub async fn apply(
     hive: Hive,
-    goal: NodeGoal,
+    goal: Goal,
     on: Vec<ApplyTarget>,
     parallel: usize,
     no_keys: bool,

@@ -8,8 +8,8 @@ use tokio::io::{AsyncBufReadExt, AsyncRead};
 use tracing::{error, info, trace, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
-use crate::hive::node::NodeName;
-use crate::nix_log::{InternalNixLog, NixLog, NixLogAction, Trace};
+use crate::hive::node::Name;
+use crate::nix_log::{Action, Internal, NixLog, Trace};
 use crate::HiveLibError;
 
 lazy_static! {
@@ -18,7 +18,7 @@ lazy_static! {
 
 pub enum EvalGoal<'a> {
     Inspect,
-    GetTopLevel(&'a NodeName),
+    GetTopLevel(&'a Name),
 }
 
 fn check_nix_available() -> bool {
@@ -101,14 +101,13 @@ where
         .await
         .map_err(HiveLibError::SpawnFailed)?
     {
-        let log =
-            serde_json::from_str::<InternalNixLog>(line.strip_prefix("@nix ").unwrap_or(&line))
-                .map(NixLog::Internal)
-                .unwrap_or(NixLog::Raw(line.to_string()));
+        let log = serde_json::from_str::<Internal>(line.strip_prefix("@nix ").unwrap_or(&line))
+            .map(NixLog::Internal)
+            .unwrap_or(NixLog::Raw(line.to_string()));
 
         // Throw out stop logs
-        if let NixLog::Internal(InternalNixLog {
-            action: NixLogAction::Stop,
+        if let NixLog::Internal(Internal {
+            action: Action::Stop,
         }) = log
         {
             continue;

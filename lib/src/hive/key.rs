@@ -16,10 +16,10 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 use crate::hive::node::{Evaluatable, Push};
 use crate::HiveLibError;
 
-use super::node::{Node, NodeName};
+use super::node::{Name, Node};
 
 #[derive(Debug, Error)]
-pub enum KeyError {
+pub enum Error {
     #[error("error reading file")]
     File(#[source] std::io::Error),
 
@@ -35,7 +35,7 @@ pub enum KeyError {
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(untagged)]
-pub enum KeySource {
+pub enum Source {
     String(String),
     Path(PathBuf),
     Command(Vec<String>),
@@ -60,7 +60,7 @@ pub struct Key {
     pub group: String,
     pub user: String,
     pub permissions: String,
-    pub source: KeySource,
+    pub source: Source,
     #[serde(rename = "uploadAt")]
     pub upload_at: UploadKeyAt,
 }
@@ -73,29 +73,27 @@ pub trait PushKeys {
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 }
 
-async fn create_reader(
-    source: &'_ KeySource,
-) -> Result<Pin<Box<dyn AsyncRead + Send + '_>>, KeyError> {
+async fn create_reader(source: &'_ Source) -> Result<Pin<Box<dyn AsyncRead + Send + '_>>, Error> {
     match source {
-        KeySource::Path(path) => Ok(Box::pin(File::open(path).await.map_err(KeyError::File)?)),
-        KeySource::String(string) => Ok(Box::pin(Cursor::new(string))),
-        KeySource::Command(args) => {
-            let output = Command::new(args.first().ok_or(KeyError::Empty)?)
+        Source::Path(path) => Ok(Box::pin(File::open(path).await.map_err(Error::File)?)),
+        Source::String(string) => Ok(Box::pin(Cursor::new(string))),
+        Source::Command(args) => {
+            let output = Command::new(args.first().ok_or(Error::Empty)?)
                 .args(&args[1..])
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()
-                .map_err(KeyError::CommandSpawnError)?
+                .map_err(Error::CommandSpawnError)?
                 .wait_with_output()
                 .await
-                .map_err(KeyError::CommandSpawnError)?;
+                .map_err(Error::CommandSpawnError)?;
 
             if output.status.success() {
                 return Ok(Box::pin(Cursor::new(output.stdout)));
             }
 
-            Err(KeyError::CommandError(
+            Err(Error::CommandError(
                 output.status,
                 from_utf8(&output.stderr).unwrap().to_string(),
             ))
@@ -129,7 +127,7 @@ async fn copy_buffers<T: AsyncWriteExt + Unpin>(
     Ok(())
 }
 
-async fn process_key(name: &str, key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyError> {
+async fn process_key(name: &str, key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error> {
     let mut reader = create_reader(&key.source).await?;
 
     let mut buf = Vec::new();
@@ -162,7 +160,7 @@ async fn process_key(name: &str, key: &Key) -> Result<(key_agent::keys::Key, Vec
     ))
 }
 
-impl PushKeys for (&NodeName, &Node) {
+impl PushKeys for (&Name, &Node) {
     #[instrument(skip_all)]
     async fn push_keys(self, target: UploadKeyAt, span: &Span) -> Result<(), HiveLibError> {
         let agent_directory = match env::var_os("WIRE_KEY_AGENT") {
@@ -187,7 +185,7 @@ impl PushKeys for (&NodeName, &Node) {
         let (keys, bufs): (Vec<key_agent::keys::Key>, Vec<Vec<u8>>) = join_all(futures)
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, KeyError>>()
+            .collect::<Result<Vec<_>, Error>>()
             .map_err(HiveLibError::KeyError)?
             .into_iter()
             .unzip();

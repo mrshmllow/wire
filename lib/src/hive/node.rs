@@ -13,7 +13,7 @@ use super::key::{Key, PushKeys, UploadKeyAt};
 use super::HiveLibError;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
-pub struct NodeName(pub Arc<str>);
+pub struct Name(pub Arc<str>);
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Target {
@@ -63,7 +63,7 @@ pub trait Evaluatable {
         self,
         hivepath: PathBuf,
         span: Span,
-        goal: &NodeGoal,
+        goal: &Goal,
         no_keys: bool,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 
@@ -105,14 +105,14 @@ pub enum SwitchToConfigurationGoal {
 }
 
 #[derive(derive_more::Display)]
-pub enum NodeGoal {
+pub enum Goal {
     SwitchToConfiguration(SwitchToConfigurationGoal),
     Build,
     Push,
     Keys,
 }
 
-impl Evaluatable for (&NodeName, &Node) {
+impl Evaluatable for (&Name, &Node) {
     /// Evaluate the node and returns the top level Deriviation
     async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
         let mut command = get_eval_command(hivepath, EvalGoal::GetTopLevel(self.0));
@@ -301,11 +301,11 @@ impl Evaluatable for (&NodeName, &Node) {
         self,
         hivepath: PathBuf,
         span: Span,
-        goal: &NodeGoal,
+        goal: &Goal,
         no_keys: bool,
     ) -> Result<(), HiveLibError> {
         match goal {
-            NodeGoal::SwitchToConfiguration(goal) => {
+            Goal::SwitchToConfiguration(goal) => {
                 if let SwitchToConfigurationGoal::Switch = goal
                     && !no_keys
                 {
@@ -322,13 +322,13 @@ impl Evaluatable for (&NodeName, &Node) {
 
                 Ok(())
             }
-            NodeGoal::Build => {
+            Goal::Build => {
                 self.build(hivepath, &span).await?;
 
                 Ok(())
             }
-            NodeGoal::Push => self.eval_and_push(hivepath, &span).await,
-            NodeGoal::Keys => self.push_keys(UploadKeyAt::All, &span).await,
+            Goal::Push => self.eval_and_push(hivepath, &span).await,
+            Goal::Keys => self.push_keys(UploadKeyAt::All, &span).await,
         }
     }
 }
