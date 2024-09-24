@@ -242,7 +242,10 @@ impl PushKeys for (&Name, &Node) {
 
         Err(HiveLibError::KeyCommandError(
             self.0.clone(),
-            stderr.split("\n").map(|s| s.to_string()).collect(),
+            stderr
+                .split("\n")
+                .map(std::string::ToString::to_string)
+                .collect(),
         ))
     }
 }

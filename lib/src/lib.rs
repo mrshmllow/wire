@@ -32,10 +32,10 @@ pub enum HiveLibError {
     #[error("failed to evaluate nix expression (last 20 lines):\n{}", format_error_lines(.0))]
     NixEvalError(Vec<String>),
 
-    #[error("failed to evaluate node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
+    #[error("failed to evaluate node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(std::string::ToString::to_string).collect::<Vec<String>>().join("\n"))]
     NixEvalInteralError(Name, Vec<NixLog>),
 
-    #[error("failed to copy drv to node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(|l| l.to_string()).collect::<Vec<String>>().join("\n"))]
+    #[error("failed to copy drv to node {0} (filtered logs, run with -vvv to see all):\n{}", .1.iter().filter(|l| l.is_error()).map(std::string::ToString::to_string).collect::<Vec<String>>().join("\n"))]
     NixCopyError(Name, Vec<NixLog>),
 
     #[error("failed to build node {0} (last 20 lines):\n{}", format_error_lines(.1))]
