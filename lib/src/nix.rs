@@ -48,9 +48,7 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Comman
         None => panic!("WIRE_RUNTIME environment variable not set"),
     };
 
-    if !check_nix_available() {
-        panic!("nix is not available on this system");
-    }
+    assert!(check_nix_available(), "nix is not available on this system");
 
     let canon_path = path.canonicalize().unwrap();
 
