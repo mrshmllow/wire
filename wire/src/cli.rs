@@ -37,8 +37,8 @@ pub enum ApplyTarget {
 
 impl From<String> for ApplyTarget {
     fn from(value: String) -> Self {
-        if value.starts_with("@") {
-            ApplyTarget::Tag(value[1..].to_string())
+        if let Some(stripped) = value.strip_prefix("@") {
+            ApplyTarget::Tag(stripped.to_string())
         } else {
             ApplyTarget::Node(Name(Arc::from(value.as_str())))
         }
