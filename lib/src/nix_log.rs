@@ -106,7 +106,7 @@ impl Display for Internal {
                     }
                 )
             }
-            _ => write!(f, ""),
+            Action::Stop => write!(f, ""),
         }
     }
 }
