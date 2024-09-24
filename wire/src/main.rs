@@ -43,9 +43,10 @@ async fn main() -> Result<(), anyhow::Error> {
         } => apply::apply(hive, goal.try_into()?, on, parallel, no_keys).await?,
         cli::Commands::Inspect { online: _, json } => println!(
             "{}",
-            match json {
-                true => serde_json::to_string_pretty(&hive)?,
-                false => format!("{hive:#?}"),
+            if json {
+                serde_json::to_string_pretty(&hive)?
+            } else {
+                format!("{hive:#?}")
             }
         ),
         _ => {

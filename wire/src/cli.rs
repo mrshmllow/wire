@@ -37,9 +37,10 @@ pub enum ApplyTarget {
 
 impl From<String> for ApplyTarget {
     fn from(value: String) -> Self {
-        match value.starts_with("@") {
-            true => ApplyTarget::Tag(value[1..].to_string()),
-            false => ApplyTarget::Node(Name(Arc::from(value.as_str()))),
+        if value.starts_with("@") {
+            ApplyTarget::Tag(value[1..].to_string())
+        } else {
+            ApplyTarget::Node(Name(Arc::from(value.as_str())))
         }
     }
 }
