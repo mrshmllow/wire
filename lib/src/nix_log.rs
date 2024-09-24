@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use serde_repr::*;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fmt::{Debug, Display};
 use tracing::{event, info, Level as tracing_level};
 
