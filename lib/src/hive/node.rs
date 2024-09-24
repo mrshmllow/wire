@@ -92,7 +92,7 @@ pub struct Derivation(pub String);
 
 impl Display for Derivation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f).and_then(|_| write!(f, "^*"))
+        self.0.fmt(f).and_then(|()| write!(f, "^*"))
     }
 }
 
