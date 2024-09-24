@@ -82,7 +82,7 @@ pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Comman
         path = canon_path.to_str().unwrap(),
         goal = match goal {
             EvalGoal::Inspect => "hive.inspect".to_string(),
-            EvalGoal::GetTopLevel(node) => format!("hive.getTopLevel \"{node}\"", node = node),
+            EvalGoal::GetTopLevel(node) => format!("hive.getTopLevel \"{node}\""),
         }
     ));
 
