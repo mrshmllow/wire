@@ -580,7 +580,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-indicatif",
- "tracing-log",
  "tracing-subscriber",
 ]
 
