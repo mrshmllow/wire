@@ -42,7 +42,7 @@ fn check_nix_available() -> bool {
     }
 }
 
-pub fn get_eval_command(path: PathBuf, goal: EvalGoal) -> tokio::process::Command {
+pub fn get_eval_command(path: &PathBuf, goal: &EvalGoal) -> tokio::process::Command {
     let runtime = match env::var_os("WIRE_RUNTIME") {
         Some(runtime) => runtime.into_string().unwrap(),
         None => panic!("WIRE_RUNTIME environment variable not set"),

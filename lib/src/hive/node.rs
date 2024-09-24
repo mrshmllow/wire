@@ -115,7 +115,7 @@ pub enum Goal {
 impl Evaluatable for (&Name, &Node) {
     /// Evaluate the node and returns the top level Deriviation
     async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
-        let mut command = get_eval_command(hivepath, EvalGoal::GetTopLevel(self.0));
+        let mut command = get_eval_command(&hivepath, &EvalGoal::GetTopLevel(self.0));
 
         let (status, stdout_vec, stderr) = command
             .execute(true)

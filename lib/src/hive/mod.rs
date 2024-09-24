@@ -28,7 +28,7 @@ impl Hive {
         let filepath = find_hive(path).ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
         info!("Using hive {}", filepath.display());
 
-        let command = get_eval_command(filepath, EvalGoal::Inspect)
+        let command = get_eval_command(&filepath, &EvalGoal::Inspect)
             .output()
             .await
             .map_err(HiveLibError::NixExecError)?;
