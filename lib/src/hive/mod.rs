@@ -46,7 +46,7 @@ impl Hive {
 
         Err(HiveLibError::NixEvalError(
             stderr
-                .split("\n")
+                .split('\n')
                 .map(std::string::ToString::to_string)
                 .collect(),
         ))
