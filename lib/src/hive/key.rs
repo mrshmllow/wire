@@ -127,7 +127,7 @@ async fn copy_buffers<T: AsyncWriteExt + Unpin>(
     Ok(())
 }
 
-async fn process_key(name: &str, key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error> {
+async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error> {
     let mut reader = create_reader(&key.source).await?;
 
     let mut buf = Vec::new();
@@ -137,7 +137,7 @@ async fn process_key(name: &str, key: &Key) -> Result<(key_agent::keys::Key, Vec
         .await
         .expect("failed to read into buffer");
 
-    let destination: PathBuf = [key.dest_dir.clone(), name.into()].iter().collect();
+    let destination: PathBuf = [key.dest_dir.clone(), key.name.clone()].iter().collect();
 
     debug!(
         "Staging push to {}",
@@ -176,11 +176,11 @@ impl PushKeys for (&Name, &Node) {
             .1
             .keys
             .iter()
-            .filter(|(_, key)| {
+            .filter(|key| {
                 target == UploadKeyAt::All
                     || (target != UploadKeyAt::All && key.upload_at != target)
             })
-            .map(|(name, key)| async move { process_key(name, key).await });
+            .map(|key| async move { process_key(key).await });
 
         let (keys, bufs): (Vec<key_agent::keys::Key>, Vec<Vec<u8>>) = join_all(futures)
             .await

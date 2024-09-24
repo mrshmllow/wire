@@ -38,7 +38,8 @@ pub struct Node {
     #[serde(default)]
     pub tags: im::HashSet<String>,
 
-    pub keys: im::HashMap<String, Key>,
+    #[serde(rename = "_keys")]
+    pub keys: im::Vector<Key>,
 }
 
 #[derive(derive_more::Display)]

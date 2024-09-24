@@ -1,6 +1,7 @@
 {
   lib,
   name,
+  config,
   ...
 }: let
   inherit (lib) types;
@@ -55,6 +56,11 @@ in {
       default = [];
       description = "Tags for node.";
       example = ["arm" "cloud"];
+    };
+
+    _keys = lib.mkOption {
+      internal = true;
+      readOnly = true;
     };
 
     keys = lib.mkOption {
@@ -133,5 +139,9 @@ in {
         };
       };
     };
+  };
+
+  config = {
+    deployment._keys = lib.mapAttrsToList (_: value: value) config.deployment.keys;
   };
 }

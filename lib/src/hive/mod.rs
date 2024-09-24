@@ -77,6 +77,8 @@ fn find_hive(path: &Path) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    use im::vector;
+
     use super::*;
     use std::env;
 
@@ -106,7 +108,7 @@ mod tests {
                 port: 22,
             },
             build_remotely: true,
-            keys: im::HashMap::new(),
+            keys: im::Vector::new(),
         };
 
         let mut nodes = im::HashMap::new();
@@ -114,7 +116,7 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { path, nodes });
+        assert_eq!(hive, Hive { nodes, path });
     }
 
     #[tokio::test]
@@ -125,7 +127,7 @@ mod tests {
 
         let hive = Hive::new_from_path(&path).await.unwrap();
 
-        let mut node = Node {
+        let node = Node {
             tags: im::HashSet::new(),
             target: node::Target {
                 host: "name".into(),
@@ -133,12 +135,7 @@ mod tests {
                 port: 22,
             },
             build_remotely: true,
-            keys: im::HashMap::new(),
-        };
-
-        node.keys.insert(
-            "a".into(),
-            key::Key {
+            keys: vector![key::Key {
                 name: "different-than-a".into(),
                 dest_dir: "/run/keys/".into(),
                 path: "/run/keys/different-than-a".into(),
@@ -147,15 +144,15 @@ mod tests {
                 permissions: "0600".into(),
                 source: key::Source::String("hi".into()),
                 upload_at: key::UploadKeyAt::PreActivation,
-            },
-        );
+            }],
+        };
 
         let mut nodes = im::HashMap::new();
         nodes.insert(Name("node-a".into()), node);
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { path, nodes });
+        assert_eq!(hive, Hive { nodes, path });
     }
 
     #[tokio::test]
@@ -163,6 +160,18 @@ mod tests {
     async fn no_nixpkgs() {
         let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
         path.push("no_nixpkgs");
+
+        assert!(matches!(
+            Hive::new_from_path(&path).await,
+            Err(HiveLibError::NixEvalError(..))
+        ));
+    }
+
+    #[tokio::test]
+    #[cfg_attr(feature = "no_web_tests", ignore)]
+    async fn _keys_should_fail() {
+        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
+        path.push("_keys_should_fail");
 
         assert!(matches!(
             Hive::new_from_path(&path).await,
