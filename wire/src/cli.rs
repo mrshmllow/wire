@@ -1,7 +1,10 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
-use lib::hive::node::{Goal, Name, SwitchToConfigurationGoal};
+use lib::hive::{
+    node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal},
+    Hive,
+};
 
 use std::{
     fmt::{self, Display, Formatter},
@@ -62,7 +65,7 @@ fn more_than_zero(s: &str) -> Result<usize, String> {
 pub enum Commands {
     Apply {
         #[arg(value_enum, default_value_t)]
-        goal: CliGoal,
+        goal: Goal,
 
         /// List of literal node names or `@` prefixed tags.
         #[arg(short, long)]
@@ -97,7 +100,7 @@ pub enum Commands {
 }
 
 #[derive(Clone, Debug, Default, ValueEnum, Display)]
-pub enum CliGoal {
+pub enum Goal {
     /// Make the configuration the boot default and activate now
     #[default]
     Switch,
@@ -115,22 +118,26 @@ pub enum CliGoal {
     DryActivate,
 }
 
-impl TryFrom<CliGoal> for Goal {
+impl TryFrom<Goal> for HiveGoal {
     type Error = anyhow::Error;
 
-    fn try_from(value: CliGoal) -> Result<Self, Self::Error> {
+    fn try_from(value: Goal) -> Result<Self, Self::Error> {
         match value {
-            CliGoal::Build => Ok(Goal::Build),
-            CliGoal::Push => Ok(Goal::Push),
-            CliGoal::Boot => Ok(Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Boot)),
-            CliGoal::Switch => Ok(Goal::SwitchToConfiguration(
+            Goal::Build => Ok(HiveGoal::Build),
+            Goal::Push => Ok(HiveGoal::Push),
+            Goal::Boot => Ok(HiveGoal::SwitchToConfiguration(
+                SwitchToConfigurationGoal::Boot,
+            )),
+            Goal::Switch => Ok(HiveGoal::SwitchToConfiguration(
                 SwitchToConfigurationGoal::Switch,
             )),
-            CliGoal::Test => Ok(Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Test)),
-            CliGoal::DryActivate => Ok(Goal::SwitchToConfiguration(
+            Goal::Test => Ok(HiveGoal::SwitchToConfiguration(
+                SwitchToConfigurationGoal::Test,
+            )),
+            Goal::DryActivate => Ok(HiveGoal::SwitchToConfiguration(
                 SwitchToConfigurationGoal::DryActivate,
             )),
-            CliGoal::Keys => Ok(Goal::Keys),
+            Goal::Keys => Ok(HiveGoal::Keys),
         }
     }
 }
