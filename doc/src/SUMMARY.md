@@ -3,15 +3,24 @@
 # User Guide
 
 - [Intro](./intro.md)
-- [Terminology](./terminology.md)
-- [Usage](./usage/README.md)
-    - [Flakes](./usage/flakes.md)
-    - [hive.nix](./usage/hive.nix.md)
+- [Creating a Hive](./creating-a-hive/README.md)
+    - [With Flakes](./creating-a-hive/flake.md)
+    - [Without Flakes](./creating-a-hive/hive.md)
+- [Examples]()
+    - [Using 'nodes' effectively]()
+    - [Networking nodes together with tailscale]()
+    - [Deploying in CI]()
 - [Features](./features/README.md)
-    - [Magic Rollback](./features/magic-rollback.md)
-    - [Secrets](./features/secrets.md)
-    - [hive.`default`](./features/default.md)
-    - [Taggging](./features/default.md)
+    - [Parrallelism](./features/parallelism.md)
+    - [Magic Rollback]()
+    - [Keys & Secrets]()
+    - [hive.`default`]()
+    - [Tagging](./features/tagging.md)
+
+# Understanding Wire
+
+- [Intro](./understanding-wire/intro.md)
+- [How nodes are evaluated]()
 
 # Reference
 
