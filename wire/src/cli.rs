@@ -25,6 +25,10 @@ pub struct Cli {
     #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]
     pub path: std::path::PathBuf,
 
+    /// Hide progress bars
+    #[arg(long, global = true, default_value_t = false)]
+    pub no_progress: bool,
+
     #[arg(long, hide = true, global = true)]
     pub markdown_help: bool,
 }

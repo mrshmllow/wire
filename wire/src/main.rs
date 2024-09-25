@@ -9,7 +9,7 @@ use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::Layer;
+use tracing_subscriber::{Layer, Registry};
 
 #[macro_use]
 extern crate enum_display_derive;
@@ -27,7 +27,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let _profiler = dhat::Profiler::new_heap();
 
     let args = Cli::parse();
-    setup_logging(&args.verbose);
+    setup_logging(args.no_progress, &args.verbose);
 
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();
@@ -59,21 +59,27 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-pub fn setup_logging(verbosity: &Verbosity<WarnLevel>) {
-    let indicatif_layer = IndicatifLayer::new().with_progress_style(
-        ProgressStyle::with_template(
-            "{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}} {wide_msg}",
-        )
-        .expect("Failed to create progress style"),
-    );
+pub fn setup_logging(no_progress: bool, verbosity: &Verbosity<WarnLevel>) {
+    let layer = tracing_subscriber::fmt::layer::<Registry>().without_time();
+    let filter = verbosity.log_level_filter().as_trace();
+    let registry = tracing_subscriber::registry();
 
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .without_time()
-                .with_writer(indicatif_layer.get_stderr_writer())
-                .with_filter(verbosity.log_level_filter().as_trace()),
-        )
-        .with(indicatif_layer)
-        .init();
+    if no_progress {
+        let layer = layer.with_filter(filter);
+
+        registry.with(layer).init();
+    } else {
+        let indicatif_layer = IndicatifLayer::new().with_progress_style(
+            ProgressStyle::with_template(
+                "{span_child_prefix}[{spinner}] {span_name}{{{span_fields}}} {wide_msg}",
+            )
+            .expect("Failed to create progress style"),
+        );
+
+        let layer = layer
+            .with_writer(indicatif_layer.get_stderr_writer())
+            .with_filter(filter);
+
+        registry.with(layer).with(indicatif_layer).init();
+    }
 }
