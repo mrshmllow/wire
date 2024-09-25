@@ -146,6 +146,7 @@ impl Evaluatable for (&Name, &Node) {
         let mut command = Command::new("nix");
 
         command
+            .args(["--extra-experimental-features", "nix-command"])
             .arg("copy")
             .arg("--substitute-on-destination")
             .arg("--to")
@@ -189,9 +190,7 @@ impl Evaluatable for (&Name, &Node) {
                 .arg("-l")
                 .arg(self.1.target.user.as_ref())
                 .arg(self.1.target.host.as_ref())
-                .arg("nix")
-                .arg("--extra-experimental-features")
-                .arg("nix-command");
+                .arg("nix");
 
             command
         } else {
@@ -199,6 +198,7 @@ impl Evaluatable for (&Name, &Node) {
         };
 
         command
+            .args(["--extra-experimental-features", "nix-command"])
             .arg("build")
             .arg("--print-build-logs")
             .arg("--print-out-paths")
