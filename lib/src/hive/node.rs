@@ -7,6 +7,7 @@ use tracing::instrument;
 use tracing::{info, info_span, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+use crate::create_ssh_command;
 use crate::nix::{get_eval_command, EvalGoal, StreamTracing};
 
 use super::key::{Key, PushKeys, UploadKeyAt};
@@ -153,7 +154,8 @@ impl Evaluatable for (&Name, &Node) {
             .arg(format!(
                 "ssh://{}@{}",
                 self.1.target.user, self.1.target.host
-            ));
+            ))
+            .env("NIX_SSHOPTS", format!("-p {}", self.1.target.port));
 
         match push {
             Push::Derivation(drv) => command.args([drv.to_string(), "--derivation".to_string()]),
@@ -184,14 +186,8 @@ impl Evaluatable for (&Name, &Node) {
         let mut command = if self.1.build_remotely {
             self.push(span, Push::Derivation(&top_level)).await?;
 
-            let mut command = Command::new("ssh");
-
-            command
-                .arg("-l")
-                .arg(self.1.target.user.as_ref())
-                .arg(self.1.target.host.as_ref())
-                .arg("nix");
-
+            let mut command = create_ssh_command(&self.1.target, false);
+            command.arg("nix");
             command
         } else {
             Command::new("nix")
@@ -259,16 +255,7 @@ impl Evaluatable for (&Name, &Node) {
         info!("Running switch-to-configuration {goal:?}");
 
         let cmd = format!("{built_path}/bin/switch-to-configuration");
-        let mut command = Command::new("ssh");
-
-        command
-            .arg("-l")
-            .arg(self.1.target.user.as_ref())
-            .arg(self.1.target.host.as_ref());
-
-        if self.1.target.user != "root".into() {
-            command.args(["sudo", "-H", "--"]);
-        };
+        let mut command = create_ssh_command(&self.1.target, true);
 
         command.arg(cmd).arg(match goal {
             SwitchToConfigurationGoal::Switch => "switch",

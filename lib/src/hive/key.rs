@@ -14,7 +14,7 @@ use tracing::{debug, info, instrument, trace, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::hive::node::{Evaluatable, Push};
-use crate::HiveLibError;
+use crate::{create_ssh_command, HiveLibError};
 
 use super::node::{Name, Node};
 
@@ -196,17 +196,7 @@ impl PushKeys for (&Name, &Node) {
 
         let buf = msg.encode_to_vec();
 
-        let mut command = Command::new("ssh");
-
-        command.args([
-            "-l",
-            self.1.target.user.as_ref(),
-            self.1.target.host.as_ref(),
-        ]);
-
-        if self.1.target.user != "root".into() {
-            command.args(["sudo", "-H", "--"]);
-        };
+        let mut command = create_ssh_command(&self.1.target, true);
 
         let mut child = command
             .args([

@@ -1,14 +1,32 @@
 #![feature(let_chains)]
 #![deny(clippy::pedantic)]
-use hive::{key::Error, node::Name};
+use hive::{
+    key::Error,
+    node::{Name, Target},
+};
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
 use thiserror::Error;
-use tokio::task::JoinError;
+use tokio::{process::Command, task::JoinError};
 
 pub mod hive;
 mod nix;
 mod nix_log;
+
+fn create_ssh_command(target: &Target, sudo: bool) -> Command {
+    let mut command = Command::new("ssh");
+
+    command
+        .args(["-l", target.user.as_ref()])
+        .arg(target.host.as_ref())
+        .args(["-p", &target.port.to_string()]);
+
+    if sudo && target.user != "root".into() {
+        command.args(["sudo", "-H", "--"]);
+    };
+
+    command
+}
 
 fn format_error_lines(lines: &[String]) -> String {
     lines
