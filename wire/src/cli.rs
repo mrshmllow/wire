@@ -64,6 +64,7 @@ fn more_than_zero(s: &str) -> Result<usize, String> {
 
 #[derive(Subcommand)]
 pub enum Commands {
+    /// Deploy nodes
     Apply {
         #[arg(value_enum, default_value_t)]
         goal: Goal,
@@ -105,9 +106,9 @@ pub enum Goal {
     /// Make the configuration the boot default and activate now
     #[default]
     Switch,
-    /// Make the configuration the boot default
+    /// Build the configuration but do nothing with it
     Build,
-    /// Copy closures to remote hosts
+    /// Copy system derivation to remote hosts
     Push,
     /// Push deployment keys to remote hosts
     Keys,
