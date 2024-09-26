@@ -5,6 +5,7 @@ use clap::Parser;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use indicatif::style::ProgressStyle;
 use lib::hive::Hive;
+use tracing::warn;
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
 use tracing_subscriber::layer::SubscriberExt;
@@ -48,6 +49,7 @@ async fn main() -> Result<(), anyhow::Error> {
             if json {
                 serde_json::to_string_pretty(&hive)?
             } else {
+                warn!("use --json to output something scripting suitable");
                 format!("{hive:#?}")
             }
         ),
