@@ -39,7 +39,7 @@ pub struct Node {
     #[serde(default)]
     pub tags: im::HashSet<String>,
 
-    #[serde(rename = "_keys")]
+    #[serde(rename(deserialize = "_keys", serialize = "keys"))]
     pub keys: im::Vector<Key>,
 }
 
