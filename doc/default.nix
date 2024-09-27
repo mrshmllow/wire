@@ -30,6 +30,7 @@
 
   optionsDoc = runCommand "options-doc.md" {} ''
     cat ${optionsMd} > $out
+    sed -i -e '/\*Declared by:\*/,+1d' $out
   '';
 in
   pkgs.stdenv.mkDerivation {
