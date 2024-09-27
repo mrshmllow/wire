@@ -14,6 +14,7 @@
       };
     };
     catppuccin.url = "github:catppuccin/mdBook";
+    nixos-shell.url = "github:Mic92/nixos-shell";
   };
 
   outputs = {
@@ -23,6 +24,7 @@
     devenv,
     fenix,
     catppuccin,
+    nixos-shell,
     ...
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
@@ -110,7 +112,7 @@
                 PROTOC = nixpkgs.lib.getExe pkgs.protobuf;
               };
 
-              packages = with pkgs; [mdbook catppuccin.packages.${system}.default protobuf just];
+              packages = with pkgs; [mdbook catppuccin.packages.${system}.default protobuf just pkgs.nixos-shell];
 
               pre-commit.hooks = {
                 clippy.enable = true;

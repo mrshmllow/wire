@@ -1,5 +1,8 @@
 # vim: set ft=make :
 
+up:
+	cd ./local-testing/ && nixos-shell -vv
+
 build-dhat:
 	cargo build --profile profiling --features dhat-heap
 	@echo 'dhat binaries in target/profiling'

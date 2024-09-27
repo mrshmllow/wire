@@ -2,6 +2,8 @@
 
 wire is a tool to deploy nixos systems. its configuration is a superset of colmena however it is not a fork.
 
+Read the [The Book](https://wire.althaea.zone/intro), or continue reading this readme for development information.
+
 ## Tree Layout
 
 ```
@@ -20,4 +22,24 @@ wire
 │  └── Directories during cargo tests
 └── local-testing
    └── To be removed
+```
+
+## Local testing
+
+### Starting development virtual machines
+
+```sh
+$ just up
+```
+
+### dhat profiling
+
+```sh
+$ just built-dhat
+```
+
+### testing
+
+```sh
+$ cargo test
 ```
