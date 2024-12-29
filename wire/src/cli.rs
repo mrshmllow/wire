@@ -84,6 +84,10 @@ pub enum Commands {
         /// Skip key uploads. noop when [GOAL] = Keys
         #[arg(short, long, default_value_t = false)]
         no_keys: bool,
+
+        /// Overrides deployment.buildOnTarget. List of literal node names.
+        #[arg(short, long)]
+        always_local: Vec<String>,
     },
     /// Inspect hive
     Inspect {

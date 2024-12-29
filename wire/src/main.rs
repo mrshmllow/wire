@@ -37,7 +37,7 @@ async fn main() -> Result<(), anyhow::Error> {
         return Ok(());
     }
 
-    let hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
+    let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
 
     match args.command {
         cli::Commands::Apply {
@@ -45,7 +45,19 @@ async fn main() -> Result<(), anyhow::Error> {
             on,
             parallel,
             no_keys,
-        } => apply::apply(hive, goal.try_into()?, on, parallel, no_keys, modifiers).await?,
+            always_local,
+        } => {
+            apply::apply(
+                &mut hive,
+                goal.try_into()?,
+                on,
+                parallel,
+                no_keys,
+                always_local,
+                modifiers,
+            )
+            .await?;
+        }
         cli::Commands::Inspect { online: _, json } => println!(
             "{}",
             if json {

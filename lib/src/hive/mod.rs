@@ -1,6 +1,8 @@
 use node::{Name, Node};
 use std::collections::hash_map::OccupiedEntry;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use tracing::{debug, error, info, instrument, trace};
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +14,7 @@ pub mod node;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Hive {
-    pub nodes: im::HashMap<Name, Node>,
+    pub nodes: HashMap<Name, Node>,
     pub path: PathBuf,
 }
 
@@ -53,6 +55,22 @@ impl Hive {
                 .map(std::string::ToString::to_string)
                 .collect(),
         ))
+    }
+
+    /// # Errors
+    ///
+    /// Returns an error if a node in nodes does not exist in the hive.
+    pub fn force_always_local(&mut self, nodes: Vec<String>) -> Result<(), HiveLibError> {
+        for node in nodes {
+            info!("Forcing a local build for {node}");
+
+            self.nodes
+                .get_mut(&Name(Arc::from(node.clone())))
+                .ok_or(HiveLibError::NodeDoesNotExist(node.to_string()))?
+                .build_remotely = false;
+        }
+
+        Ok(())
     }
 }
 
@@ -116,7 +134,7 @@ mod tests {
             keys: im::Vector::new(),
         };
 
-        let mut nodes = im::HashMap::new();
+        let mut nodes = HashMap::new();
         nodes.insert(Name("node-a".into()), node);
 
         path.push("hive.nix");
@@ -154,7 +172,7 @@ mod tests {
             }],
         };
 
-        let mut nodes = im::HashMap::new();
+        let mut nodes = HashMap::new();
         nodes.insert(Name("node-a".into()), node);
 
         path.push("hive.nix");

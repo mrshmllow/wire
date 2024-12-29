@@ -23,3 +23,4 @@ derive_more = "0.99.18"
 key_agent = { path = "../key_agent" }
 futures = "0.3.30"
 prost = { workspace = true }
+gethostname = "0.5.0"

@@ -12,16 +12,20 @@ use crate::cli::ApplyTarget;
 
 #[instrument(skip_all, fields(goal = %goal, on = %on.iter().join(", ")))]
 pub async fn apply(
-    hive: Hive,
+    hive: &mut Hive,
     goal: Goal,
     on: Vec<ApplyTarget>,
     parallel: usize,
     no_keys: bool,
+    always_local: Vec<String>,
     modifiers: SubCommandModifiers,
 ) -> Result<(), HiveLibError> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
     header_span.pb_set_length(1);
+
+    // Respect user's --always-local arg
+    hive.force_always_local(always_local)?;
 
     let header_span_enter = header_span.enter();
 

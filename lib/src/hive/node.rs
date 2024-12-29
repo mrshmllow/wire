@@ -1,10 +1,11 @@
+use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tracing::instrument;
 use tracing::{info, info_span, Instrument, Span};
+use tracing::{instrument, warn};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::create_ssh_command;
@@ -199,7 +200,11 @@ impl Evaluatable for (&Name, &Node) {
         info!("Top level: {top_level}");
 
         let mut command = if self.1.build_remotely {
-            self.push(span, Push::Derivation(&top_level)).await?;
+            let push_result = self.push(span, Push::Derivation(&top_level)).await;
+
+            if push_result.is_err() && *self.0.to_string() == *gethostname() {
+                warn!("Remote push failed, but this node matches our local hostname ({0}). Perhaps you want to apply this node locally? Use `--always-local {0}` to override deployment.buildOnTarget", self.0.to_string());
+            }
 
             let mut command = create_ssh_command(&self.1.target, false);
             command.arg("nix");
