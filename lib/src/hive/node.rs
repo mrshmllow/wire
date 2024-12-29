@@ -7,6 +7,7 @@ use tokio::process::Command;
 use tracing::{info, info_span, Instrument, Span};
 use tracing::{instrument, warn};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
+use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::create_ssh_command;
 use crate::nix::{get_eval_command, EvalGoal, StreamTracing};
@@ -38,11 +39,18 @@ pub struct Node {
     #[serde(rename = "buildOnTarget")]
     pub build_remotely: bool,
 
+    #[serde(rename = "allowLocalDeployment")]
+    pub allow_local_deployment: bool,
+
     #[serde(default)]
     pub tags: im::HashSet<String>,
 
     #[serde(rename(deserialize = "_keys", serialize = "keys"))]
     pub keys: im::Vector<Key>,
+}
+
+pub fn should_apply_locally(allow_local_deployment: bool, name: &str) -> bool {
+    *name == *gethostname() && allow_local_deployment
 }
 
 #[derive(derive_more::Display)]
@@ -200,11 +208,13 @@ impl Evaluatable for (&Name, &Node) {
         info!("Top level: {top_level}");
 
         let mut command = if self.1.build_remotely {
-            let push_result = self.push(span, Push::Derivation(&top_level)).await;
-
-            if push_result.is_err() && *self.0.to_string() == *gethostname() {
-                warn!("Remote push failed, but this node matches our local hostname ({0}). Perhaps you want to apply this node locally? Use `--always-local {0}` to override deployment.buildOnTarget", self.0.to_string());
-            }
+            self.push(span, Push::Derivation(&top_level)).await.inspect_err(|_| {
+                if should_apply_locally(self.1.allow_local_deployment, &self.0.to_string()) {
+                    warn!("Remote push failed, but this node matches our local hostname ({0}). Perhaps you want to apply this node locally? Use `--always-build-local {0}` to override deployment.buildOnTarget", self.0.to_string());
+                } else {
+                    warn!("Use `--always-build-local {0}` to override deployment.buildOnTarget and force {0} to build locally", self.0.to_string());
+                }
+            })?;
 
             let mut command = create_ssh_command(&self.1.target, false);
             command.arg("nix");
@@ -234,7 +244,10 @@ impl Evaluatable for (&Name, &Node) {
                 .collect::<Vec<String>>()
                 .join("\n");
 
-            if !self.1.build_remotely {
+            // if we are not building remotely, and we are not apply locally, push the output
+            if !(self.1.build_remotely
+                || should_apply_locally(self.1.allow_local_deployment, &self.0.to_string()))
+            {
                 self.push(span, Push::Path(&stdout)).await?;
             };
 
@@ -281,9 +294,30 @@ impl Evaluatable for (&Name, &Node) {
         info!("Running switch-to-configuration {goal:?}");
 
         let cmd = format!("{built_path}/bin/switch-to-configuration");
-        let mut command = create_ssh_command(&self.1.target, true);
 
-        command.arg(cmd).arg(match goal {
+        let mut command =
+            if should_apply_locally(self.1.allow_local_deployment, &self.0.to_string()) {
+                // Refresh sudo timeout
+                warn!(
+                    "Running switch-to-configuration {goal:?} ON THIS MACHINE for node {0}",
+                    self.0
+                );
+                info!("Attempting to elevate for local deployment.");
+                suspend_tracing_indicatif(|| {
+                    let mut command = std::process::Command::new("sudo");
+                    command.arg("-v").output()
+                })
+                .map_err(HiveLibError::FailedToElevate)?;
+                let mut command = Command::new("sudo");
+                command.arg(cmd);
+                command
+            } else {
+                let mut command = create_ssh_command(&self.1.target, true);
+                command.arg(cmd);
+                command
+            };
+
+        command.arg(match goal {
             SwitchToConfigurationGoal::Switch => "switch",
             SwitchToConfigurationGoal::Boot => "boot",
             SwitchToConfigurationGoal::Test => "test",

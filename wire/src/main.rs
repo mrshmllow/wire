@@ -45,7 +45,7 @@ async fn main() -> Result<(), anyhow::Error> {
             on,
             parallel,
             no_keys,
-            always_local,
+            always_build_local,
         } => {
             apply::apply(
                 &mut hive,
@@ -53,7 +53,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 on,
                 parallel,
                 no_keys,
-                always_local,
+                always_build_local,
                 modifiers,
             )
             .await?;

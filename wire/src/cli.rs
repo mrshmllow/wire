@@ -87,7 +87,7 @@ pub enum Commands {
 
         /// Overrides deployment.buildOnTarget. List of literal node names.
         #[arg(short, long)]
-        always_local: Vec<String>,
+        always_build_local: Vec<String>,
     },
     /// Inspect hive
     Inspect {

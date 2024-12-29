@@ -1,5 +1,6 @@
 #![feature(let_chains)]
 #![deny(clippy::pedantic)]
+#![allow(clippy::must_use_candidate)]
 use hive::{
     key::Error,
     node::{Name, Target},
@@ -82,6 +83,9 @@ pub enum HiveLibError {
 
     #[error("an operation failed in regards to buffers")]
     BufferOperationError(#[source] tokio::io::Error),
+
+    #[error("failed to elevate")]
+    FailedToElevate(#[source] std::io::Error),
 }
 
 #[derive(Debug, Default, Clone, Copy)]

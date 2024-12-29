@@ -17,15 +17,15 @@ pub async fn apply(
     on: Vec<ApplyTarget>,
     parallel: usize,
     no_keys: bool,
-    always_local: Vec<String>,
+    always_build_local: Vec<String>,
     modifiers: SubCommandModifiers,
 ) -> Result<(), HiveLibError> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
     header_span.pb_set_length(1);
 
-    // Respect user's --always-local arg
-    hive.force_always_local(always_local)?;
+    // Respect user's --always-build-local arg
+    hive.force_always_local(always_build_local)?;
 
     let header_span_enter = header_span.enter();
 

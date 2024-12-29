@@ -10,10 +10,10 @@ use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{debug, info, instrument, trace, Span};
+use tracing::{debug, info, instrument, trace, warn, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
-use crate::hive::node::{Evaluatable, Push};
+use crate::hive::node::{should_apply_locally, Evaluatable, Push};
 use crate::{create_ssh_command, HiveLibError};
 
 use super::node::{Name, Node};
@@ -163,6 +163,14 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error
 impl PushKeys for (&Name, &Node) {
     #[instrument(skip_all)]
     async fn push_keys(self, target: UploadKeyAt, span: &Span) -> Result<(), HiveLibError> {
+        if should_apply_locally(self.1.allow_local_deployment, &self.0.to_string()) {
+            warn!(
+                "SKIP STAGE FOR {}: Pushing keys locally is unimplemented",
+                self.0.to_string()
+            );
+            return Ok(());
+        }
+
         let agent_directory = match env::var_os("WIRE_KEY_AGENT") {
             Some(agent) => agent.into_string().unwrap(),
             None => panic!("WIRE_KEY_AGENT environment variable not set"),
