@@ -51,6 +51,12 @@ in {
       description = "Whether to build the system on the target host or not.";
     };
 
+    allowLocalDeployment = lib.mkOption {
+      type = types.bool;
+      default = true;
+      description = "No-op, colmena compatibility right now.";
+    };
+
     tags = lib.mkOption {
       type = types.listOf types.str;
       default = [];
