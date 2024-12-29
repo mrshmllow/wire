@@ -83,3 +83,8 @@ pub enum HiveLibError {
     #[error("an operation failed in regards to buffers")]
     BufferOperationError(#[source] tokio::io::Error),
 }
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct SubCommandModifiers {
+    pub show_trace: bool,
+}

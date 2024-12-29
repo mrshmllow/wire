@@ -1,6 +1,7 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::missing_panics_doc)]
 use crate::cli::Cli;
+use crate::cli::ToSubCommandModifiers;
 use clap::Parser;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use indicatif::style::ProgressStyle;
@@ -28,6 +29,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let _profiler = dhat::Profiler::new_heap();
 
     let args = Cli::parse();
+    let modifiers = args.to_subcommand_modifiers();
     setup_logging(args.no_progress, &args.verbose);
 
     if args.markdown_help {
@@ -35,7 +37,7 @@ async fn main() -> Result<(), anyhow::Error> {
         return Ok(());
     }
 
-    let hive = Hive::new_from_path(args.path.as_path()).await?;
+    let hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
 
     match args.command {
         cli::Commands::Apply {
@@ -43,7 +45,7 @@ async fn main() -> Result<(), anyhow::Error> {
             on,
             parallel,
             no_keys,
-        } => apply::apply(hive, goal.try_into()?, on, parallel, no_keys).await?,
+        } => apply::apply(hive, goal.try_into()?, on, parallel, no_keys, modifiers).await?,
         cli::Commands::Inspect { online: _, json } => println!(
             "{}",
             if json {

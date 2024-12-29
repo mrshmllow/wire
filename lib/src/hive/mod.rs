@@ -6,7 +6,7 @@ use tracing::{debug, error, info, instrument, trace};
 use serde::{Deserialize, Serialize};
 
 use crate::nix::{get_eval_command, EvalGoal};
-use crate::HiveLibError;
+use crate::{HiveLibError, SubCommandModifiers};
 pub mod key;
 pub mod node;
 
@@ -23,12 +23,15 @@ pub enum Action<'a> {
 
 impl Hive {
     #[instrument]
-    pub async fn new_from_path(path: &Path) -> Result<Hive, HiveLibError> {
+    pub async fn new_from_path(
+        path: &Path,
+        modifiers: SubCommandModifiers,
+    ) -> Result<Hive, HiveLibError> {
         info!("Searching upwards for hive in {}", path.display());
         let filepath = find_hive(path).ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
         info!("Using hive {}", filepath.display());
 
-        let command = get_eval_command(&filepath, &EvalGoal::Inspect)
+        let command = get_eval_command(&filepath, &EvalGoal::Inspect, modifiers)
             .output()
             .await
             .map_err(HiveLibError::NixExecError)?;
@@ -98,7 +101,9 @@ mod tests {
         let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
         path.push("test_hive_file");
 
-        let hive = Hive::new_from_path(&path).await.unwrap();
+        let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
+            .await
+            .unwrap();
 
         let node = Node {
             tags: im::HashSet::new(),
@@ -125,7 +130,9 @@ mod tests {
         let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
         path.push("non_trivial_hive");
 
-        let hive = Hive::new_from_path(&path).await.unwrap();
+        let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
+            .await
+            .unwrap();
 
         let node = Node {
             tags: im::HashSet::new(),
@@ -162,7 +169,7 @@ mod tests {
         path.push("no_nixpkgs");
 
         assert!(matches!(
-            Hive::new_from_path(&path).await,
+            Hive::new_from_path(&path, SubCommandModifiers::default()).await,
             Err(HiveLibError::NixEvalError(..))
         ));
     }
@@ -174,7 +181,7 @@ mod tests {
         path.push("_keys_should_fail");
 
         assert!(matches!(
-            Hive::new_from_path(&path).await,
+            Hive::new_from_path(&path, SubCommandModifiers::default()).await,
             Err(HiveLibError::NixEvalError(..))
         ));
     }

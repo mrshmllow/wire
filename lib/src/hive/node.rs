@@ -9,6 +9,7 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::create_ssh_command;
 use crate::nix::{get_eval_command, EvalGoal, StreamTracing};
+use crate::SubCommandModifiers;
 
 use super::key::{Key, PushKeys, UploadKeyAt};
 use super::HiveLibError;
@@ -53,12 +54,14 @@ pub trait Evaluatable {
     fn evaluate(
         self,
         hivepath: PathBuf,
+        modifiers: SubCommandModifiers,
     ) -> impl std::future::Future<Output = Result<Derivation, HiveLibError>> + Send;
 
     fn build(
         self,
         hivepath: PathBuf,
         span: &Span,
+        modifiers: SubCommandModifiers,
     ) -> impl std::future::Future<Output = Result<String, HiveLibError>> + Send;
 
     fn achieve_goal(
@@ -67,6 +70,7 @@ pub trait Evaluatable {
         span: Span,
         goal: &Goal,
         no_keys: bool,
+        modifiers: SubCommandModifiers,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 
     fn switch_to_configuration(
@@ -74,12 +78,14 @@ pub trait Evaluatable {
         hivepath: PathBuf,
         span: &Span,
         goal: &SwitchToConfigurationGoal,
+        modifiers: SubCommandModifiers,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 
     fn eval_and_push(
         self,
         hivepath: PathBuf,
         span: &Span,
+        modifiers: SubCommandModifiers,
     ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
 
     fn push(
@@ -116,8 +122,12 @@ pub enum Goal {
 
 impl Evaluatable for (&Name, &Node) {
     /// Evaluate the node and returns the top level Deriviation
-    async fn evaluate(self, hivepath: PathBuf) -> Result<Derivation, HiveLibError> {
-        let mut command = get_eval_command(&hivepath, &EvalGoal::GetTopLevel(self.0));
+    async fn evaluate(
+        self,
+        hivepath: PathBuf,
+        modifiers: SubCommandModifiers,
+    ) -> Result<Derivation, HiveLibError> {
+        let mut command = get_eval_command(&hivepath, &EvalGoal::GetTopLevel(self.0), modifiers);
 
         let (status, stdout_vec, stderr) = command
             .execute(true)
@@ -176,9 +186,14 @@ impl Evaluatable for (&Name, &Node) {
 
     /// Builds the evaluated node remotely or locally. Pushes the derivation / the build output as required.
     #[instrument(skip_all)]
-    async fn build(self, hivepath: PathBuf, span: &Span) -> Result<String, HiveLibError> {
+    async fn build(
+        self,
+        hivepath: PathBuf,
+        span: &Span,
+        modifiers: SubCommandModifiers,
+    ) -> Result<String, HiveLibError> {
         span.pb_inc_length(2);
-        let top_level = self.evaluate(hivepath).await?;
+        let top_level = self.evaluate(hivepath, modifiers).await?;
         span.pb_inc(1);
 
         info!("Top level: {top_level}");
@@ -231,9 +246,14 @@ impl Evaluatable for (&Name, &Node) {
     }
 
     #[instrument(skip_all)]
-    async fn eval_and_push(self, hivepath: PathBuf, span: &Span) -> Result<(), HiveLibError> {
+    async fn eval_and_push(
+        self,
+        hivepath: PathBuf,
+        span: &Span,
+        modifiers: SubCommandModifiers,
+    ) -> Result<(), HiveLibError> {
         span.pb_inc_length(1);
-        let top_level = self.evaluate(hivepath).await?;
+        let top_level = self.evaluate(hivepath, modifiers).await?;
         span.pb_inc(1);
 
         self.push(span, Push::Derivation(&top_level)).await?;
@@ -247,8 +267,9 @@ impl Evaluatable for (&Name, &Node) {
         hivepath: PathBuf,
         span: &Span,
         goal: &SwitchToConfigurationGoal,
+        modifiers: SubCommandModifiers,
     ) -> Result<(), HiveLibError> {
-        let built_path = self.build(hivepath, span).await?;
+        let built_path = self.build(hivepath, span, modifiers).await?;
 
         span.pb_inc_length(1);
 
@@ -290,6 +311,7 @@ impl Evaluatable for (&Name, &Node) {
         span: Span,
         goal: &Goal,
         no_keys: bool,
+        modifiers: SubCommandModifiers,
     ) -> Result<(), HiveLibError> {
         match goal {
             Goal::SwitchToConfiguration(goal) => {
@@ -299,7 +321,8 @@ impl Evaluatable for (&Name, &Node) {
                     self.push_keys(UploadKeyAt::PreActivation, &span).await?;
                 }
 
-                self.switch_to_configuration(hivepath, &span, goal).await?;
+                self.switch_to_configuration(hivepath, &span, goal, modifiers)
+                    .await?;
 
                 if let SwitchToConfigurationGoal::Switch = goal
                     && !no_keys
@@ -310,11 +333,11 @@ impl Evaluatable for (&Name, &Node) {
                 Ok(())
             }
             Goal::Build => {
-                self.build(hivepath, &span).await?;
+                self.build(hivepath, &span, modifiers).await?;
 
                 Ok(())
             }
-            Goal::Push => self.eval_and_push(hivepath, &span).await,
+            Goal::Push => self.eval_and_push(hivepath, &span, modifiers).await,
             Goal::Keys => self.push_keys(UploadKeyAt::All, &span).await,
         }
     }

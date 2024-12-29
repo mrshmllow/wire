@@ -10,7 +10,7 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::hive::node::Name;
 use crate::nix_log::{Action, Internal, NixLog, Trace};
-use crate::HiveLibError;
+use crate::{HiveLibError, SubCommandModifiers};
 
 lazy_static! {
     static ref DIGEST_RE: Regex = Regex::new(r"[0-9a-z]{32}").unwrap();
@@ -42,7 +42,11 @@ fn check_nix_available() -> bool {
     }
 }
 
-pub fn get_eval_command(path: &Path, goal: &EvalGoal) -> tokio::process::Command {
+pub fn get_eval_command(
+    path: &Path,
+    goal: &EvalGoal,
+    modifiers: SubCommandModifiers,
+) -> tokio::process::Command {
     let runtime = match env::var_os("WIRE_RUNTIME") {
         Some(runtime) => runtime.into_string().unwrap(),
         None => panic!("WIRE_RUNTIME environment variable not set"),
@@ -55,7 +59,11 @@ pub fn get_eval_command(path: &Path, goal: &EvalGoal) -> tokio::process::Command
     let mut command = tokio::process::Command::new("nix");
     command.args(["--extra-experimental-features", "nix-command"]);
     command.args(["--extra-experimental-features", "flakes"]);
-    command.args(["eval", "--json", "--impure", "--show-trace", "--expr"]);
+    command.args(["eval", "--json", "--impure"]);
+    if modifiers.show_trace {
+        command.arg("--show-trace");
+    }
+    command.args(["--expr"]);
 
     command.arg(format!(
         "let flake = {flake}; evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = \

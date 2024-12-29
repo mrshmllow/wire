@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
 use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
+use lib::SubCommandModifiers;
 
 use std::{
     fmt::{self, Display, Formatter},
@@ -28,6 +29,10 @@ pub struct Cli {
     /// Hide progress bars
     #[arg(long, global = true, default_value_t = false)]
     pub no_progress: bool,
+
+    /// Show trace logs
+    #[arg(long, global = true, default_value_t = false)]
+    pub show_trace: bool,
 
     #[arg(long, hide = true, global = true)]
     pub markdown_help: bool,
@@ -140,6 +145,18 @@ impl TryFrom<Goal> for HiveGoal {
                 SwitchToConfigurationGoal::DryActivate,
             )),
             Goal::Keys => Ok(HiveGoal::Keys),
+        }
+    }
+}
+
+pub trait ToSubCommandModifiers {
+    fn to_subcommand_modifiers(&self) -> SubCommandModifiers;
+}
+
+impl ToSubCommandModifiers for Cli {
+    fn to_subcommand_modifiers(&self) -> SubCommandModifiers {
+        SubCommandModifiers {
+            show_trace: self.show_trace,
         }
     }
 }

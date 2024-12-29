@@ -3,7 +3,7 @@ use indicatif::ProgressStyle;
 use itertools::Itertools;
 use lib::hive::node::{Evaluatable, Goal};
 use lib::hive::Hive;
-use lib::HiveLibError;
+use lib::{HiveLibError, SubCommandModifiers};
 use std::collections::HashSet;
 use tracing::{error, info, instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
@@ -17,6 +17,7 @@ pub async fn apply(
     on: Vec<ApplyTarget>,
     parallel: usize,
     no_keys: bool,
+    modifiers: SubCommandModifiers,
 ) -> Result<(), HiveLibError> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
@@ -47,7 +48,7 @@ pub async fn apply(
 
             info!("Resolved {on:?} to include {}", node.0);
 
-            node.achieve_goal(path, span, &goal, no_keys)
+            node.achieve_goal(path, span, &goal, no_keys, modifiers)
         })
         .peekable();
 
