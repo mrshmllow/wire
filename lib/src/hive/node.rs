@@ -377,7 +377,7 @@ impl Evaluatable for (&Name, &Node) {
                 Ok(())
             }
             Goal::Push => self.eval_and_push(hivepath, &span, modifiers).await,
-            Goal::Keys => self.push_keys(UploadKeyAt::All, &span).await,
+            Goal::Keys => self.push_keys(UploadKeyAt::AnyOpportunity, &span).await,
         }
     }
 }

@@ -48,7 +48,7 @@ pub enum UploadKeyAt {
     #[serde(rename = "post-activation")]
     PostActivation,
     #[serde(skip)]
-    All,
+    AnyOpportunity,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
@@ -185,8 +185,8 @@ impl PushKeys for (&Name, &Node) {
             .keys
             .iter()
             .filter(|key| {
-                target == UploadKeyAt::All
-                    || (target != UploadKeyAt::All && key.upload_at != target)
+                target == UploadKeyAt::AnyOpportunity
+                    || (target != UploadKeyAt::AnyOpportunity && key.upload_at != target)
             })
             .map(|key| async move { process_key(key).await });
 
