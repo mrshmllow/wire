@@ -22,7 +22,7 @@
       })
       nixosConfigurations);
 
-  nodeNames = with builtins; filter (name: !elem name ["meta" "defaults"]) (attrNames mergedHive);
+  nodeNames = builtins.filter (name: !builtins.elem name ["meta" "defaults"]) (builtins.attrNames mergedHive);
 
   resolvedNixpkgs =
     if mergedHive.meta ? "nixpkgs"
