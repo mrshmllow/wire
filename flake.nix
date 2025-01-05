@@ -13,7 +13,6 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
-    catppuccin.url = "github:catppuccin/mdBook";
     nixos-shell.url = "github:Mic92/nixos-shell";
     flake-compat.url = "github:edolstra/flake-compat";
   };
@@ -24,7 +23,6 @@
     crane,
     devenv,
     fenix,
-    catppuccin,
     nixos-shell,
     ...
   } @ inputs: let
@@ -89,7 +87,6 @@
         };
 
       docs = nixpkgs.legacyPackages.${system}.callPackage ./doc {
-        inherit catppuccin;
         inherit (self.packages.${system}) wire;
       };
 
@@ -122,7 +119,7 @@
                 PROTOC = nixpkgs.lib.getExe pkgs.protobuf;
               };
 
-              packages = with pkgs; [mdbook catppuccin.packages.${system}.default protobuf just pkgs.nixos-shell];
+              packages = with pkgs; [mdbook protobuf just pkgs.nixos-shell];
 
               pre-commit.hooks = {
                 clippy.enable = true;

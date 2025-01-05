@@ -1,6 +1,5 @@
 {
   pkgs,
-  catppuccin,
   lib,
   nixosOptionsDoc,
   runCommand,
@@ -35,7 +34,7 @@
 in
   pkgs.stdenv.mkDerivation {
     name = "wire-docs";
-    buildInputs = with pkgs; [mdbook catppuccin.packages.${pkgs.system}.default];
+    buildInputs = with pkgs; [mdbook mdbook-alerts];
     src = ./.;
     buildPhase = ''
       cat ${optionsDoc} >> ./src/modules/README.md
