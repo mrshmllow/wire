@@ -21,7 +21,7 @@ wire
 ├── intergration-testing
 │  └── Integration tests using nixos tests
 └──tests
-   └── Directories during cargo tests
+   └── Directories used during cargo tests
 ```
 
 ## Local testing
