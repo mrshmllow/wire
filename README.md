@@ -18,19 +18,13 @@ wire
 │  └── an [mdBook](https://rust-lang.github.io/mdBook/)
 ├── runtime
 │  └── Nix files used during runtime to evaluate nodes
-├── tests
-│  └── Directories during cargo tests
-└── local-testing
-   └── To be removed
+├── intergration-testing
+│  └── Integration tests using nixos tests
+└──tests
+   └── Directories during cargo tests
 ```
 
 ## Local testing
-
-### Starting development virtual machines
-
-```sh
-$ just up
-```
 
 ### dhat profiling
 
@@ -42,4 +36,5 @@ $ just built-dhat
 
 ```sh
 $ cargo test
+$ nix flake check --impure
 ```
