@@ -15,6 +15,7 @@
     };
     catppuccin.url = "github:catppuccin/mdBook";
     nixos-shell.url = "github:Mic92/nixos-shell";
+    flake-compat.url = "github:edolstra/flake-compat";
   };
 
   outputs = {
@@ -94,6 +95,15 @@
 
       default = self.packages.${system}.wire;
     });
+
+    checks = forAllSystems (
+      system: {
+        nixos-tests = import ./intergration-testing/default.nix {
+          inherit (self.packages.${system}) wire;
+          pkgs = nixpkgs.legacyPackages.${system};
+        };
+      }
+    );
 
     devShells = forAllSystems (system: {
       default = let

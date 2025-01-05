@@ -15,9 +15,9 @@
   };
 
   # virtualisation.useNixStoreImage = true;
-  virtualisation.useBootLoader = true;
+  # virtualisation.useBootLoader = true;
 
-  boot.loader.grub.enable = false;
+  # boot.loader.grub.enable = false;
 
   system.stateVersion = "24.05";
 }
