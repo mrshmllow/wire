@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use futures::future::join_all;
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -10,13 +11,12 @@ use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{debug, info, instrument, trace, warn, Span};
-use tracing_indicatif::span_ext::IndicatifSpanExt;
+use tracing::{debug, info, trace, warn, Span};
 
-use crate::hive::node::{should_apply_locally, Evaluatable, Push};
+use crate::hive::node::{should_apply_locally, Push};
 use crate::{create_ssh_command, HiveLibError};
 
-use super::node::{Name, Node};
+use super::node::{push, Context, ExecuteStep, Goal, StepOutput};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -160,33 +160,54 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error
     ))
 }
 
-impl PushKeys for (&Name, &Node) {
-    #[instrument(skip_all)]
-    async fn push_keys(self, target: UploadKeyAt, span: &Span) -> Result<(), HiveLibError> {
-        if should_apply_locally(self.1.allow_local_deployment, &self.0.to_string()) {
-            warn!(
-                "SKIP STAGE FOR {}: Pushing keys locally is unimplemented",
-                self.0.to_string()
-            );
-            return Ok(());
-        }
+pub struct UploadKeyStep {
+    pub moment: UploadKeyAt,
+}
+pub struct PushKeyAgentStep;
+pub struct PushKeyAgentOutput(String);
 
-        let agent_directory = match env::var_os("WIRE_KEY_AGENT") {
-            Some(agent) => agent.into_string().unwrap(),
-            None => panic!("WIRE_KEY_AGENT environment variable not set"),
-        };
+fn should_execute(moment: &UploadKeyAt, ctx: &Context) -> bool {
+    if ctx.no_keys {
+        return false;
+    }
+    if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+        warn!(
+            "SKIP STEP FOR {}: Pushing keys locally is unimplemented",
+            ctx.name.to_string()
+        );
+        return false;
+    }
 
-        span.pb_inc_length(2);
-        self.push(span, Push::Path(&agent_directory)).await?;
-        span.pb_inc(1);
+    if *moment == UploadKeyAt::AnyOpportunity && matches!(ctx.goal, Goal::Keys) {
+        return true;
+    }
 
-        let futures = self
-            .1
+    matches!(
+        ctx.goal,
+        Goal::SwitchToConfiguration(super::node::SwitchToConfigurationGoal::Switch)
+    )
+}
+
+#[async_trait]
+impl ExecuteStep for UploadKeyStep {
+    fn should_execute(&self, ctx: &Context) -> bool {
+        should_execute(&self.moment, ctx)
+    }
+
+    fn name(&self) -> &'static str {
+        "Upload key"
+    }
+
+    async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
+        let agent_directory = ctx.state.get_key_agent_directory().unwrap();
+
+        let futures = ctx
+            .node
             .keys
             .iter()
             .filter(|key| {
-                target == UploadKeyAt::AnyOpportunity
-                    || (target != UploadKeyAt::AnyOpportunity && key.upload_at != target)
+                self.moment == UploadKeyAt::AnyOpportunity
+                    || (self.moment != UploadKeyAt::AnyOpportunity && key.upload_at != self.moment)
             })
             .map(|key| async move { process_key(key).await });
 
@@ -204,11 +225,11 @@ impl PushKeys for (&Name, &Node) {
 
         let buf = msg.encode_to_vec();
 
-        let mut command = create_ssh_command(&self.1.target, true);
+        let mut command = create_ssh_command(&ctx.node.target, true);
 
         let mut child = command
             .args([
-                format!("{agent_directory}/bin/key_agent"),
+                format!("{}/bin/key_agent", agent_directory.0),
                 buf.len().to_string(),
             ])
             .stdout(Stdio::piped())
@@ -230,7 +251,7 @@ impl PushKeys for (&Name, &Node) {
             .map_err(HiveLibError::SpawnFailed)?;
 
         if output.status.success() {
-            info!("Successfully pushed keys to {}", self.0);
+            info!("Successfully pushed keys to {}", ctx.name);
             trace!("Agent stdout: {}", String::from_utf8_lossy(&output.stdout));
 
             return Ok(());
@@ -239,11 +260,38 @@ impl PushKeys for (&Name, &Node) {
         let stderr = String::from_utf8_lossy(&output.stderr);
 
         Err(HiveLibError::KeyCommandError(
-            self.0.clone(),
+            ctx.name.clone(),
             stderr
                 .split('\n')
                 .map(std::string::ToString::to_string)
                 .collect(),
         ))
+    }
+}
+
+#[async_trait]
+impl ExecuteStep for PushKeyAgentStep {
+    fn should_execute(&self, ctx: &Context) -> bool {
+        should_execute(&UploadKeyAt::AnyOpportunity, ctx)
+    }
+
+    fn name(&self) -> &'static str {
+        "Push the key agent"
+    }
+
+    async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
+        let agent_directory = match env::var_os("WIRE_KEY_AGENT") {
+            Some(agent) => agent.into_string().unwrap(),
+            None => panic!("WIRE_KEY_AGENT environment variable not set"),
+        };
+
+        push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
+
+        ctx.state
+            .insert(StepOutput::KeyAgentDirectory(PushKeyAgentOutput(
+                agent_directory,
+            )));
+
+        Ok(())
     }
 }

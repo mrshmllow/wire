@@ -3,7 +3,7 @@
 #![allow(clippy::must_use_candidate)]
 use hive::{
     key::Error,
-    node::{Name, Target},
+    node::{Name, SwitchToConfigurationGoal, Target},
 };
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
@@ -59,6 +59,9 @@ pub enum HiveLibError {
 
     #[error("failed to build node {0} (last 20 lines):\n{}", format_error_lines(.1))]
     NixBuildError(Name, Vec<String>),
+
+    #[error("failed to run switch-to-configuration {0} on node {1} (last 20 lines):\n{}", format_error_lines(.2))]
+    SwitchToConfigurationError(SwitchToConfigurationGoal, Name, Vec<String>),
 
     #[error("failed to push keys to {0} (last 20 lines):\n{}", format_error_lines(.1))]
     KeyCommandError(Name, Vec<String>),

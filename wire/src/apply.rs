@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use indicatif::ProgressStyle;
 use itertools::Itertools;
-use lib::hive::node::{Evaluatable, Goal};
+use lib::hive::node::{Context, Goal, GoalExecutor, StepState};
 use lib::hive::Hive;
 use lib::{HiveLibError, SubCommandModifiers};
 use std::collections::HashSet;
@@ -48,11 +48,21 @@ pub async fn apply(
         })
         .map(|node| {
             let path = hive.path.clone();
-            let span = header_span.clone();
+            // let span = header_span.clone();
 
             info!("Resolved {on:?} to include {}", node.0);
 
-            node.achieve_goal(path, span, &goal, no_keys, modifiers)
+            let context = Context {
+                node: node.1,
+                name: node.0,
+                goal,
+                state: StepState::default(),
+                no_keys,
+                hivepath: path,
+                modifiers,
+            };
+
+            GoalExecutor::new(context).execute()
         })
         .peekable();
 
