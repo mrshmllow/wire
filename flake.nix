@@ -72,12 +72,20 @@
             inherit cargoArtifacts;
             pname = "wire";
             cargoExtraArgs = "-p wire";
+            nativeBuildInputs = [pkgs.installShellFiles];
+            postInstall = ''
+              $out/bin/wire apply --generate-completions bash > wire.bash
+              $out/bin/wire apply --generate-completions fish > wire.fish
+              $out/bin/wire apply --generate-completions zsh > wire.zsh
+              installShellCompletion wire.{bash,fish,zsh}
+            '';
           });
       in
         pkgs.symlinkJoin {
           name = "wire";
           paths = [package];
           buildInputs = [pkgs.makeWrapper];
+          nativeBuildInputs = [pkgs.installShellFiles];
           postBuild = ''
             wrapProgram $out/bin/wire --set WIRE_RUNTIME ${./runtime} --set WIRE_KEY_AGENT ${agent}
           '';

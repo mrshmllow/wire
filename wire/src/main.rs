@@ -2,10 +2,15 @@
 #![allow(clippy::missing_panics_doc)]
 use crate::cli::Cli;
 use crate::cli::ToSubCommandModifiers;
+use anyhow::Ok;
+use clap::CommandFactory;
 use clap::Parser;
+use clap_complete::Shell;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
+use cli::print_completions;
 use indicatif::style::ProgressStyle;
 use lib::hive::Hive;
+use tracing::info;
 use tracing::warn;
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
@@ -29,11 +34,17 @@ async fn main() -> Result<(), anyhow::Error> {
     let _profiler = dhat::Profiler::new_heap();
 
     let args = Cli::parse();
+
     let modifiers = args.to_subcommand_modifiers();
     setup_logging(args.no_progress, &args.verbose);
 
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();
+        return Ok(());
+    } else if let Some(generator) = args.generate_completions {
+        let mut cmd = Cli::command();
+        info!("Printing completion for {generator}...");
+        print_completions(generator, &mut cmd);
         return Ok(());
     }
 
