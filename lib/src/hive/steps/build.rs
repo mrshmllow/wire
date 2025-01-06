@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::{info, Instrument};
@@ -12,14 +14,16 @@ use crate::{
 pub struct Step;
 pub struct Output(pub String);
 
+impl Display for Step {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Build the node")
+    }
+}
+
 #[async_trait]
 impl ExecuteStep for Step {
     fn should_execute(&self, ctx: &Context) -> bool {
         !matches!(ctx.goal, Goal::Keys | Goal::Push)
-    }
-
-    fn name(&self) -> &'static str {
-        "Build the node"
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

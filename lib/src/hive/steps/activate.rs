@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use async_trait::async_trait;
 use tokio::process::Command;
 use tracing::{info, warn, Instrument};
@@ -12,14 +14,16 @@ use crate::{
 
 pub struct SwitchToConfigurationStep;
 
+impl Display for SwitchToConfigurationStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Switch to configuration")
+    }
+}
+
 #[async_trait]
 impl ExecuteStep for SwitchToConfigurationStep {
     fn should_execute(&self, ctx: &Context) -> bool {
         matches!(ctx.goal, Goal::SwitchToConfiguration(..))
-    }
-
-    fn name(&self) -> &'static str {
-        "Switch to configuration"
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

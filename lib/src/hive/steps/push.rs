@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use async_trait::async_trait;
 use tracing::warn;
 
@@ -9,14 +11,22 @@ use crate::{
 pub struct EvaluatedOutputStep;
 pub struct BuildOutputStep;
 
+impl Display for EvaluatedOutputStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Push the evaluated output")
+    }
+}
+
+impl Display for BuildOutputStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Push the build output")
+    }
+}
+
 #[async_trait]
 impl ExecuteStep for EvaluatedOutputStep {
     fn should_execute(&self, ctx: &Context) -> bool {
         !matches!(ctx.goal, Goal::Keys) && ctx.node.build_remotely
-    }
-
-    fn name(&self) -> &'static str {
-        "Push the evaluated output"
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
@@ -43,10 +53,6 @@ impl ExecuteStep for BuildOutputStep {
             // if we are not building remotely, and we are not apply locally, push the output
             && (ctx.node.build_remotely
                 || should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.0))
-    }
-
-    fn name(&self) -> &'static str {
-        "Push the build output"
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

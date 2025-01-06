@@ -3,6 +3,7 @@ use futures::future::join_all;
 use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::fmt::Display;
 use std::pin::Pin;
 use std::process::{ExitStatus, Stdio};
 use std::str::from_utf8;
@@ -166,6 +167,18 @@ pub struct UploadKeyStep {
 pub struct PushKeyAgentStep;
 pub struct PushKeyAgentOutput(String);
 
+impl Display for UploadKeyStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Upload key @ {:?}", self.moment)
+    }
+}
+
+impl Display for PushKeyAgentStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Push the key agent")
+    }
+}
+
 fn should_execute(moment: &UploadKeyAt, ctx: &Context) -> bool {
     if ctx.no_keys {
         return false;
@@ -192,10 +205,6 @@ fn should_execute(moment: &UploadKeyAt, ctx: &Context) -> bool {
 impl ExecuteStep for UploadKeyStep {
     fn should_execute(&self, ctx: &Context) -> bool {
         should_execute(&self.moment, ctx)
-    }
-
-    fn name(&self) -> &'static str {
-        "Upload key"
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
@@ -273,10 +282,6 @@ impl ExecuteStep for UploadKeyStep {
 impl ExecuteStep for PushKeyAgentStep {
     fn should_execute(&self, ctx: &Context) -> bool {
         should_execute(&UploadKeyAt::AnyOpportunity, ctx)
-    }
-
-    fn name(&self) -> &'static str {
-        "Push the key agent"
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

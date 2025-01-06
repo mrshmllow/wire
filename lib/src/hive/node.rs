@@ -7,7 +7,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tracing::{info_span, warn, Instrument};
+use tracing::{error, info_span, trace, warn, Instrument};
 
 use crate::nix::StreamTracing;
 use crate::SubCommandModifiers;
@@ -85,12 +85,10 @@ pub enum Goal {
 }
 
 #[async_trait]
-pub trait ExecuteStep: Send + Sync {
+pub trait ExecuteStep: Send + Sync + Display {
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError>;
 
     fn should_execute(&self, context: &Context) -> bool;
-
-    fn name(&self) -> &'static str;
 }
 
 pub enum StepOutput {
@@ -189,13 +187,18 @@ impl<'a> GoalExecutor<'a> {
     }
 
     pub async fn execute(mut self) -> Result<(), HiveLibError> {
-        for step in self.steps {
-            if step.should_execute(&self.context) {
-                warn!("Executing step {}", step.name());
-                step.execute(&mut self.context).await?;
-            } else {
-                warn!("Skipping step {}", step.name());
-            }
+        for step in self
+            .steps
+            .iter()
+            .filter(|step| step.should_execute(&self.context))
+            .inspect(|step| trace!("Will execute step `{step}` for {}", self.context.name))
+            .collect::<Vec<_>>()
+        {
+            warn!("Executing step `{step}`");
+
+            step.execute(&mut self.context).await.inspect_err(|_| {
+                error!("Failed to execute `{step}`");
+            })?;
         }
 
         Ok(())
