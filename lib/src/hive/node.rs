@@ -7,7 +7,8 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tracing::{error, info_span, trace, warn, Instrument};
+use tracing::{error, instrument, trace, warn, Instrument, Span};
+use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::nix::StreamTracing;
 use crate::SubCommandModifiers;
@@ -186,19 +187,25 @@ impl<'a> GoalExecutor<'a> {
         }
     }
 
-    pub async fn execute(mut self) -> Result<(), HiveLibError> {
-        for step in self
+    #[instrument(skip_all, name = "goal", fields(node = %self.context.name))]
+    pub async fn execute(mut self, span: Span) -> Result<(), HiveLibError> {
+        let steps = self
             .steps
             .iter()
             .filter(|step| step.should_execute(&self.context))
             .inspect(|step| trace!("Will execute step `{step}` for {}", self.context.name))
-            .collect::<Vec<_>>()
-        {
+            .collect::<Vec<_>>();
+
+        span.pb_inc_length(steps.len().try_into().unwrap());
+
+        for step in steps {
             warn!("Executing step `{step}`");
 
             step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");
             })?;
+
+            span.pb_inc(1);
         }
 
         Ok(())
@@ -221,8 +228,7 @@ pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLi
         Push::Path(path) => command.arg(path),
     };
 
-    let (status, _stdout, stderr_vec) =
-        command.execute(true).instrument(info_span!("copy")).await?;
+    let (status, _stdout, stderr_vec) = command.execute(true).in_current_span().await?;
 
     if !status.success() {
         return Err(HiveLibError::NixCopyError(name.clone(), stderr_vec));

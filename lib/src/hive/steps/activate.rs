@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use async_trait::async_trait;
 use tokio::process::Command;
-use tracing::{info, warn, Instrument};
+use tracing::{info, instrument, warn, Instrument};
 use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::{
@@ -26,6 +26,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
         matches!(ctx.goal, Goal::SwitchToConfiguration(..))
     }
 
+    #[instrument(skip_all, name = "switch")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let built_path = ctx.state.get_build().unwrap();
 
@@ -67,8 +68,6 @@ impl ExecuteStep for SwitchToConfigurationStep {
         });
 
         let (status, _, stderr_vec) = command.execute(true).in_current_span().await?;
-
-        // span.pb_inc(1);
 
         if status.success() {
             info!("Done");

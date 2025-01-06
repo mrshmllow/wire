@@ -48,7 +48,7 @@ pub async fn apply(
         })
         .map(|node| {
             let path = hive.path.clone();
-            // let span = header_span.clone();
+            let span = header_span.clone();
 
             info!("Resolved {on:?} to include {}", node.0);
 
@@ -62,7 +62,8 @@ pub async fn apply(
                 modifiers,
             };
 
-            GoalExecutor::new(context).execute()
+            GoalExecutor::new(context)
+                .execute(span)
         })
         .peekable();
 

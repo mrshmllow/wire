@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use async_trait::async_trait;
 use tokio::process::Command;
-use tracing::{info, Instrument};
+use tracing::{info, instrument, Instrument};
 
 use crate::{
     create_ssh_command,
@@ -26,6 +26,7 @@ impl ExecuteStep for Step {
         !matches!(ctx.goal, Goal::Keys | Goal::Push)
     }
 
+    #[instrument(skip_all, name = "build")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let top_level = ctx.state.get_evaluation().unwrap();
 
@@ -45,8 +46,6 @@ impl ExecuteStep for Step {
             .arg(top_level.0.to_string());
 
         let (status, stdout, stderr_vec) = command.execute(true).in_current_span().await?;
-
-        // span.pb_inc(1);
 
         if status.success() {
             info!("Built output: {stdout:?}", stdout = stdout);

@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use async_trait::async_trait;
-use tracing::warn;
+use tracing::{instrument, warn};
 
 use crate::{
     hive::node::{push, should_apply_locally, Context, ExecuteStep, Goal},
@@ -29,6 +29,7 @@ impl ExecuteStep for EvaluatedOutputStep {
         !matches!(ctx.goal, Goal::Keys) && ctx.node.build_remotely
     }
 
+    #[instrument(skip_all, name = "push_eval")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let top_level = ctx.state.get_evaluation().unwrap();
 
@@ -55,6 +56,7 @@ impl ExecuteStep for BuildOutputStep {
                 || should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.0))
     }
 
+    #[instrument(skip_all, name = "push_build")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let built_path = ctx.state.get_build().unwrap();
 

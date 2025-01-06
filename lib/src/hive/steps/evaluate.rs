@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use async_trait::async_trait;
-use tracing::{info_span, Instrument};
+use tracing::{instrument, Instrument};
 
 use crate::{
     hive::node::{Context, Derivation, ExecuteStep, Goal, StepOutput},
@@ -24,6 +24,7 @@ impl ExecuteStep for Step {
         !matches!(ctx.goal, Goal::Keys)
     }
 
+    #[instrument(skip_all, name = "eval")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let mut command = get_eval_command(
             &ctx.hivepath,
@@ -31,10 +32,7 @@ impl ExecuteStep for Step {
             ctx.modifiers,
         );
 
-        let (status, stdout_vec, stderr) = command
-            .execute(true)
-            .instrument(info_span!("evaluate"))
-            .await?;
+        let (status, stdout_vec, stderr) = command.execute(true).in_current_span().await?;
 
         if status.success() {
             let stdout: Vec<String> = stdout_vec
