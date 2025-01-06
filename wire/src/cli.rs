@@ -75,7 +75,7 @@ pub enum Commands {
         goal: Goal,
 
         /// List of literal node names or `@` prefixed tags.
-        #[arg(short, long)]
+        #[arg(short, long, value_name = "NODE | @TAG", num_args = 1..)]
         on: Vec<ApplyTarget>,
 
         #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
@@ -85,8 +85,8 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         no_keys: bool,
 
-        /// Overrides deployment.buildOnTarget. List of literal node names.
-        #[arg(short, long)]
+        /// Overrides deployment.buildOnTarget.
+        #[arg(short, long, value_name = "NODE")]
         always_build_local: Vec<String>,
     },
     /// Inspect hive
