@@ -60,7 +60,7 @@ pub enum Push<'a> {
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Derivation(pub String);
+pub struct Derivation(String);
 
 impl Display for Derivation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

@@ -42,12 +42,12 @@ impl ExecuteStep for Step {
             .arg("build")
             .arg("--print-build-logs")
             .arg("--print-out-paths")
-            .arg(&top_level.0);
+            .arg(top_level.to_string());
 
         let (status, stdout, stderr_vec) = command.execute(true).in_current_span().await?;
 
         if status.success() {
-            info!("Built output: {stdout:?}", stdout = stdout);
+            info!("Built output: {stdout:?}");
 
             let stdout = stdout
                 .into_iter()
