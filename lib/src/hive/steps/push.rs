@@ -31,12 +31,12 @@ impl ExecuteStep for EvaluatedOutputStep {
 
     #[instrument(skip_all, name = "push_eval")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let top_level = ctx.state.get_evaluation().unwrap();
+        let top_level = ctx.state.evaluation.as_ref().unwrap();
 
         push(
             ctx.node,
             ctx.name,
-            crate::hive::node::Push::Derivation(&top_level.0),
+            crate::hive::node::Push::Derivation(top_level),
         ).await.inspect_err(|_| {
                 if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                     warn!("Remote push failed, but this node matches our local hostname ({0}). Perhaps you want to apply this node locally? Use `--always-build-local {0}` to override deployment.buildOnTarget", ctx.name.to_string());
@@ -61,12 +61,12 @@ impl ExecuteStep for BuildOutputStep {
 
     #[instrument(skip_all, name = "push_build")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let built_path = ctx.state.get_build().unwrap();
+        let built_path = ctx.state.build.as_ref().unwrap();
 
         push(
             ctx.node,
             ctx.name,
-            crate::hive::node::Push::Path(&built_path.0),
+            crate::hive::node::Push::Path(built_path),
         )
         .await
     }

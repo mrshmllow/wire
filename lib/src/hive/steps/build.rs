@@ -6,13 +6,12 @@ use tracing::{info, instrument, Instrument};
 
 use crate::{
     create_ssh_command,
-    hive::node::{Context, ExecuteStep, Goal, StepOutput},
+    hive::node::{Context, ExecuteStep, Goal},
     nix::StreamTracing,
     HiveLibError,
 };
 
 pub struct Step;
-pub struct Output(pub String);
 
 impl Display for Step {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -28,7 +27,7 @@ impl ExecuteStep for Step {
 
     #[instrument(skip_all, name = "build")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let top_level = ctx.state.get_evaluation().unwrap();
+        let top_level = ctx.state.evaluation.as_ref().unwrap();
 
         let mut command = if ctx.node.build_remotely {
             let mut command = create_ssh_command(&ctx.node.target, false);
@@ -43,7 +42,7 @@ impl ExecuteStep for Step {
             .arg("build")
             .arg("--print-build-logs")
             .arg("--print-out-paths")
-            .arg(top_level.0.to_string());
+            .arg(&top_level.0);
 
         let (status, stdout, stderr_vec) = command.execute(true).in_current_span().await?;
 
@@ -57,7 +56,7 @@ impl ExecuteStep for Step {
                 .collect::<Vec<String>>()
                 .join("\n");
 
-            ctx.state.insert(StepOutput::BuildOutput(Output(stdout)));
+            ctx.state.build = Some(stdout);
 
             return Ok(());
         }

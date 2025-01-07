@@ -17,7 +17,7 @@ use tracing::{debug, info, trace, warn, Span};
 use crate::hive::node::{should_apply_locally, Push};
 use crate::{create_ssh_command, HiveLibError};
 
-use super::node::{push, Context, ExecuteStep, Goal, StepOutput};
+use super::node::{push, Context, ExecuteStep, Goal};
 
 #[derive(Debug, Error)]
 pub enum Error {
@@ -165,7 +165,6 @@ pub struct UploadKeyStep {
     pub moment: UploadKeyAt,
 }
 pub struct PushKeyAgentStep;
-pub struct PushKeyAgentOutput(String);
 
 impl Display for UploadKeyStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -208,7 +207,7 @@ impl ExecuteStep for UploadKeyStep {
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let agent_directory = ctx.state.get_key_agent_directory().unwrap();
+        let agent_directory = ctx.state.key_agent_directory.as_ref().unwrap();
 
         let futures = ctx
             .node
@@ -238,7 +237,7 @@ impl ExecuteStep for UploadKeyStep {
 
         let mut child = command
             .args([
-                format!("{}/bin/key_agent", agent_directory.0),
+                format!("{agent_directory}/bin/key_agent"),
                 buf.len().to_string(),
             ])
             .stdout(Stdio::piped())
@@ -292,10 +291,7 @@ impl ExecuteStep for PushKeyAgentStep {
 
         push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
 
-        ctx.state
-            .insert(StepOutput::KeyAgentDirectory(PushKeyAgentOutput(
-                agent_directory,
-            )));
+        ctx.state.key_agent_directory = Some(agent_directory);
 
         Ok(())
     }

@@ -28,7 +28,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
     #[instrument(skip_all, name = "switch")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let built_path = ctx.state.get_build().unwrap();
+        let built_path = ctx.state.build.as_ref().unwrap();
 
         let Goal::SwitchToConfiguration(goal) = &ctx.goal else {
             unreachable!("Cannot reach as guarded by should_execute")
@@ -36,7 +36,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
         info!("Running switch-to-configuration {goal}");
 
-        let cmd = format!("{}/bin/switch-to-configuration", built_path.0);
+        let cmd = format!("{built_path}/bin/switch-to-configuration");
 
         let mut command =
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {

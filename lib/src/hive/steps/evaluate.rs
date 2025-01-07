@@ -4,12 +4,11 @@ use async_trait::async_trait;
 use tracing::{instrument, Instrument};
 
 use crate::{
-    hive::node::{Context, Derivation, ExecuteStep, Goal, StepOutput},
+    hive::node::{Context, Derivation, ExecuteStep, Goal},
     nix::{get_eval_command, EvalGoal, StreamTracing},
     HiveLibError,
 };
 
-pub struct Output(pub Derivation);
 pub struct Step;
 
 impl Display for Step {
@@ -44,7 +43,7 @@ impl ExecuteStep for Step {
             let derivation: Derivation =
                 serde_json::from_str(&stdout.join("\n")).expect("failed to parse derivation");
 
-            ctx.state.insert(StepOutput::Evaluation(Output(derivation)));
+            ctx.state.evaluation = Some(derivation);
 
             return Ok(());
         }

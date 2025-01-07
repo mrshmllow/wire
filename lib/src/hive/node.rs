@@ -2,18 +2,17 @@
 use async_trait::async_trait;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tracing::{error, instrument, trace, warn, Instrument, Span};
+use tracing::{error, info, instrument, trace, Instrument, Span};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::nix::StreamTracing;
 use crate::SubCommandModifiers;
 
-use super::key::{Key, PushKeyAgentOutput, PushKeyAgentStep, UploadKeyAt, UploadKeyStep};
+use super::key::{Key, PushKeyAgentStep, UploadKeyAt, UploadKeyStep};
 use super::steps::activate::SwitchToConfigurationStep;
 use super::HiveLibError;
 
@@ -92,60 +91,11 @@ pub trait ExecuteStep: Send + Sync + Display {
     fn should_execute(&self, context: &Context) -> bool;
 }
 
-pub enum StepOutput {
-    Evaluation(super::steps::evaluate::Output),
-    KeyAgentDirectory(PushKeyAgentOutput),
-    BuildOutput(super::steps::build::Output),
-}
-
-#[derive(PartialEq, Eq, Hash)]
-enum StepOutputKind {
-    Evaluation,
-    KeyAgentDirectory,
-    BuildOutput,
-}
-
 #[derive(Default)]
 pub struct StepState {
-    values: HashMap<StepOutputKind, StepOutput>,
-}
-
-impl StepState {
-    pub fn insert(&mut self, value: StepOutput) {
-        self.values.insert(
-            match value {
-                StepOutput::Evaluation(_) => StepOutputKind::Evaluation,
-                StepOutput::KeyAgentDirectory(_) => StepOutputKind::KeyAgentDirectory,
-                StepOutput::BuildOutput(_) => StepOutputKind::BuildOutput,
-            },
-            value,
-        );
-    }
-
-    fn get(&self, kind: &StepOutputKind) -> Option<&StepOutput> {
-        self.values.get(kind)
-    }
-
-    pub fn get_evaluation(&self) -> Option<&super::steps::evaluate::Output> {
-        match self.get(&StepOutputKind::Evaluation) {
-            Some(StepOutput::Evaluation(evaluation)) => Some(evaluation),
-            _ => None,
-        }
-    }
-
-    pub fn get_build(&self) -> Option<&super::steps::build::Output> {
-        match self.get(&StepOutputKind::BuildOutput) {
-            Some(StepOutput::BuildOutput(value)) => Some(value),
-            _ => None,
-        }
-    }
-
-    pub fn get_key_agent_directory(&self) -> Option<&PushKeyAgentOutput> {
-        match self.get(&StepOutputKind::KeyAgentDirectory) {
-            Some(StepOutput::KeyAgentDirectory(value)) => Some(value),
-            _ => None,
-        }
-    }
+    pub evaluation: Option<Derivation>,
+    pub build: Option<String>,
+    pub key_agent_directory: Option<String>,
 }
 
 pub struct Context<'a> {
@@ -199,7 +149,7 @@ impl<'a> GoalExecutor<'a> {
         span.pb_inc_length(steps.len().try_into().unwrap());
 
         for step in steps {
-            warn!("Executing step `{step}`");
+            info!("Executing step `{step}`");
 
             step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");
