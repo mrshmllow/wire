@@ -126,7 +126,9 @@ where
             continue;
         }
 
-        trace!(line);
+        if cfg!(debug_assertions) {
+            trace!(line);
+        }
 
         if should_trace {
             match log {
