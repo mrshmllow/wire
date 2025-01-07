@@ -7,13 +7,5 @@ jobs:
     runs-on: native
     steps:
     - uses: actions/checkout@v4
-    - uses: https://github.com/cachix/install-nix-action@v27
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-      enable_kvm: true
-    - uses: https://github.com/cachix/cachix-action@v14
-      with:
-        name: wires
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - run: nix flake check --impure
+    - run: nix flake check --impure --print-build-logs
     - run: nix develop --impure --command cargo test
