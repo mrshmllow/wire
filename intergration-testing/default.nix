@@ -17,6 +17,7 @@
         (getPrebuiltNode "node")
         (import ../default.nix).tarball
         (import ../default.nix).flake.inputs.nixpkgs.outPath
+        ./..
       ];
     };
 
@@ -24,6 +25,8 @@
     users.users.root.openssh.authorizedKeys.keys = [
       sshKeys.snakeOilPublicKey
     ];
+
+    boot.loader.grub.enable = false;
   };
 
   deployerModule = {pkgs, ...}: {
@@ -87,6 +90,8 @@ in
 
       deployer.wait_until_succeeds("ssh -o StrictHostKeyChecking=accept-new node true", timeout=30)
 
-      deployer.succeed("run-copy-stderr wire apply build --no-progress -vv --no-keys --path ${../.}/intergration-testing/")
+      deployer.succeed("wire apply switch --no-progress -vv --no-keys --path ${../.}/intergration-testing/")
+
+      # node.succeed("stat /etc/post-switch")
     '';
   })

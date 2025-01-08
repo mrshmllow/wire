@@ -32,5 +32,11 @@
     in [
       (pkgs.path + "/nixos/lib/testing/nixos-test-base.nix")
     ];
+
+    boot.loader.grub.enable = false;
+
+    environment.etc."post-switch" = {
+      text = "exists";
+    };
   };
 }
