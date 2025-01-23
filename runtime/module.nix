@@ -47,7 +47,7 @@ in {
 
     buildOnTarget = lib.mkOption {
       type = types.bool;
-      default = true;
+      default = false;
       description = "Whether to build the system on the target host or not.";
     };
 
