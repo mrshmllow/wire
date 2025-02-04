@@ -50,13 +50,22 @@ impl ExecuteStep for EvaluatedOutputStep {
 #[async_trait]
 impl ExecuteStep for BuildOutputStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        // skip if we are not building
-        !matches!(ctx.goal, Goal::Keys | Goal::Push)
-            && (
-                // skip step if we are building remotely, or we are applying locally
-                !ctx.node.build_remotely
-                    || !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.0)
-            )
+        if !matches!(ctx.goal, Goal::Keys | Goal::Push) {
+            // skip if we are not building
+            return false;
+        }
+
+        if ctx.node.build_remotely {
+            // skip if we are building remotely
+            return false;
+        }
+
+        if !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.0) {
+            // skip step if we are applying locally
+            return false;
+        }
+
+        true
     }
 
     #[instrument(skip_all, name = "push_build")]
