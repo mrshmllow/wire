@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, process::Output};
 
 use async_trait::async_trait;
 use tokio::process::Command;
@@ -20,6 +20,15 @@ impl Display for SwitchToConfigurationStep {
     }
 }
 
+fn get_elevation() -> Result<Output, HiveLibError> {
+    info!("Attempting to elevate for local deployment.");
+    suspend_tracing_indicatif(|| {
+        let mut command = std::process::Command::new("sudo");
+        command.arg("-v").output()
+    })
+    .map_err(HiveLibError::FailedToElevate)
+}
+
 #[async_trait]
 impl ExecuteStep for SwitchToConfigurationStep {
     fn should_execute(&self, ctx: &Context) -> bool {
@@ -34,6 +43,40 @@ impl ExecuteStep for SwitchToConfigurationStep {
             unreachable!("Cannot reach as guarded by should_execute")
         };
 
+        if !matches!(goal, SwitchToConfigurationGoal::DryActivate) {
+            info!("Setting profiles in anticipation for switch-to-configuration {goal}");
+
+            let mut env_command =
+                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                    // Refresh sudo timeout
+                    warn!("Running nix-env ON THIS MACHINE for node {0}", ctx.name);
+                    get_elevation()?;
+                    let mut command = Command::new("sudo");
+                    command.arg("nix-env");
+                    command
+                } else {
+                    let mut command = create_ssh_command(&ctx.node.target, true);
+                    command.arg("nix-env");
+                    command
+                };
+
+            env_command.args(["-p", "/nix/var/nix/profiles/system/", "--set", built_path]);
+
+            let (status, _, stderr_vec) = env_command.execute(true).in_current_span().await?;
+
+            if !status.success() {
+                let stderr: Vec<String> = stderr_vec
+                    .into_iter()
+                    .map(|l| l.to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+
+                return Err(HiveLibError::NixEnvError(ctx.name.clone(), stderr));
+            }
+
+            info!("Set system profile");
+        }
+
         info!("Running switch-to-configuration {goal}");
 
         let cmd = format!("{built_path}/bin/switch-to-configuration");
@@ -45,12 +88,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                     "Running switch-to-configuration {goal:?} ON THIS MACHINE for node {0}",
                     ctx.name
                 );
-                info!("Attempting to elevate for local deployment.");
-                suspend_tracing_indicatif(|| {
-                    let mut command = std::process::Command::new("sudo");
-                    command.arg("-v").output()
-                })
-                .map_err(HiveLibError::FailedToElevate)?;
+                get_elevation()?;
                 let mut command = Command::new("sudo");
                 command.arg(cmd);
                 command
