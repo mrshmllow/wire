@@ -50,7 +50,7 @@ impl ExecuteStep for EvaluatedOutputStep {
 #[async_trait]
 impl ExecuteStep for BuildOutputStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        if !matches!(ctx.goal, Goal::Keys | Goal::Push) {
+        if matches!(ctx.goal, Goal::Keys | Goal::Push) {
             // skip if we are not building
             return false;
         }
@@ -60,7 +60,7 @@ impl ExecuteStep for BuildOutputStep {
             return false;
         }
 
-        if !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.0) {
+        if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.0) {
             // skip step if we are applying locally
             return false;
         }
