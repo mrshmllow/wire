@@ -133,6 +133,7 @@ mod tests {
             },
             build_remotely: true,
             keys: im::Vector::new(),
+            allow_local_deployment: false,
         };
 
         let mut nodes = HashMap::new();
@@ -171,6 +172,7 @@ mod tests {
                 source: key::Source::String("hi".into()),
                 upload_at: key::UploadKeyAt::PreActivation,
             }],
+            allow_local_deployment: false,
         };
 
         let mut nodes = HashMap::new();
