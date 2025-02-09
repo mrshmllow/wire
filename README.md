@@ -29,7 +29,7 @@ wire
 ### dhat profiling
 
 ```sh
-$ just built-dhat
+$ just build-dhat
 ```
 
 ### testing
