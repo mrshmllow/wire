@@ -27,6 +27,15 @@
     ...
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
+
+    hooks = {
+      clippy.enable = true;
+      cargo-check.enable = true;
+      rustfmt.enable = true;
+      alejandra.enable = true;
+      statix.enable = true;
+      deadnix.enable = true;
+    };
   in {
     packages = forAllSystems (system: {
       devenv-up = self.devShells.${system}.default.config.procfileScript;
@@ -107,6 +116,11 @@
           inherit (self.packages.${system}) wire;
           pkgs = nixpkgs.legacyPackages.${system};
         };
+
+        pre-commit-check = devenv.inputs.pre-commit-hooks.lib.${system}.run {
+          src = ./.;
+          inherit hooks;
+        };
       }
     );
 
@@ -129,14 +143,7 @@
 
               packages = with pkgs; [mdbook protobuf just pkgs.nixos-shell];
 
-              pre-commit.hooks = {
-                clippy.enable = true;
-                cargo-check.enable = true;
-                rustfmt.enable = true;
-                alejandra.enable = true;
-                statix.enable = true;
-                deadnix.enable = true;
-              };
+              pre-commit.hooks = hooks;
             }
           ];
         };
