@@ -212,14 +212,13 @@ pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLi
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::hive::Hive;
+    use crate::{get_test_path, hive::Hive};
     use std::{collections::HashMap, env};
 
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn default_values_match() {
-        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        path.push("default_values_match");
+        let mut path = get_test_path!();
 
         let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
             .await

@@ -101,13 +101,14 @@ fn find_hive(path: &Path) -> Option<PathBuf> {
 mod tests {
     use im::vector;
 
+    use crate::get_test_path;
+
     use super::*;
     use std::env;
 
     #[test]
     fn test_hive_dot_nix_priority() {
-        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        path.push("test_hive_dot_nix_priority");
+        let path = get_test_path!();
 
         let hive = find_hive(&path).unwrap();
 
@@ -117,8 +118,7 @@ mod tests {
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn test_hive_file() {
-        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        path.push("test_hive_file");
+        let mut path = get_test_path!();
 
         let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
             .await
@@ -144,8 +144,7 @@ mod tests {
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn non_trivial_hive() {
-        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        path.push("non_trivial_hive");
+        let mut path = get_test_path!();
 
         let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
             .await
@@ -181,8 +180,7 @@ mod tests {
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn no_nixpkgs() {
-        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        path.push("no_nixpkgs");
+        let path = get_test_path!();
 
         assert!(matches!(
             Hive::new_from_path(&path, SubCommandModifiers::default()).await,
@@ -193,8 +191,7 @@ mod tests {
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn _keys_should_fail() {
-        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        path.push("_keys_should_fail");
+        let path = get_test_path!();
 
         assert!(matches!(
             Hive::new_from_path(&path, SubCommandModifiers::default()).await,

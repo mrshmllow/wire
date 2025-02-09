@@ -13,6 +13,7 @@ use tokio::{process::Command, task::JoinError};
 pub mod hive;
 mod nix;
 mod nix_log;
+mod test_macros;
 
 fn create_ssh_command(target: &Target, sudo: bool) -> Command {
     let mut command = Command::new("ssh");
