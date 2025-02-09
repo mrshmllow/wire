@@ -123,7 +123,7 @@
 
               env = {
                 WIRE_RUNTIME = ./runtime;
-                WIRE_TEST_DIR = ./tests;
+                WIRE_TEST_DIR = ./tests/rust;
                 PROTOC = nixpkgs.lib.getExe pkgs.protobuf;
               };
 
