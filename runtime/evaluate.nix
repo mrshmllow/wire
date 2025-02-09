@@ -22,7 +22,13 @@
       })
       nixosConfigurations);
 
-  nodeNames = builtins.filter (name: !builtins.elem name ["meta" "defaults"]) (builtins.attrNames mergedHive);
+  nodeNames = builtins.filter (
+    name:
+      !builtins.elem name [
+        "meta"
+        "defaults"
+      ]
+  ) (builtins.attrNames mergedHive);
 
   resolvedNixpkgs =
     if mergedHive.meta ? "nixpkgs"
@@ -46,23 +52,21 @@
 
       specialArgs =
         {
-          inherit name;
-          nodes = nodeNames;
+          inherit name nodes;
         }
         // mergedHive.meta.specialArgs or {};
     };
+  nodes = builtins.listToAttrs (
+    map (name: {
+      inherit name;
+      value = evaluateNode name;
+    })
+    nodeNames
+  );
 
   getTopLevel = node: (evaluateNode node).config.system.build.toplevel.drvPath;
 in rec {
-  inherit evaluateNode getTopLevel;
-
-  nodes =
-    builtins.listToAttrs
-    (map (name: {
-        inherit name;
-        value = evaluateNode name;
-      })
-      nodeNames);
+  inherit evaluateNode getTopLevel nodes;
 
   inspect = {
     inherit path;
