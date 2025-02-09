@@ -77,16 +77,15 @@ impl Hive {
 
 fn find_hive(path: &Path) -> Option<PathBuf> {
     trace!("Searching for hive in {}", path.display());
-    let filepath_hive = path.join("hive.nix");
-
-    if filepath_hive.is_file() {
-        return Some(filepath_hive);
-    }
-
     let filepath_flake = path.join("flake.nix");
 
     if filepath_flake.is_file() {
         return Some(filepath_flake);
+    }
+    let filepath_hive = path.join("hive.nix");
+
+    if filepath_hive.is_file() {
+        return Some(filepath_hive);
     }
 
     if let Some(parent) = path.parent() {
