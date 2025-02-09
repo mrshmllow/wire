@@ -111,7 +111,7 @@ mod tests {
 
         let hive = find_hive(&path).unwrap();
 
-        assert!(hive.ends_with("hive.nix"));
+        assert!(hive.ends_with("flake.nix"));
     }
 
     #[tokio::test]
