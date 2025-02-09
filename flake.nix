@@ -132,6 +132,7 @@
               pre-commit.hooks = {
                 clippy.enable = true;
                 cargo-check.enable = true;
+                rustfmt.enable = true;
                 alejandra.enable = true;
                 statix.enable = true;
                 deadnix.enable = true;
