@@ -125,15 +125,12 @@ mod tests {
             .unwrap();
 
         let node = Node {
-            tags: im::HashSet::new(),
             target: node::Target {
                 host: "192.168.122.96".into(),
                 user: "root".into(),
                 port: 22,
             },
-            build_remotely: true,
-            keys: im::Vector::new(),
-            allow_local_deployment: false,
+            ..Default::default()
         };
 
         let mut nodes = HashMap::new();
@@ -155,13 +152,11 @@ mod tests {
             .unwrap();
 
         let node = Node {
-            tags: im::HashSet::new(),
             target: node::Target {
                 host: "name".into(),
                 user: "root".into(),
                 port: 22,
             },
-            build_remotely: true,
             keys: vector![key::Key {
                 name: "different-than-a".into(),
                 dest_dir: "/run/keys/".into(),
@@ -172,7 +167,7 @@ mod tests {
                 source: key::Source::String("hi".into()),
                 upload_at: key::UploadKeyAt::PreActivation,
             }],
-            allow_local_deployment: false,
+            ..Default::default()
         };
 
         let mut nodes = HashMap::new();

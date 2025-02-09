@@ -31,6 +31,16 @@ pub struct Target {
     pub port: u32,
 }
 
+impl Default for Target {
+    fn default() -> Self {
+        Target {
+            host: "NAME".into(),
+            user: "root".into(),
+            port: 22,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Node {
     #[serde(rename = "target")]
@@ -47,6 +57,18 @@ pub struct Node {
 
     #[serde(rename(deserialize = "_keys", serialize = "keys"))]
     pub keys: im::Vector<Key>,
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        Node {
+            target: Target::default(),
+            keys: im::Vector::new(),
+            tags: im::HashSet::new(),
+            allow_local_deployment: true,
+            build_remotely: false,
+        }
+    }
 }
 
 pub fn should_apply_locally(allow_local_deployment: bool, name: &str) -> bool {
@@ -185,4 +207,31 @@ pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLi
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::hive::Hive;
+    use std::{collections::HashMap, env};
+
+    #[tokio::test]
+    #[cfg_attr(feature = "no_web_tests", ignore)]
+    async fn default_values_match() {
+        let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
+        path.push("default_values_match");
+
+        let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
+            .await
+            .unwrap();
+
+        let node = Node::default();
+
+        let mut nodes = HashMap::new();
+        nodes.insert(Name("NAME".into()), node);
+
+        path.push("hive.nix");
+
+        assert_eq!(hive, Hive { nodes, path });
+    }
 }

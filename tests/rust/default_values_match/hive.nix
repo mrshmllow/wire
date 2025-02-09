@@ -1,0 +1,7 @@
+{
+  meta = {
+    nixpkgs = <nixpkgs>;
+  };
+
+  NAME = {};
+}
