@@ -62,8 +62,7 @@ pub async fn apply(
                 modifiers,
             };
 
-            GoalExecutor::new(context)
-                .execute(span)
+            GoalExecutor::new(context).execute(span)
         })
         .peekable();
 
