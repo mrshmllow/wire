@@ -3,9 +3,12 @@ on:
   pull_request:
   push:
 jobs:
-  build:
+  checks:
     runs-on: native
+    strategy:
+      matrix:
+        check: [pre-commit-check, nixos-tests]
     steps:
     - uses: actions/checkout@v4
-    - run: nix flake check --impure --print-build-logs
-    - run: nix develop --impure --command cargo test
+    - name: Build
+      run: nix build --impure --print-build-logs .#checks.x86_64-linux.${{ matrix.check }}
