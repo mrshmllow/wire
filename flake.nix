@@ -27,7 +27,11 @@
     ...
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
-
+    env = pkgs: {
+      WIRE_RUNTIME = ./runtime;
+      WIRE_TEST_DIR = ./tests/rust;
+      PROTOC = pkgs.lib.getExe pkgs.protobuf;
+    };
     hooks = {
       clippy.enable = true;
       cargo-check.enable = true;
@@ -54,18 +58,18 @@
             || (craneLib.filterCargoSources path type);
         };
 
-        commonArgs = {
-          inherit src;
-          strictDeps = true;
+        commonArgs = let
+          environment = env pkgs;
+        in
+          {
+            inherit src;
+            strictDeps = true;
 
-          WIRE_RUNTIME = ./runtime;
-          WIRE_TEST_DIR = ./tests/rust;
-          PROTOC = lib.getExe pkgs.protobuf;
-
-          nativeBuildInputs = with pkgs; [
-            nix
-          ];
-        };
+            nativeBuildInputs = with pkgs; [
+              nix
+            ];
+          }
+          // environment;
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
@@ -111,16 +115,37 @@
     });
 
     checks = forAllSystems (
-      system: {
+      system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+        toolchain = fenix.packages.${system}.complete;
+      in {
         nixos-tests = import ./intergration-testing/default.nix {
           inherit (self.packages.${system}) wire;
-          pkgs = nixpkgs.legacyPackages.${system};
+          inherit pkgs;
         };
 
-        pre-commit-check = devenv.inputs.pre-commit-hooks.lib.${system}.run {
-          src = ./.;
-          inherit hooks;
-        };
+        pre-commit-check =
+          (devenv.inputs.git-hooks.lib.${system}.run {
+            src = ./.;
+            hooks =
+              hooks
+              // {
+                clippy = {
+                  enable = true;
+                  packageOverrides.cargo = toolchain.cargo;
+                  packageOverrides.clippy = toolchain.clippy;
+                };
+                cargo-check = {
+                  enable = true;
+                  package = toolchain.cargo;
+                };
+              };
+
+            settings.rust.check.cargoDeps = pkgs.rustPlatform.importCargoLock {
+              lockFile = ./Cargo.lock;
+            };
+          })
+          .overrideAttrs (env pkgs);
       }
     );
 
@@ -135,11 +160,7 @@
               languages.rust.enable = true;
               languages.rust.channel = "nightly";
 
-              env = {
-                WIRE_RUNTIME = ./runtime;
-                WIRE_TEST_DIR = ./tests/rust;
-                PROTOC = nixpkgs.lib.getExe pkgs.protobuf;
-              };
+              env = env pkgs;
 
               packages = with pkgs; [mdbook protobuf just pkgs.nixos-shell];
 
