@@ -5,7 +5,6 @@ use crate::cli::ToSubCommandModifiers;
 use anyhow::Ok;
 use clap::CommandFactory;
 use clap::Parser;
-use clap_complete::Shell;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use cli::print_completions;
 use indicatif::style::ProgressStyle;
@@ -81,7 +80,7 @@ async fn main() -> Result<(), anyhow::Error> {
         cli::Commands::Log { .. } => {
             todo!()
         }
-    };
+    }
 
     Ok(())
 }

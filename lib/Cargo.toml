@@ -17,7 +17,6 @@ im = { workspace = true }
 serde-query = "0.2.0"
 thiserror = "1.0.62"
 serde_repr = "0.1.19"
-lazy_static = "1.5.0"
 regex = "1.10.5"
 derive_more = "0.99.18"
 key_agent = { path = "../key_agent" }

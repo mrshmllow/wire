@@ -1,8 +1,8 @@
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
 use std::path::Path;
 use std::process::{Command, ExitStatus};
+use std::sync::LazyLock;
 use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
 use tracing::{error, info, trace, Instrument, Span};
@@ -12,9 +12,7 @@ use crate::hive::node::Name;
 use crate::nix_log::{Action, Internal, NixLog, Trace};
 use crate::{HiveLibError, SubCommandModifiers};
 
-lazy_static! {
-    static ref DIGEST_RE: Regex = Regex::new(r"[0-9a-z]{32}").unwrap();
-}
+static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
 
 pub enum EvalGoal<'a> {
     Inspect,

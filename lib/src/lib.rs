@@ -25,7 +25,7 @@ fn create_ssh_command(target: &Target, sudo: bool) -> Command {
 
     if sudo && target.user != "root".into() {
         command.args(["sudo", "-H", "--"]);
-    };
+    }
 
     command
 }
