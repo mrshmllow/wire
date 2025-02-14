@@ -13,7 +13,6 @@
         nixpkgs.follows = "nixpkgs";
       };
     };
-    nixos-shell.url = "github:Mic92/nixos-shell";
     flake-compat.url = "github:edolstra/flake-compat";
   };
 
@@ -23,7 +22,6 @@
     crane,
     devenv,
     fenix,
-    nixos-shell,
     ...
   } @ inputs: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
@@ -174,7 +172,7 @@
               languages.rust.channel = "nightly";
 
               env = env pkgs;
-              packages = with pkgs; [mdbook protobuf just pkgs.nixos-shell cargo-nextest];
+              packages = with pkgs; [mdbook protobuf just cargo-nextest];
 
               pre-commit.hooks = hooks;
             }
