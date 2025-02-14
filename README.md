@@ -24,15 +24,18 @@ wire
    └── Directories used during cargo tests
 ```
 
-## Local testing
+## Development
 
-### dhat profiling
+Please install direnv so you can run your commits against the git hooks and use the development environment.
+
+### Testing
+#### dhat profiling
 
 ```sh
 $ just build-dhat
 ```
 
-### testing
+#### Testing
 
 ```sh
 $ cargo test
