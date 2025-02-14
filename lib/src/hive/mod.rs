@@ -177,7 +177,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn no_nixpkgs() {
         let path = get_test_path!();
 
@@ -188,7 +187,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn _keys_should_fail() {
         let path = get_test_path!();
 

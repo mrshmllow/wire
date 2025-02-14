@@ -40,38 +40,41 @@
       statix.enable = true;
       deadnix.enable = true;
     };
+    mkCrane = system: let
+      pkgs = nixpkgs.legacyPackages.${system};
+      inherit (pkgs) lib;
+    in rec {
+      craneLib =
+        (crane.mkLib pkgs).overrideToolchain (_p:
+          fenix.packages.${system}.minimal.toolchain);
+
+      src = lib.cleanSourceWith {
+        src = ./.;
+        filter = path: type:
+          (lib.hasSuffix "\.proto" path)
+          || (craneLib.filterCargoSources path type);
+      };
+
+      cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+      commonArgs =
+        {
+          inherit src;
+          strictDeps = true;
+
+          nativeBuildInputs = with pkgs; [
+            nix
+          ];
+        }
+        // (env pkgs);
+    };
   in {
     packages = forAllSystems (system: {
       devenv-up = self.devShells.${system}.default.config.procfileScript;
 
       wire = let
         pkgs = nixpkgs.legacyPackages.${system};
-        inherit (pkgs) lib;
-        craneLib =
-          (crane.mkLib pkgs).overrideToolchain (_p:
-            fenix.packages.${system}.minimal.toolchain);
-
-        src = lib.cleanSourceWith {
-          src = ./.;
-          filter = path: type:
-            (lib.hasSuffix "\.proto" path)
-            || (craneLib.filterCargoSources path type);
-        };
-
-        commonArgs = let
-          environment = env pkgs;
-        in
-          {
-            inherit src;
-            strictDeps = true;
-
-            nativeBuildInputs = with pkgs; [
-              nix
-            ];
-          }
-          // environment;
-
-        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+        inherit (mkCrane system) craneLib commonArgs cargoArtifacts;
 
         agent = craneLib.buildPackage (commonArgs
           // {
@@ -86,6 +89,7 @@
             pname = "wire";
             cargoExtraArgs = "-p wire";
             nativeBuildInputs = [pkgs.installShellFiles];
+            doCheck = true;
             postInstall = ''
               $out/bin/wire apply --generate-completions bash > wire.bash
               $out/bin/wire apply --generate-completions fish > wire.fish
@@ -118,11 +122,20 @@
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
         toolchain = fenix.packages.${system}.complete;
+        inherit (mkCrane system) craneLib commonArgs cargoArtifacts;
       in {
         nixos-tests = import ./intergration-testing/default.nix {
           inherit (self.packages.${system}) wire;
           inherit pkgs;
         };
+
+        wire-nextest = craneLib.cargoNextest (commonArgs
+          // {
+            inherit cargoArtifacts;
+            partitions = 1;
+            partitionType = "count";
+            cargoNextestPartitionsExtraArgs = "--no-tests=pass --features no_web_tests";
+          });
 
         pre-commit-check =
           (devenv.inputs.git-hooks.lib.${system}.run {
@@ -161,8 +174,7 @@
               languages.rust.channel = "nightly";
 
               env = env pkgs;
-
-              packages = with pkgs; [mdbook protobuf just pkgs.nixos-shell];
+              packages = with pkgs; [mdbook protobuf just pkgs.nixos-shell cargo-nextest];
 
               pre-commit.hooks = hooks;
             }

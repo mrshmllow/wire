@@ -8,7 +8,7 @@ jobs:
     strategy:
       matrix:
         # check: [pre-commit-check, nixos-tests]
-        check: [pre-commit-check]
+        check: [pre-commit-check, wire-nextest]
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v4
