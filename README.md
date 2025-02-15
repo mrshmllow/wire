@@ -39,5 +39,5 @@ $ just build-dhat
 
 ```sh
 $ cargo test
-$ nix flake check --impure
+$ nix flake check
 ```

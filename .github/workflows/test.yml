@@ -8,9 +8,22 @@ jobs:
     strategy:
       matrix:
         # check: [pre-commit-check, nixos-tests]
-        check: [pre-commit-check, wire-nextest]
+        check: [pre-commit-check]
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: nix build --impure --print-build-logs .#checks.x86_64-linux.${{ matrix.check }}
+      run: nix build --print-build-logs .#checks.x86_64-linux.${{ matrix.check }}
+  nextest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: https://github.com/cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+    - uses: https://github.com/cachix/cachix-action@v14
+      with:
+        name: wires
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+    - name: Nextest
+      run: nix develop --print-build-logs -v --command cargo nextest run

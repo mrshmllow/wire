@@ -1,7 +1,6 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    devenv.url = "github:cachix/devenv";
     fenix = {
       url = "github:nix-community/fenix";
       inputs = {nixpkgs.follows = "nixpkgs";};
@@ -14,29 +13,22 @@
       };
     };
     flake-compat.url = "github:edolstra/flake-compat";
+    git-hooks.url = "github:cachix/git-hooks.nix";
   };
 
   outputs = {
     self,
     nixpkgs,
     crane,
-    devenv,
+    git-hooks,
     fenix,
     ...
-  } @ inputs: let
+  }: let
     forAllSystems = nixpkgs.lib.genAttrs ["x86_64-linux" "x86_64-darwin" "i686-linux" "aarch64-linux"];
     env = pkgs: {
       WIRE_RUNTIME = ./runtime;
       WIRE_TEST_DIR = ./tests/rust;
       PROTOC = pkgs.lib.getExe pkgs.protobuf;
-    };
-    hooks = {
-      clippy.enable = true;
-      cargo-check.enable = true;
-      rustfmt.enable = true;
-      alejandra.enable = true;
-      statix.enable = true;
-      deadnix.enable = true;
     };
     mkCrane = system: let
       pkgs = nixpkgs.legacyPackages.${system};
@@ -65,40 +57,64 @@
           ];
         }
         // (env pkgs);
+
+      agent = craneLib.buildPackage (commonArgs
+        // {
+          inherit cargoArtifacts;
+          pname = "key_agent";
+          cargoExtraArgs = "-p key_agent";
+        });
+
+      wire = craneLib.buildPackage (commonArgs
+        // {
+          inherit cargoArtifacts;
+          pname = "wire";
+          cargoExtraArgs = "-p wire";
+          nativeBuildInputs = [pkgs.installShellFiles];
+          doCheck = true;
+          postInstall = ''
+            $out/bin/wire apply --generate-completions bash > wire.bash
+            $out/bin/wire apply --generate-completions fish > wire.fish
+            $out/bin/wire apply --generate-completions zsh > wire.zsh
+            installShellCompletion wire.{bash,fish,zsh}
+          '';
+        });
     };
+    _pre-commit-check = system: let
+      pkgs = nixpkgs.legacyPackages.${system};
+      toolchain = fenix.packages.${system}.complete;
+    in
+      git-hooks.lib.${system}.run {
+        src = ./.;
+        hooks = {
+          rustfmt.enable = true;
+          alejandra.enable = true;
+          statix.enable = true;
+          deadnix.enable = true;
+          clippy = {
+            enable = true;
+            packageOverrides.cargo = toolchain.cargo;
+            packageOverrides.clippy = toolchain.clippy;
+          };
+          cargo-check = {
+            enable = true;
+            package = toolchain.cargo;
+          };
+        };
+
+        settings.rust.check.cargoDeps = pkgs.rustPlatform.importCargoLock {
+          lockFile = ./Cargo.lock;
+        };
+      };
   in {
     packages = forAllSystems (system: {
-      devenv-up = self.devShells.${system}.default.config.procfileScript;
-
       wire = let
         pkgs = nixpkgs.legacyPackages.${system};
-        inherit (mkCrane system) craneLib commonArgs cargoArtifacts;
-
-        agent = craneLib.buildPackage (commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "key_agent";
-            cargoExtraArgs = "-p key_agent";
-          });
-
-        package = craneLib.buildPackage (commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "wire";
-            cargoExtraArgs = "-p wire";
-            nativeBuildInputs = [pkgs.installShellFiles];
-            doCheck = true;
-            postInstall = ''
-              $out/bin/wire apply --generate-completions bash > wire.bash
-              $out/bin/wire apply --generate-completions fish > wire.fish
-              $out/bin/wire apply --generate-completions zsh > wire.zsh
-              installShellCompletion wire.{bash,fish,zsh}
-            '';
-          });
+        inherit (mkCrane system) wire agent;
       in
         pkgs.symlinkJoin {
           name = "wire";
-          paths = [package];
+          paths = [wire];
           buildInputs = [pkgs.makeWrapper];
           nativeBuildInputs = [pkgs.installShellFiles];
           postBuild = ''
@@ -119,7 +135,6 @@
     checks = forAllSystems (
       system: let
         pkgs = nixpkgs.legacyPackages.${system};
-        toolchain = fenix.packages.${system}.complete;
         inherit (mkCrane system) craneLib commonArgs cargoArtifacts;
       in {
         nixos-tests = import ./intergration-testing/default.nix {
@@ -135,49 +150,25 @@
             cargoNextestPartitionsExtraArgs = "--no-tests=pass --features no_web_tests";
           });
 
-        pre-commit-check =
-          (devenv.inputs.git-hooks.lib.${system}.run {
-            src = ./.;
-            hooks =
-              hooks
-              // {
-                clippy = {
-                  enable = true;
-                  packageOverrides.cargo = toolchain.cargo;
-                  packageOverrides.clippy = toolchain.clippy;
-                };
-                cargo-check = {
-                  enable = true;
-                  package = toolchain.cargo;
-                };
-              };
-
-            settings.rust.check.cargoDeps = pkgs.rustPlatform.importCargoLock {
-              lockFile = ./Cargo.lock;
-            };
-          })
-          .overrideAttrs (env pkgs);
+        pre-commit-check = (_pre-commit-check system).overrideAttrs (env pkgs);
       }
     );
 
     devShells = forAllSystems (system: {
       default = let
+        inherit (mkCrane system) craneLib wire;
         pkgs = nixpkgs.legacyPackages.${system};
+        pre-commit-check = _pre-commit-check system;
       in
-        devenv.lib.mkShell {
-          inherit inputs pkgs;
-          modules = [
-            {
-              languages.rust.enable = true;
-              languages.rust.channel = "nightly";
+        craneLib.devShell ({
+            inherit (pre-commit-check) shellHook;
+            buildInputs = pre-commit-check.enabledPackages;
 
-              env = env pkgs;
-              packages = with pkgs; [mdbook protobuf just cargo-nextest];
+            inputsFrom = [wire];
 
-              pre-commit.hooks = hooks;
-            }
-          ];
-        };
+            packages = with pkgs; [mdbook protobuf just cargo-nextest];
+          }
+          // (env pkgs));
     });
   };
 }
