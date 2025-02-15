@@ -8,12 +8,13 @@ Read the [The Book](https://wire.althaea.zone/intro), or continue reading this r
 
 ```
 wire
-├── lib
-│  └── Rust library containing business logic, consumed by `wire`
 ├── wire
-│  └── Rust binary, using `lib`
-├── key-agent
-│  └── Rust binary ran on a target node. recieves key file bytes and metadata w/ protobuf over SSH stdin
+│  ├── lib
+│  │  └── Rust library containing business logic, consumed by `wire`
+│  ├── cli
+│  │  └── Rust binary, using `lib`
+│  └── key_agent
+│     └── Rust binary ran on a target node. recieves key file bytes and metadata w/ protobuf over SSH stdin
 ├── doc
 │  └── an [mdBook](https://rust-lang.github.io/mdBook/)
 ├── runtime
