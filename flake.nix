@@ -73,10 +73,10 @@
           nativeBuildInputs = [pkgs.installShellFiles];
           doCheck = true;
           postInstall = ''
-            $out/bin/wire apply --generate-completions bash > wire.bash
-            $out/bin/wire apply --generate-completions fish > wire.fish
-            $out/bin/wire apply --generate-completions zsh > wire.zsh
-            installShellCompletion wire.{bash,fish,zsh}
+            installShellCompletion --cmd wire \
+                --bash <($out/bin/wire completions bash) \
+                --fish <($out/bin/wire completions fish) \
+                --zsh <($out/bin/wire completions zsh)
           '';
         });
     };

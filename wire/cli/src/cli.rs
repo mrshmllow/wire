@@ -1,12 +1,10 @@
-use clap::{value_parser, Command, Parser, Subcommand, ValueEnum};
-use clap_complete::aot::{generate, Generator};
+use clap::{Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
 use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
 use lib::SubCommandModifiers;
 
-use std::io;
 use std::{
     fmt::{self, Display, Formatter},
     sync::Arc,
@@ -39,9 +37,6 @@ pub struct Cli {
 
     #[arg(long, hide = true, global = true)]
     pub markdown_help: bool,
-
-    #[arg(long, hide = true, global = true, value_parser = value_parser!(Shell))]
-    pub generate_completions: Option<Shell>,
 }
 
 #[derive(Clone, Debug)]
@@ -114,6 +109,12 @@ pub enum Commands {
         #[arg(default_value_t = 0)]
         index: i32,
     },
+    /// Generates shell completions
+    Completions {
+        #[arg()]
+        // Shell to generate completions for
+        shell: Shell,
+    },
 }
 
 #[derive(Clone, Debug, Default, ValueEnum, Display)]
@@ -169,8 +170,4 @@ impl ToSubCommandModifiers for Cli {
             show_trace: self.show_trace,
         }
     }
-}
-
-pub fn print_completions<G: Generator>(gen: G, cmd: &mut Command) {
-    generate(gen, cmd, cmd.get_name().to_string(), &mut io::stdout());
 }
