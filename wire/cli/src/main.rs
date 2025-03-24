@@ -5,11 +5,10 @@ use crate::cli::ToSubCommandModifiers;
 use anyhow::Ok;
 use clap::CommandFactory;
 use clap::Parser;
+use clap_complete::generate;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
-use cli::print_completions;
 use indicatif::style::ProgressStyle;
 use lib::hive::Hive;
-use tracing::info;
 use tracing::warn;
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
@@ -40,14 +39,7 @@ async fn main() -> Result<(), anyhow::Error> {
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();
         return Ok(());
-    } else if let Some(generator) = args.generate_completions {
-        let mut cmd = Cli::command();
-        info!("Printing completion for {generator}...");
-        print_completions(generator, &mut cmd);
-        return Ok(());
     }
-
-    let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
 
     match args.command {
         cli::Commands::Apply {
@@ -57,6 +49,7 @@ async fn main() -> Result<(), anyhow::Error> {
             no_keys,
             always_build_local,
         } => {
+            let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
             apply::apply(
                 &mut hive,
                 goal.try_into()?,
@@ -68,17 +61,22 @@ async fn main() -> Result<(), anyhow::Error> {
             )
             .await?;
         }
-        cli::Commands::Inspect { online: _, json } => println!(
-            "{}",
+        cli::Commands::Inspect { online: _, json } => println!("{}", {
+            let hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
             if json {
                 serde_json::to_string_pretty(&hive)?
             } else {
                 warn!("use --json to output something scripting suitable");
                 format!("{hive:#?}")
             }
-        ),
+        }),
         cli::Commands::Log { .. } => {
             todo!()
+        }
+        cli::Commands::Completions { shell } => {
+            let mut cmd = Cli::command();
+            let name = cmd.clone();
+            generate(shell, &mut cmd, name.get_name(), &mut std::io::stdout());
         }
     }
 
