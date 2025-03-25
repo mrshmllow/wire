@@ -7,6 +7,7 @@
     crane.url = "github:ipetkov/crane";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     fenix.url = "github:nix-community/fenix";
+    fenix.inputs.nixpkgs.follows = "nixpkgs";
   };
   outputs =
     {
