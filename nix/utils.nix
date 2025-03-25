@@ -15,7 +15,18 @@
               "name"
             ];
             # FIXME: may be a better way of going about this
-            src = ../.;
+            inherit (lib.fileset)
+              toSource
+              unions
+              ;
+            src = toSource {
+              root = ../.;
+              fileset = unions [
+                ../wire
+                ../Cargo.toml
+                ../Cargo.lock
+              ];
+            };
 
             commonArgs = {
               inherit src;

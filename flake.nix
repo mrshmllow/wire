@@ -23,6 +23,7 @@
         ./nix/utils.nix # utility functions
         ./wire/cli
         ./wire/key_agent
+        ./doc
       ];
       systems = import systems;
 
