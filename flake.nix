@@ -22,6 +22,7 @@
         git-hooks.flakeModule
         ./nix/hooks.nix # pre-commit hooks
         ./nix/utils.nix # utility functions
+        ./nix/shells.nix
         ./wire/cli
         ./wire/key_agent
         ./doc
