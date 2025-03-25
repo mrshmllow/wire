@@ -7,14 +7,9 @@
       ...
     }:
     {
-      _module.args = {
-        buildRustProgram =
-          extra:
+      _module.args = rec {
+        commonArgs =
           let
-            args = builtins.removeAttrs extra [
-              "name"
-            ];
-            # FIXME: may be a better way of going about this
             inherit (lib.fileset)
               toSource
               unions
@@ -35,6 +30,12 @@
               WIRE_TEST_DIR = ../tests/rust;
               PROTOC = lib.getExe pkgs.protobuf;
             };
+          in
+          commonArgs;
+        buildRustProgram =
+          extra:
+          let
+            args = builtins.removeAttrs extra [ "name" ];
           in
           craneLib.buildPackage (
             {

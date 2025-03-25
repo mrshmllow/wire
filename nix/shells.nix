@@ -5,6 +5,7 @@
       self',
       lib,
       craneLib,
+      pkgs,
       ...
     }:
     let
@@ -17,6 +18,10 @@
         packages = lib.flatten [
           cfg.settings.enabledPackages
           cfg.settings.package
+
+          pkgs.just
+          pkgs.cargo-nextest
+
         ];
         inputsFrom = [ self'.packages.wire ];
         shellHook = builtins.concatStringsSep "\n" [
