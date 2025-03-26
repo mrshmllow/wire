@@ -1,0 +1,36 @@
+name: "PR Preview"
+on:
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'runtime/module.nix'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    environment: 
+      name: preview
+      url: https://pr-${{ steps.find-pr.outputs.number }}.wire-docs.pages.dev/
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v14
+        with:
+          name: wires
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - run: nix build .#docs
+      - uses: jwalton/gh-find-current-pr@master
+        id: find-pr
+        with:
+          state: all
+      - name: Deploy to Cloudflare Pages
+        id: deployment
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./result/ --project-name wire-docs --branch pr-${{ steps.find-pr.outputs.number }}

@@ -4,6 +4,9 @@
   nixosOptionsDoc,
   runCommand,
   wire,
+  nodejs,
+  pnpm,
+  stdenv,
   ...
 }:
 let
@@ -31,17 +34,27 @@ let
     cat ${optionsMd} > $out
     sed -i -e '/\*Declared by:\*/,+1d' $out
   '';
+
+  pkg = builtins.fromJSON (builtins.readFile ./package.json);
 in
-pkgs.stdenv.mkDerivation {
-  name = "wire-docs";
-  buildInputs = with pkgs; [
-    mdbook
-    mdbook-alerts
+stdenv.mkDerivation (finalAttrs: {
+  inherit (pkg) version;
+  pname = pkg.name;
+  nativeBuildInputs = [
+    wire
+    nodejs
+    pnpm.configHook
   ];
   src = ./.;
-  buildPhase = ''
-    cat ${optionsDoc} >> ./src/modules/README.md
-    ${lib.getExe wire} inspect --markdown-help > ./src/cli/README.md
-    mdbook build -d $out
+  pnpmDeps = pnpm.fetchDeps {
+    inherit (finalAttrs) pname version src;
+    hash = "sha256-7ThshGf9tkCwSaz4DMTXxmjhN+2g0dErgzpgzJ2gv8Y";
+  };
+  patchPhase = ''
+    cat ${optionsDoc} >> ./reference/module.md
+    wire inspect --markdown-help > ./reference/cli.md
   '';
-}
+  buildPhase = "pnpm run build > build.log 2>&1";
+  installPhase = "cp .vitepress/dist -r $out";
+  DEBUG = "*";
+})

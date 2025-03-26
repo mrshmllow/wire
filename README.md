@@ -16,7 +16,7 @@ wire
 │  └── key_agent
 │     └── Rust binary ran on a target node. recieves key file bytes and metadata w/ protobuf over SSH stdin
 ├── doc
-│  └── an [mdBook](https://rust-lang.github.io/mdBook/)
+│  └── a [vitepress](https://vitepress.dev/) site
 ├── runtime
 │  └── Nix files used during runtime to evaluate nodes
 ├── intergration-testing
