@@ -1,7 +1,6 @@
 name: "PR Preview"
 on:
   push:
-  pull_request:
     paths:
       - 'docs/**'
       - 'runtime/module.nix'
@@ -31,6 +30,7 @@ jobs:
       - name: Deploy to Cloudflare Pages
         id: deployment
         uses: cloudflare/wrangler-action@v3
+        if: success() && steps.find-pr.outputs.number
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
