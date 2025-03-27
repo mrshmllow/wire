@@ -1,0 +1,21 @@
+{
+  "name": "wire-docs",
+  "version": "0.1.0",
+  "type": "module",
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  },
+  "scripts": {
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview ."
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
+  "dependencies": {
+    "markdown-it-footnote": "^4.0.0"
+  }
+}

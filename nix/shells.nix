@@ -21,7 +21,7 @@
 
           pkgs.just
           pkgs.cargo-nextest
-
+          pkgs.pnpm
         ];
         inputsFrom = [ self'.packages.wire ];
         shellHook = builtins.concatStringsSep "\n" [
@@ -30,9 +30,7 @@
             export WIRE_RUNTIME=$(realpath ./runtime)
             export WIRE_TEST_DIR=$(realpath ./tests/rust)
           ''
-
         ];
-
       };
     };
 }
