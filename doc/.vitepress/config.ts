@@ -41,7 +41,7 @@ export default defineConfig({
                     text: 'Features',
                     items: [
                         { text: 'Parallelism', link: '/guide/parallelism' },
-                        { text: 'Keys & Secrets', link: '/guide/keys' },
+                        { text: 'Secret management', link: '/guide/keys' },
                         { text: 'Tagging', link: '/guide/tagging' },
                         { text: 'hive.default', link: '/guide/hive-default' },
                         { text: 'Magic Rollback', link: '/guide/magic-rollback' },
