@@ -1,13 +1,6 @@
 name: "PR Preview"
 on:
-  pull_request:
-    paths:
-      - 'docs/**'
-      - 'runtime/module.nix'
   push:
-    paths:
-      - 'docs/**'
-      - 'runtime/module.nix'
 
 jobs:
   deploy:
