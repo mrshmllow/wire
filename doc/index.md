@@ -17,7 +17,7 @@ hero:
 features:
   - title: Parallelism
     details: Build and deploy many nodes at once
-  - title: Secrets & Keys
+  - title: Secret management
     details: Fast & Unopinionated secret management
   - title: Node Tagging & CI Friendly
     details: Pipe data through jq
