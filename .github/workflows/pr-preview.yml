@@ -8,6 +8,8 @@ jobs:
 
     outputs:
       number: ${{ steps.find-pr.outputs.number }}
+    
+    if: ${{ github.actor != 'dependabot[bot]' }}
 
     steps:
       - uses: jwalton/gh-find-current-pr@master
