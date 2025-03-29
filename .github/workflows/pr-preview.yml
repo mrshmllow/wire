@@ -86,7 +86,7 @@ jobs:
       - get-pr
 
     environment: 
-      name: preview
+      name: pr-${{ needs.get-pr.outputs.number }}
       url: https://pr-${{ needs.get-pr.outputs.number }}.wire-docs.pages.dev/
     
     # skip if nothing changed in the docs package
