@@ -22,7 +22,7 @@ jobs:
     needs: get-pr
 
     outputs:
-      base_ref: ${{ steps.base-ref.outputs.base_ref }}
+      base-ref: ${{ steps.base-ref.outputs.base-ref }}
 
     if: ${{ needs.get-pr.outputs.number != '' }}
 
@@ -45,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.check.outputs.base_ref }}
+          ref: ${{ needs.check.outputs.base-ref }}
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
