@@ -3,7 +3,7 @@ on:
   push:
 
 jobs:
-  check:
+  get-pr:
     runs-on: ubuntu-latest
 
     outputs:
@@ -15,15 +15,80 @@ jobs:
         with:
           state: all
 
+  base-ref:
+    runs-on: ubuntu-latest
+    needs: get-pr
+
+    outputs:
+      base_ref: ${{ steps.base-ref.outputs.base_ref }}
+
+    if: ${{ needs.get-pr.outputs.number != '' }}
+
+    steps:
+      - run: sudo apt install -y jq
+      - name: Locate Base Ref
+        id: base-ref
+        run: |
+          echo "base-ref=$(gh api /repos/${{ github.repository }}/pulls/${{ needs.get-pr.outputs.number }} | jq -r '.data.ref')" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  eval-base:
+    runs-on: ubuntu-latest
+    needs: base-ref
+
+    outputs:
+      drv: ${{ steps.drv.outputs.drv }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.check.outputs.base_ref }}
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v14
+        with:
+          name: wires
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - id: drv
+        run: echo "drv=$(nix eval .#docs --json)" >> "$GITHUB_OUTPUT"
+
+  eval-head:
+    runs-on: ubuntu-latest
+    needs: get-pr
+
+    outputs:
+      drv: ${{ steps.drv.outputs.drv }}
+
+    if: ${{ needs.get-pr.outputs.number != '' }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v14
+        with:
+          name: wires
+          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+      - id: drv
+        run: echo "drv=$(nix eval .#docs --json)" >> "$GITHUB_OUTPUT"          
+
   deploy:
     runs-on: ubuntu-latest
-    needs: check
+
+    needs:
+      - eval-head
+      - eval-base
+      - get-pr
 
     environment: 
       name: preview
-      url: https://pr-${{ needs.check.outputs.number }}.wire-docs.pages.dev/
-
-    if: ${{ needs.check.outputs.number != '' }}
+      url: https://pr-${{ needs.get-pr.outputs.number }}.wire-docs.pages.dev/
+    
+    # skip if nothing changed in the docs package
+    if: needs.eval-head.outputs.drv != needs.eval-base.outputs.drv
 
     steps:
       - uses: actions/checkout@v4
@@ -41,4 +106,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy ./result/ --project-name wire-docs --branch pr-${{ needs.check.outputs.number }}
+          command: pages deploy ./result/ --project-name wire-docs --branch pr-${{ needs.get-pr.outputs.number }}
