@@ -12,6 +12,8 @@ jobs:
       name: production
       url: https://wire.althaea.zone/
 
+    if: ${{ github.actor != 'dependabot[bot]' }}
+
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
