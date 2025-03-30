@@ -50,7 +50,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deployment list --environment "preview"
+          command: pages deployment list --environment "preview" --project-name "wire-docs"
       - name: filter
         env:
           CMD_OUTPUT: ${{ steps.query.outputs.command-output }}
