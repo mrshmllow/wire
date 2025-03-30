@@ -1,0 +1,82 @@
+name: Clean PR Environment
+on:
+  pull_request:
+    types:
+      - closed
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    outputs:
+      comment-id: ${{ steps.comment.outputs.comment-id }}
+    steps:
+      - name: Add comment
+        uses: peter-evans/create-or-update-comment@v4
+        id: comment
+        with:
+          issue-number: ${{ github.event.number }}
+          body: |
+            [Deleting the environment associated with this pr...](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+  cleanup-gh:
+    runs-on: ubuntu-latest
+    permissions: write-all
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: get github app token
+        uses: navikt/github-app-token-generator@793caf0d755fb4d6e88150825f680f188535cb48
+        id: get-token
+        with:
+          app-id: ${{ secrets.GH_APP_CLEANER_ID }}
+          private-key: ${{ secrets.GH_APP_CLEANER_PRIVATE_KEY }}
+
+      - name: delete pr environment
+        uses: strumwolf/delete-deployment-environment@v2.2.3
+        with:
+          token: ${{ steps.get-token.outputs.token }}
+          environment: pr-${{ github.event.number }}
+          ref: ${{ github.ref_name }}
+
+  cleanup-cf:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: find ids
+        id: query
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          command: pages deployment list --environment "preview"
+      - name: filter
+        env:
+          CMD_OUTPUT: ${{ steps.query.outputs.command-output }}
+        # filter by pr, awk to find deployment id, force delete deployment.
+        run: | 
+          echo $CMD_OUTPUT |
+            grep "pr-${{ github.event.number }} " |
+            awk -F '│' '{print $(NF-1)}' |
+            awk -F '/' '{print $NF}' |
+            xargs -I {} curl -X DELETE \
+              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/wire-docs/deployments/{}?force=true"
+              -H "Content-Type: application/json"
+              -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
+
+  update-comment:
+    runs-on: ubuntu-latest
+
+    needs:
+      - cleanup-gh
+      - cleanup-cf
+      - comment
+
+    steps:
+      - name: update comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          comment-id: ${{ needs.comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            [Deleted environment!](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
