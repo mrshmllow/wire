@@ -20,7 +20,7 @@ jobs:
         name: wires
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Build
-      run: nix build --print-build-logs .#checks.x86_64-linux.${{ matrix.check }}
+      run: nix develop --print-build-logs -v --command pre-commit run --all-files
   nextest:
     runs-on: ubuntu-latest
     steps:
