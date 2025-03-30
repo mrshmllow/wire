@@ -12,10 +12,8 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5
-        with:
-          # skip cron
-          do_not_skip: '["workflow_dispatch"]'
+        run: |
+          echo "should_skip=$(gh pr list --label flake-lock-update --state open --json id | jq 'length == 0')" >> "$GITHUB_OUTPUT"
 
   update:
     runs-on: ubuntu-latest
@@ -37,7 +35,7 @@ jobs:
       - run: nix flake update --commit-lock-file
       - run: git push --set-upstream origin ci/flake-update-${{ github.run_number }}
       - name: create pull request
-        run: gh pr create -B main --title "Update flake.lock $(date +'%Y-%m-%d')" --fill
+        run: gh pr create -B main --title "Update flake.lock $(date +'%Y-%m-%d')" --fill --label flake-lock-update
         env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
