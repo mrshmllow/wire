@@ -3,11 +3,24 @@ on:
   pull_request:
   push:
 jobs:
+  pre-job:
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@v5
+        with:
+          concurrent_skipping: 'same_content_newer'
+
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         package: [wire, docs]
+    needs: pre-job
+    if: needs.pre-job.outputs.should_skip != 'true'
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v31
