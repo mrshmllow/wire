@@ -60,7 +60,7 @@ jobs:
             grep "pr-${{ github.event.number }} " |
             awk -F '│' '{print $(NF-1)}' |
             awk -F '/' '{print $NF}' |
-            tr -d ' ' \
+            tr -d ' ' |
             xargs -I % curl -X DELETE \
               "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/wire-docs/deployments/%?force=true"
               -H "Content-Type: application/json"
