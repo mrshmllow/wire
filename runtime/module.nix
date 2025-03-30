@@ -3,16 +3,20 @@
   name,
   config,
   ...
-}: let
+}:
+let
   inherit (lib) types;
-in {
-  imports = let
-    inherit (lib) mkAliasOptionModule;
-  in [
-    (mkAliasOptionModule ["deployment" "targetHost"] ["deployment" "target" "host"])
-    (mkAliasOptionModule ["deployment" "targetUser"] ["deployment" "target" "user"])
-    (mkAliasOptionModule ["deployment" "targetPort"] ["deployment" "target" "port"])
-  ];
+in
+{
+  imports =
+    let
+      inherit (lib) mkAliasOptionModule;
+    in
+    [
+      (mkAliasOptionModule [ "deployment" "targetHost" ] [ "deployment" "target" "host" ])
+      (mkAliasOptionModule [ "deployment" "targetUser" ] [ "deployment" "target" "user" ])
+      (mkAliasOptionModule [ "deployment" "targetPort" ] [ "deployment" "target" "port" ])
+    ];
 
   options.deployment = {
     target = lib.mkOption {
@@ -27,7 +31,7 @@ in {
             type = types.listOf types.str;
             description = "Additional hosts to attempt to connect to, if `deployment.target.host` cannot be reached.";
             default = lib.singleton name;
-            apply = list: lib.unique ([name] ++ list);
+            apply = list: lib.unique ([ name ] ++ list);
           };
           user = lib.mkOption {
             type = types.str;
@@ -42,7 +46,7 @@ in {
         };
       };
       description = "Describes the target for this node";
-      default = {};
+      default = { };
     };
 
     buildOnTarget = lib.mkOption {
@@ -59,9 +63,12 @@ in {
 
     tags = lib.mkOption {
       type = types.listOf types.str;
-      default = [];
+      default = [ ];
       description = "Tags for node.";
-      example = ["arm" "cloud"];
+      example = [
+        "arm"
+        "cloud"
+      ];
     };
 
     _keys = lib.mkOption {
@@ -70,65 +77,83 @@ in {
     };
 
     keys = lib.mkOption {
-      type = types.attrsOf (types.submodule ({
-        name,
-        config,
-        ...
-      }: {
-        imports = let
-          inherit (lib) mkAliasOptionModule;
-        in [
-          (mkAliasOptionModule ["keyFile"] ["source"])
-          (mkAliasOptionModule ["keyCommand"] ["source"])
-          (mkAliasOptionModule ["text"] ["source"])
-        ];
-        options = {
-          name = lib.mkOption {
-            type = types.str;
-            default = name;
-            description = "Filename of the secret.";
-          };
-          destDir = lib.mkOption {
-            type = types.path;
-            default = "/run/keys/";
-            description = "Destination directory for the secret. Change this to something other than `/run/keys/` for keys to persist past reboots.";
-          };
-          path = lib.mkOption {
-            internal = true;
-            type = types.path;
-            default = "${config.destDir}/${config.name}";
-          };
-          group = lib.mkOption {
-            type = types.str;
-            default = "root";
-            description = "Group to own the key. If this group does not exist this will silently fail and the key will be owned by gid 0.";
-          };
-          user = lib.mkOption {
-            type = types.str;
-            default = "root";
-            description = "User to own the key. If this user does not exist this will silently fail and the key will be owned by uid 0.";
-          };
-          permissions = lib.mkOption {
-            type = types.str;
-            default = "0600";
-            description = "Unix Octal permissions, in string format, for the key.";
-          };
-          source = lib.mkOption {
-            type = types.oneOf [types.str types.path (types.listOf types.str)];
-            description = "Source of the key. Either a path to a file, a literal string, or a command to generate the key.";
-          };
-          uploadAt = lib.mkOption {
-            type = types.enum ["pre-activation" "post-activation"];
-            default = "pre-activation";
-            description = "When to upload the key. Either `pre-activation` or `post-activation`.";
-          };
-        };
-      }));
+      type = types.attrsOf (
+        types.submodule (
+          {
+            name,
+            config,
+            ...
+          }:
+          {
+            imports =
+              let
+                inherit (lib) mkAliasOptionModule;
+              in
+              [
+                (mkAliasOptionModule [ "keyFile" ] [ "source" ])
+                (mkAliasOptionModule [ "keyCommand" ] [ "source" ])
+                (mkAliasOptionModule [ "text" ] [ "source" ])
+              ];
+            options = {
+              name = lib.mkOption {
+                type = types.str;
+                default = name;
+                description = "Filename of the secret.";
+              };
+              destDir = lib.mkOption {
+                type = types.path;
+                default = "/run/keys/";
+                description = "Destination directory for the secret. Change this to something other than `/run/keys/` for keys to persist past reboots.";
+              };
+              path = lib.mkOption {
+                internal = true;
+                type = types.path;
+                default = "${config.destDir}/${config.name}";
+              };
+              group = lib.mkOption {
+                type = types.str;
+                default = "root";
+                description = "Group to own the key. If this group does not exist this will silently fail and the key will be owned by gid 0.";
+              };
+              user = lib.mkOption {
+                type = types.str;
+                default = "root";
+                description = "User to own the key. If this user does not exist this will silently fail and the key will be owned by uid 0.";
+              };
+              permissions = lib.mkOption {
+                type = types.str;
+                default = "0600";
+                description = "Unix Octal permissions, in string format, for the key.";
+              };
+              source = lib.mkOption {
+                type = types.oneOf [
+                  types.str
+                  types.path
+                  (types.listOf types.str)
+                ];
+                description = "Source of the key. Either a path to a file, a literal string, or a command to generate the key.";
+              };
+              uploadAt = lib.mkOption {
+                type = types.enum [
+                  "pre-activation"
+                  "post-activation"
+                ];
+                default = "pre-activation";
+                description = "When to upload the key. Either `pre-activation` or `post-activation`.";
+              };
+            };
+          }
+        )
+      );
       description = "Secrets to be deployed to the node.";
-      default = {};
+      default = { };
       example = {
         "wireless.env" = {
-          source = ["gpg" "--decrypt" "secrets/wireless.env.gpg"];
+          source = [
+            "gpg"
+            "--decrypt"
+            "secrets/wireless.env.gpg"
+          ];
           destDir = "/etc/keys/";
         };
 
