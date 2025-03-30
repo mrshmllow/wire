@@ -62,8 +62,8 @@ jobs:
             awk -F '/' '{print $NF}' |
             tr -d ' ' |
             xargs -I % curl -X DELETE \
-              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/wire-docs/deployments/%?force=true"
-              -H "Content-Type: application/json"
+              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/wire-docs/deployments/%?force=true" \
+              -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
 
   update-comment:
