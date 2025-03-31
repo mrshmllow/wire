@@ -12,24 +12,22 @@ jobs:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5
         with:
-          concurrent_skipping: 'same_content_newer'
-
+          concurrent_skipping: "same_content_newer"
   pre-commit:
     runs-on: ubuntu-latest
     needs: pre-job
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v16
-      with:
-        name: wires
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Build
-      run: nix develop --print-build-logs -v --command pre-commit run --all-files
-
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v16
+        with:
+          name: wires
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+      - name: Build
+        run: nix develop --print-build-logs -v --command pre-commit run --all-files
   flake-checks:
     runs-on: ubuntu-latest
     strategy:
@@ -38,29 +36,28 @@ jobs:
     needs: pre-job
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v16
-      with:
-        name: wires
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Build
-      run: nix build .#checks.x86_64-linux.${{ matrix.check }} --print-build-logs
-
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v16
+        with:
+          name: wires
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+      - name: Build
+        run: nix build .#checks.x86_64-linux.${{ matrix.check }} --print-build-logs
   nextest:
     runs-on: ubuntu-latest
     needs: pre-job
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
-    - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v31
-      with:
-        nix_path: nixpkgs=channel:nixos-unstable
-    - uses: cachix/cachix-action@v16
-      with:
-        name: wires
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - name: Nextest
-      run: nix develop --print-build-logs -v --command cargo nextest run
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      - uses: cachix/cachix-action@v16
+        with:
+          name: wires
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+      - name: Nextest
+        run: nix develop --print-build-logs -v --command cargo nextest run

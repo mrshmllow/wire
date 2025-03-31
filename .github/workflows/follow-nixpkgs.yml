@@ -3,7 +3,6 @@ on:
   schedule:
     - cron: "0 22 * * 6"
   workflow_dispatch:
-
 jobs:
   pre-job:
     continue-on-error: true
@@ -16,8 +15,7 @@ jobs:
         run: |
           echo "number=$(gh pr list --label flake-lock-update --state open --json id | jq 'length')" >> "$GITHUB_OUTPUT"
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   update:
     runs-on: ubuntu-latest
     needs: pre-job
@@ -30,7 +28,7 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: wires
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
@@ -40,5 +38,4 @@ jobs:
       - name: create pull request
         run: gh pr create -B main --title "Update flake.lock $(date +'%Y-%m-%d')" --fill --label flake-lock-update
         env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
