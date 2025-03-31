@@ -22,7 +22,7 @@ indicatif = "0.17.8"
 enum-display-derive = "0.1.1"
 im = { workspace = true }
 futures = "0.3.30"
-clap-num = "1.1.1"
+clap-num = "1.2.0"
 clap-markdown = "0.1.4"
 itertools = "0.14.0"
 dhat = "0.3.2"
