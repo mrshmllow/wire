@@ -1,6 +1,11 @@
 {
   perSystem =
-    { toolchain, ... }:
+    {
+      toolchain,
+      config,
+      lib,
+      ...
+    }:
     {
       pre-commit = {
         settings = {
@@ -20,6 +25,12 @@
               enable = true;
               package = toolchain.cargo;
             };
+            fmt = {
+              enable = true;
+              name = "nix fmt";
+              entry = "${lib.getExe config.formatter} --ci";
+            };
+
           };
 
         };
