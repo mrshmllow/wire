@@ -28,7 +28,7 @@
             fmt = {
               enable = true;
               name = "nix fmt";
-              entry = "${lib.getExe config.formatter} --ci";
+              entry = "${lib.getExe config.formatter} --no-cache";
             };
 
           };
