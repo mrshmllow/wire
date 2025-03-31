@@ -52,7 +52,10 @@
             rustfmt.enable = true;
             yamlfmt.enable = true;
             just.enable = true;
-            mdformat.enable = true;
+            mdformat = {
+              enable = true;
+              package = pkgs.mdformat.withPlugins (plugins: [ plugins.mdformat-frontmatter ]);
+            };
             prettier.enable = true;
             protolint.enable = true;
             taplo.enable = true;
