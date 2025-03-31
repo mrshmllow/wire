@@ -30,6 +30,7 @@ wire
 Please install direnv so you can run your commits against the git hooks and use the development environment.
 
 ### Testing
+
 #### dhat profiling
 
 ```sh

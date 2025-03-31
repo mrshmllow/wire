@@ -8,6 +8,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
   outputs =
     {
@@ -15,11 +16,13 @@
       systems,
       git-hooks,
       crane,
+      treefmt-nix,
       ...
     }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         git-hooks.flakeModule
+        treefmt-nix.flakeModule
         ./nix/hooks.nix # pre-commit hooks
         ./nix/utils.nix # utility functions
         ./nix/shells.nix
@@ -42,7 +45,18 @@
             toolchain = inputs'.fenix.packages.complete;
             craneLib = (crane.mkLib pkgs).overrideToolchain config._module.args.toolchain.toolchain;
           };
-          formatter = pkgs.nixfmt-rfc-style;
+          treefmt.programs = {
+            # rfc style
+            nixfmt.enable = true;
+
+            rustfmt.enable = true;
+            yamlfmt.enable = true;
+            just.enable = true;
+            mdformat.enable = true;
+            prettier.enable = true;
+            protolint.enable = true;
+            taplo.enable = true;
+          };
         };
 
     };

@@ -1,31 +1,23 @@
 name: "PR Preview"
 on:
   push:
-
 jobs:
   get-pr:
     runs-on: ubuntu-latest
-
     outputs:
       number: ${{ steps.find-pr.outputs.number }}
-    
     if: ${{ github.actor != 'dependabot[bot]' }}
-
     steps:
       - uses: jwalton/gh-find-current-pr@master
         id: find-pr
         with:
           state: all
-
   base-ref:
     runs-on: ubuntu-latest
     needs: get-pr
-
     outputs:
       base-ref: ${{ steps.base-ref.outputs.base-ref }}
-
     if: ${{ needs.get-pr.outputs.number != '' }}
-
     steps:
       - run: sudo apt install -y jq
       - name: Locate Base Ref
@@ -34,14 +26,11 @@ jobs:
           echo "base-ref=$(gh api /repos/${{ github.repository }}/pulls/${{ needs.get-pr.outputs.number }} | jq -r '.base.ref')" >> "$GITHUB_OUTPUT"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   eval-base:
     runs-on: ubuntu-latest
     needs: base-ref
-
     outputs:
       drv: ${{ steps.drv.outputs.drv }}
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -52,19 +41,15 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: wires
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - id: drv
         run: echo "drv=$(nix eval .#docs --json)" >> "$GITHUB_OUTPUT"
-
   eval-head:
     runs-on: ubuntu-latest
     needs: get-pr
-
     outputs:
       drv: ${{ steps.drv.outputs.drv }}
-
     if: ${{ needs.get-pr.outputs.number != '' }}
-
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -73,25 +58,20 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: wires
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - id: drv
-        run: echo "drv=$(nix eval .#docs --json)" >> "$GITHUB_OUTPUT"          
-
+        run: echo "drv=$(nix eval .#docs --json)" >> "$GITHUB_OUTPUT"
   deploy:
     runs-on: ubuntu-latest
-
     needs:
       - eval-head
       - eval-base
       - get-pr
-
-    environment: 
+    environment:
       name: pr-${{ needs.get-pr.outputs.number }}
       url: https://pr-${{ needs.get-pr.outputs.number }}.wire-docs.pages.dev/
-    
     # skip if nothing changed in the docs package
     if: needs.eval-head.outputs.drv != needs.eval-base.outputs.drv
-
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -100,7 +80,7 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: wires
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - run: nix build .#docs
       - name: Deploy to Cloudflare Pages
         id: deployment

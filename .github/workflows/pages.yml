@@ -3,7 +3,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-
 jobs:
   pre-job:
     continue-on-error: true
@@ -13,16 +12,12 @@ jobs:
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@v5
-
   deploy:
     runs-on: ubuntu-latest
-
-    environment: 
+    environment:
       name: production
       url: https://wire.althaea.zone/
-
     if: github.actor != 'dependabot[bot]' && needs.pre-job.outputs.should_skip != 'true'
-
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
@@ -31,7 +26,7 @@ jobs:
       - uses: cachix/cachix-action@v16
         with:
           name: wires
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - run: nix build .#docs
       - name: Deploy to Cloudflare Pages
         id: deployment
