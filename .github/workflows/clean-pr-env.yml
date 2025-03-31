@@ -4,18 +4,18 @@ on:
     types:
       - closed
 jobs:
-  comment:
-    runs-on: ubuntu-latest
-    outputs:
-      comment-id: ${{ steps.comment.outputs.comment-id }}
-    steps:
-      - name: Add comment
-        uses: peter-evans/create-or-update-comment@v4
-        id: comment
-        with:
-          issue-number: ${{ github.event.number }}
-          body: |
-            [Cleaning up gh environments...](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+  # comment:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     comment-id: ${{ steps.comment.outputs.comment-id }}
+  #   steps:
+  #     - name: Add comment
+  #       uses: peter-evans/create-or-update-comment@v4
+  #       id: comment
+  #       with:
+  #         issue-number: ${{ github.event.number }}
+  #         body: |
+  #           [Cleaning up gh environments...](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
   cleanup-gh:
     runs-on: ubuntu-latest
     permissions: write-all
@@ -59,16 +59,16 @@ jobs:
   #             "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages/projects/wire-docs/deployments/%?force=true" \
   #             -H "Content-Type: application/json" \
   #             -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}"
-  update-comment:
-    runs-on: ubuntu-latest
-    needs:
-      - cleanup-gh
-      - comment
-    steps:
-      - name: update comment
-        uses: peter-evans/create-or-update-comment@v4
-        with:
-          comment-id: ${{ needs.comment.outputs.comment-id }}
-          edit-mode: replace
-          body: |
-            [Github environments clean!](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+  # update-comment:
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - cleanup-gh
+  #     - comment
+  #   steps:
+  #     - name: update comment
+  #       uses: peter-evans/create-or-update-comment@v4
+  #       with:
+  #         comment-id: ${{ needs.comment.outputs.comment-id }}
+  #         edit-mode: replace
+  #         body: |
+  #           [Github environments clean!](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
