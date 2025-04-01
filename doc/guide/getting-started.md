@@ -2,6 +2,15 @@
 
 ## Installation
 
+Wire can be heavy to compile. You should enable the subsitutor `wires.cachix.org`.
+
+::: code-group
+
+<<< @/snippets/getting-started/cache.nix [module.nix]
+<<< @/snippets/getting-started/nix.conf [nix.conf]
+
+:::
+
 ### NixOS / Home Manager
 
 ::: code-group
