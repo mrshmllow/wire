@@ -1,14 +1,17 @@
 version: 2
 updates:
   - package-ecosystem: "cargo"
+    target-branch: develop
     directory: "/"
     schedule:
       interval: "daily"
   - package-ecosystem: "npm"
+    target-branch: develop
     directory: "doc/"
     schedule:
       interval: "daily"
   - package-ecosystem: "github-actions"
+    target-branch: develop
     directory: "/"
     schedule:
       interval: "weekly"
