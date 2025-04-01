@@ -45,20 +45,24 @@
             toolchain = inputs'.fenix.packages.complete;
             craneLib = (crane.mkLib pkgs).overrideToolchain config._module.args.toolchain.toolchain;
           };
-          treefmt.programs = {
-            # rfc style
-            nixfmt.enable = true;
+          treefmt = {
+            programs = {
+              # rfc style
+              nixfmt.enable = true;
 
-            rustfmt.enable = true;
-            yamlfmt.enable = true;
-            just.enable = true;
-            mdformat = {
-              enable = true;
-              package = pkgs.mdformat.withPlugins (plugins: [ plugins.mdformat-frontmatter ]);
+              rustfmt.enable = true;
+              yamlfmt.enable = true;
+              just.enable = true;
+              mdformat = {
+                enable = true;
+                package = pkgs.mdformat.withPlugins (plugins: [ plugins.mdformat-frontmatter ]);
+              };
+              prettier.enable = true;
+              protolint.enable = true;
+              taplo.enable = true;
             };
-            prettier.enable = true;
-            protolint.enable = true;
-            taplo.enable = true;
+            settings.global.excludes = [ "**/pnpm-lock.yaml" ];
+
           };
         };
 
