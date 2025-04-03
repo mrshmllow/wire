@@ -52,7 +52,7 @@ let
         mergedHive.defaults
         mergedHive.${name}
       ];
-
+      system = null;
       specialArgs = {
         inherit name nodes;
       } // mergedHive.meta.specialArgs or { };
