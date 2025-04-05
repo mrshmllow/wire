@@ -3,5 +3,7 @@
     nixpkgs = <nixpkgs>;
   };
 
-  NAME = { };
+  NAME = {
+    nixpkgs.hostPlatform = "x86_64-linux";
+  };
 }
