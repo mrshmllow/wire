@@ -40,8 +40,15 @@ jobs:
         id: date
         run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
       - name: Create Pull Request
+        id: cpr
         uses: peter-evans/create-pull-request@v7
         with:
           title: Update flake.lock ${{ steps.date.outputs.date }}
           labels: flake-lock-update
           branch: ci/flake-update
+      - name: Enable automerge
+        if: steps.cpr.outputs.pull-request-number
+        run: gh pr merge --squash --auto "${{ steps.cpr.outputs.pull-request-number }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
