@@ -9,29 +9,26 @@
     wire.url = "github:wires-org/wire"; # [!code ++]
   };
 
-  outputs =
-    {
-      # ...
-      nixpkgs,
-      home-manager,
-      wire, # [!code ++]
-      ...
-    }:
-    let
-      system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
-    in
-    {
-      homeConfigurations.my-user = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        modules = [
-          # ...
-          {
-            home.packages = [
-              wire.packages.${system}.wire # [!code ++]
-            ];
-          }
-        ];
-      };
+  outputs = {
+    # ...
+    nixpkgs,
+    home-manager,
+    wire, # [!code ++]
+    ...
+  }: let
+    system = "x86_64-linux";
+    pkgs = nixpkgs.legacyPackages.${system};
+  in {
+    homeConfigurations.my-user = home-manager.lib.homeManagerConfiguration {
+      inherit pkgs;
+      modules = [
+        # ...
+        {
+          home.packages = [
+            wire.packages.${system}.wire # [!code ++]
+          ];
+        }
+      ];
     };
+  };
 }
