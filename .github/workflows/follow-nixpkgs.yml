@@ -22,6 +22,8 @@ jobs:
     if: needs.pre-job.outputs.number == '0'
     steps:
       - uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.FOLLOW_NIXPKGS_PRIVATE_KEY }}
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
@@ -32,10 +34,13 @@ jobs:
       - run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-      - run: git switch -c ci/flake-update-${{ github.run_number }}
       - run: nix flake update --commit-lock-file
-      - run: git push --set-upstream origin ci/flake-update-${{ github.run_number }}
-      - name: create pull request
-        run: gh pr create -B main --title "Update flake.lock $(date +'%Y-%m-%d')" --fill --label flake-lock-update
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get Date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          title: Update flake.lock ${{ steps.date.outputs.date }}
+          labels: flake-lock-update
+          branch: ci/flake-update
