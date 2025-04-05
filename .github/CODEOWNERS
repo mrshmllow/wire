@@ -1,3 +1,6 @@
 *  @mrshmllow
 *.nix @itslychee
 docs/* @itslychee
+
+# owned by nobody
+flake.lock
