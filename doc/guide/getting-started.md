@@ -7,7 +7,7 @@ Wire can be heavy to compile. You should enable the subsitutor `wires.cachix.org
 ::: code-group
 
 <<< @/snippets/getting-started/cache.nix [module.nix]
-<<< @/snippets/getting-started/nix.conf [nix.conf]
+<<< @/snippets/getting-started/nix.conf
 
 :::
 
@@ -21,4 +21,3 @@ Wire can be heavy to compile. You should enable the subsitutor `wires.cachix.org
 <<< @/snippets/getting-started/home.nix
 
 :::
->>>>>>> 38fa4e4 (docs: add installation steps & snippet check step)
