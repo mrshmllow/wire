@@ -1,0 +1,14 @@
+.direnv
+.pre-commit-config.yaml
+**/flake.lock
+
+**/pnpm-lock.yaml
+
+**/.vitepress/cache
+**/.vitepress/dist
+
+**/result
+**/target
+
+**/.git
+**/node_modules
