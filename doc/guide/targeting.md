@@ -18,7 +18,7 @@ tags with an `@`.
 
 ```nix:line-numbers [hive.nix]
 {
-  meta.nixpkgs = <nixpkgs> {};
+  meta.nixpkgs = import <nixpkgs> {};
 
   node-1 = {
     # ...
