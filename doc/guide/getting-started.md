@@ -39,6 +39,8 @@ name. Add a node for your local machine:
 
 ```nix:line-numbers [hive.nix]
 {
+  meta.nixpkgs = <nixpkgs> {};
+
   my-local-machine = {
     imports = [./configuration.nix];
 
@@ -63,6 +65,8 @@ Lets add another node to your hive! This one is an example of a remote machine.
 
 ```nix:line-numbers [hive.nix]
 {
+  meta.nixpkgs = <nixpkgs> {};
+
   my-local-machine = {
     imports = [./local-machine/configuration.nix];
     nixpkgs.hostPlatform = "x86_64-linux";
