@@ -8,7 +8,7 @@ description: Getting started with Wire Tool!
 
 ## Installation
 
-Wire can be heavy to compile. You should enable the subsitutor `wires.cachix.org`.
+Wire can be heavy to compile. You should enable the substituter `wires.cachix.org`.
 
 ::: code-group
 
