@@ -25,6 +25,14 @@ in
         "C+ /root/.ssh/id_ed25519 600 - - - ${snakeOil.snakeOilEd25519PrivateKey}"
       ];
       environment.systemPackages = [ wire ];
+      # It's important to note that you should never ever use this configuration
+      # for production. You are risking a MITM attack with this!
+      programs.ssh.extraConfig = ''
+        Host *
+          StrictHostKeyChecking no
+          UserKnownHostsFile /dev/null
+      '';
+
     })
     (mkIf cfg.receiver {
       services.openssh.enable = true;
