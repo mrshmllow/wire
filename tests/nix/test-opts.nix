@@ -10,13 +10,20 @@ let
     mkEnableOption
     mkMerge
     mkIf
+    mkOption
     ;
+  inherit (lib.types) lines;
   cfg = config._wire;
 in
 {
   options._wire = {
     deployer = mkEnableOption "deployment-specific settings";
     receiver = mkEnableOption "receiver-specific settings";
+    testScript = mkOption {
+      type = lines;
+      default = "";
+      description = "node-specific test script";
+    };
   };
 
   config = mkMerge [
@@ -37,6 +44,9 @@ in
     (mkIf cfg.receiver {
       services.openssh.enable = true;
       users.users.root.openssh.authorizedKeys.keys = [ snakeOil.snakeOilEd25519PublicKey ];
+      _wire.testScript = ''
+        ${config.networking.hostName}.wait_for_unit("sshd.service")
+      '';
     })
   ];
 }

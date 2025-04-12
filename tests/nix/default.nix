@@ -16,7 +16,7 @@ let
     submodule
     lines
     attrsOf
-    deferredModule
+    anything
     lazyAttrsOf
     ;
   cfg = config.wire.testing;
@@ -26,17 +26,15 @@ in
   options.wire.testing = mkOption {
     type = attrsOf (
       submodule (
-        { name, ... }:
+        { name, config, ... }:
         {
           options = {
             nodes = mkOption {
-              type = lazyAttrsOf deferredModule;
+              type = lazyAttrsOf anything;
             };
             testScript = mkOption {
               type = lines;
-              default = ''
-
-              '';
+              default = '''';
               description = "test script for runNixOSTest";
             };
             testDir = mkOption {
@@ -45,9 +43,7 @@ in
             };
           };
           config = {
-            testScript = ''
-              start_all()
-            '';
+
           };
         }
       )
@@ -62,7 +58,7 @@ in
       ...
     }:
     {
-      checks = mapAttrs' (testName: opts: {
+      checks = mapAttrs' (testName: opts: rec {
         name = "nixos-vm-test-${testName}";
         value = pkgs.testers.runNixOSTest {
           inherit (opts) nodes;
@@ -105,10 +101,7 @@ in
               };
 
               virtualisation.memorySize = 4096;
-              virtualisation.additionalPaths = flatten (
-                nodes ++ (mapAttrsToList (_: fetchLayer) inputs)
-
-              );
+              virtualisation.additionalPaths = flatten (nodes ++ (mapAttrsToList (_: fetchLayer) inputs));
 
             };
           node.specialArgs = {
@@ -118,8 +111,18 @@ in
             inherit (opts) testDir;
             inherit (self'.packages) wire;
           };
-          inherit (opts) testScript;
+          # NOTE: there is surely a better way of doing this in a more
+          # "controlled" manner, but until a need is asked for, this will remain
+          # as is.
+          testScript =
+            ''
+              with subtest("Start all nodes"):
+                start_all()
+            ''
+            + lib.concatStringsSep "\n" (mapAttrsToList (_: value: value._wire.testScript) value.nodes)
+            + opts.testScript;
         };
+
       }) cfg;
     };
 }
