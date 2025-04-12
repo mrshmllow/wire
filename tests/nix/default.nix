@@ -105,14 +105,9 @@ in
               };
 
               virtualisation.memorySize = 4096;
-
               virtualisation.additionalPaths = flatten (
-                nodes
-                ++ (mapAttrsToList (_: fetchLayer) inputs)
-                ++ [
-                  self'.packages.wire
-                  self'.packages.agent
-                ]
+                nodes ++ (mapAttrsToList (_: fetchLayer) inputs)
+
               );
 
             };
