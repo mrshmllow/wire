@@ -113,7 +113,6 @@ in
             };
           node.specialArgs = {
             evaluateHive = import "${self}/runtime/evaluate.nix";
-            suiteDir = "${self}/tests/nix";
             inherit testName;
             snakeOil = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
             inherit (opts) testDir;
