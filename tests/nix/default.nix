@@ -26,7 +26,7 @@ in
   options.wire.testing = mkOption {
     type = attrsOf (
       submodule (
-        { name, config, ... }:
+        { name, ... }:
         {
           options = {
             nodes = mkOption {
@@ -41,9 +41,6 @@ in
               default = "${self}/tests/nix/suite/${name}";
               readOnly = true;
             };
-          };
-          config = {
-
           };
         }
       )
@@ -116,8 +113,7 @@ in
           # as is.
           testScript =
             ''
-              with subtest("Start all nodes"):
-                start_all()
+              start_all()
             ''
             + lib.concatStringsSep "\n" (mapAttrsToList (_: value: value._wire.testScript) value.nodes)
             + opts.testScript;
