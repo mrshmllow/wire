@@ -2,7 +2,7 @@
 
 wire is a tool to deploy nixos systems. its configuration is a superset of colmena however it is not a fork.
 
-Read the [The Book](https://wire.althaea.zone/intro), or continue reading this readme for development information.
+Read the [The Guide](https://wire.althaea.zone/guide/wire.html), or continue reading this readme for development information.
 
 ## Tree Layout
 
@@ -19,15 +19,15 @@ wire
 │  └── a [vitepress](https://vitepress.dev/) site
 ├── runtime
 │  └── Nix files used during runtime to evaluate nodes
-├── intergration-testing
-│  └── Integration tests using nixos tests
 └──tests
-   └── Directories used during cargo tests
+   └── Directories used during cargo & NixOS VM testing
 ```
 
 ## Development
 
-Please install direnv so you can run your commits against the git hooks and use the development environment.
+Please use `nix develop` for access to the development environment and to ensure
+your changes are ran against the defined git hooks. For simplicity, you may wish
+to use [direnv](https://github.com/direnv/direnv).
 
 ### Testing
 
