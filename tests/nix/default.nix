@@ -94,6 +94,13 @@ in
               nix = {
                 nixPath = [ "nixpkgs=${pkgs.path}" ];
                 settings.substituters = lib.mkForce [ ];
+                # NOTE: nix version 2.26+ caused a regression with how additionalPaths work, but basically flake-compat
+                # tries to fetch the inputs that are supposed to be prepopulated in the VMs, and as the VM being
+                # inaccessible from the outside world, it fails the test.
+                #
+                # Relevant links:
+                # - https://discord.com/channels/1209971237770498088/1262564341413056632/1360866631214956615
+                # - https://nix.dev/manual/nix/latest/release-notes/rl-2.26 (possible breaking changes here)
                 package = pkgs.nixVersions.nix_2_24;
               };
 
