@@ -1,3 +1,4 @@
+---
 name: "Test"
 on:
   pull_request:
@@ -73,19 +74,19 @@ jobs:
             'with builtins; filter ((import <nixpkgs>{}).lib.hasPrefix "nixos-vm-test") (attrNames (getFlake "${{ github.workspace }}").checks.x86_64-linux)'
           )" >> "$GITHUB_OUTPUT"
   vm-tests:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: find-vm-tests
     strategy:
       matrix:
         test: ${{ fromJSON(needs.find-vm-tests.outputs.tests) }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-        with:
-          nix_path: nixpkgs=channel:nixos-unstable
-      - uses: cachix/cachix-action@v16
-        with:
-          name: wires
-          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+      # - uses: cachix/install-nix-action@v31
+      #   with:
+      #     nix_path: nixpkgs=channel:nixos-unstable
+      # - uses: cachix/cachix-action@v16
+      #   with:
+      #     name: wires
+      #     authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
       - name: Build
         run: nix build .#checks.x86_64-linux.${{ matrix.test }} --print-build-logs
