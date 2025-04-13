@@ -17,6 +17,11 @@ Wire can be heavy to compile. You should enable the substituter `wires.cachix.or
 
 :::
 
+### Supported Nix & NixOS versions
+
+Wire is currently _tested_ against `unstable`, `24.11` and `24.05`. It is only
+tested against lix due to regressions with nix 2.26+!
+
 ### NixOS / Home Manager
 
 ::: code-group
