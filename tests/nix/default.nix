@@ -131,9 +131,11 @@ in
                 };
 
                 virtualisation.memorySize = 4096;
-                virtualisation.additionalPaths = flatten (
-                  [ injectedFlakeDir ] ++ nodes ++ (mapAttrsToList (_: fetchLayer) inputs)
-                );
+                virtualisation.additionalPaths = flatten [
+                    injectedFlakeDir
+                    nodes
+                    (mapAttrsToList (_: fetchLayer) inputs)
+                ];
               };
             node.specialArgs = {
               evaluateHive = import "${self}/runtime/evaluate.nix";
