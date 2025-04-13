@@ -68,7 +68,6 @@ in
               ...
             }:
             let
-
               hive = evaluateHive {
                 nixpkgs = pkgs.path;
                 path = testDir;
@@ -95,11 +94,11 @@ in
               nix = {
                 nixPath = [ "nixpkgs=${pkgs.path}" ];
                 settings.substituters = lib.mkForce [ ];
+                package = pkgs.nixVersions.nix_2_24;
               };
 
               virtualisation.memorySize = 4096;
               virtualisation.additionalPaths = flatten (nodes ++ (mapAttrsToList (_: fetchLayer) inputs));
-
             };
           node.specialArgs = {
             evaluateHive = import "${self}/runtime/evaluate.nix";
@@ -118,7 +117,6 @@ in
             + lib.concatStringsSep "\n" (mapAttrsToList (_: value: value._wire.testScript) value.nodes)
             + opts.testScript;
         };
-
       }) cfg;
     };
 }
