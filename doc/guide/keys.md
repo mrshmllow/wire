@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Secret Management
-description: Keys, files, and other out-of-store paths with Wire Tool.
+description: Keys, files, and other out-of-store paths with Wire.
 ---
 
 # {{ $frontmatter.title }}
@@ -17,11 +17,11 @@ v1.0.0.
 
 ## Introduction
 
-Wire Tool is very unopinionated as to how you encrypt your secrets, Wire only
+Wire is very unopinionated as to how you encrypt your secrets. Wire only
 handles pushing and setting up permissions of your key files.
 
 The `source` of your key can be a literal string (unencrypted), a path
-(unencrypted), or a command that wire runs to evaluate the key. Programs that
+(unencrypted), or a command that Wire runs to evaluate the key. Programs that
 work well with wire keys include:
 
 - GPG
@@ -91,13 +91,13 @@ Hello World!
 ## Persistence
 
 Wire defaults `destDir` to `/run/keys`. `/run/` is held in memory and will not
-persist past reboot. Change
+persist across reboots. Change
 [`deployment.key.<name>.destDir`](/reference/module#deployment-keys-name-destdir)
 to something like `/etc/keys` if you need secrets every time the machine boots.
 
 ## Upload Order
 
-By default Wire will upload keys before the system is activated. You can
+By default, Wire will upload keys before the system is activated. You can
 force Wire to upload the key after the system is activated by setting
 [`deployment.keys.<name>.uploadAt`](/reference/module#deployment-keys-name-uploadat)
 to `post-activation`.
