@@ -64,7 +64,7 @@ in
           # - https://discord.com/channels/1209971237770498088/1262564341413056632/1360866631214956615
           # - https://nix.dev/manual/nix/latest/release-notes/rl-2.26 (possible breaking changes here)
 
-          # "nix"
+          "nix"
           "lix"
         ];
         testName = builtins.attrNames cfg;
@@ -79,7 +79,7 @@ in
         let
           sanitizeName =
             str: lib.strings.sanitizeDerivationName (builtins.replaceStrings [ "." ] [ "_" ] str);
-          identifier = sanitizeName "${nixpkgs.legacyPackages.lib.version}-${
+          identifier = sanitizeName "${nixpkgs.legacyPackages.lib.trivial.release}-${
             nixpkgs.legacyPackages.${nix}.name
           }";
           path = "tests/nix/suite/${testName}";
@@ -125,7 +125,7 @@ in
               {
                 imports = [ ./test-opts.nix ];
                 nix = {
-                  package = pkgs.${nix};
+                  package = pkgs.nixVersions.git;
                   nixPath = [ "nixpkgs=${pkgs.path}" ];
                   settings.substituters = lib.mkForce [ ];
                 };
