@@ -132,9 +132,9 @@ in
 
                 virtualisation.memorySize = 4096;
                 virtualisation.additionalPaths = flatten [
-                    injectedFlakeDir
-                    nodes
-                    (mapAttrsToList (_: fetchLayer) inputs)
+                  injectedFlakeDir
+                  nodes
+                  (mapAttrsToList (_: fetchLayer) inputs)
                 ];
               };
             node.specialArgs = {
