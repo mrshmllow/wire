@@ -12,8 +12,8 @@ importers:
         specifier: ^4.0.0
         version: 4.0.0
       vitepress-plugin-group-icons:
-        specifier: ^1.3.8
-        version: 1.3.8
+        specifier: ^1.5.1
+        version: 1.5.1
     devDependencies:
       vitepress:
         specifier: ^1.6.3
@@ -283,8 +283,8 @@ packages:
   '@iconify-json/simple-icons@1.2.29':
     resolution: {integrity: sha512-KYrxmxtRz6iOAulRiUsIBMUuXek+H+Evwf8UvYPIkbQ+KDoOqTegHx3q/w3GDDVC0qJYB+D3hXPMZcpm78qIuA==}
 
-  '@iconify-json/vscode-icons@1.2.17':
-    resolution: {integrity: sha512-7ge4lTxBMpxEE8SGZ3ytjsLOWEip35B+6HJIKPep8gnoqZHTTT5bYDNDkx3iSganyaTviOvBuarzz5Z7Rg62Iw==}
+  '@iconify-json/vscode-icons@1.2.19':
+    resolution: {integrity: sha512-M6Ujx2Ncmr/jfHhLJ+unqaILOJ/wWAkfc84Eh3+e8PccFmB1TS4KwOSyqbawybbqKK7JaaEk5uhFYSFpYOeuOA==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -568,8 +568,8 @@ packages:
   confbox@0.1.8:
     resolution: {integrity: sha512-RMtmw0iFkeR4YV+fUOSucriAQNb9g8zFR52MWCtl+cCZOFRNL6zeB395vPzFhEjjn4fMxXudmELnl/KF/WrK6w==}
 
-  confbox@0.2.1:
-    resolution: {integrity: sha512-hkT3yDPFbs95mNCy1+7qNKC6Pro+/ibzYxtM2iqEigpf0sVw+bg4Zh9/snjsBcf990vfIsg5+1U7VyiyBb3etg==}
+  confbox@0.2.2:
+    resolution: {integrity: sha512-1NB+BKqhtNipMsov4xI/NnhCKp9XG9NamYp5PVm9klAT0fsrNPjaFICsCFhNhwZJKNh7zB/3q8qXz0E9oaMNtQ==}
 
   copy-anything@3.0.5:
     resolution: {integrity: sha512-yCEafptTtb4bk7GLEQoM8KVJpxAfdBJYaXyzQEgQQQgYrZiDp8SJmGKlYza6CYjEDNstAdNdKA3UuoULlEbS6w==}
@@ -775,8 +775,8 @@ packages:
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
 
-  ufo@1.5.4:
-    resolution: {integrity: sha512-UsUk3byDzKd04EyoZ7U4DOlxQaD14JUKQl6/P7wiX4FNvUfm3XL246n9W5AmqwW5RSFJ27NAuM0iLscAOYUiGQ==}
+  ufo@1.6.1:
+    resolution: {integrity: sha512-9a4/uxlTWJ4+a5i0ooc1rU7C7YOw3wT+UGqdeNNHWnOF9qcMBgLRS+4IYUqbczewFx4mLEig6gawh7X6mFlEkA==}
 
   unist-util-is@6.0.0:
     resolution: {integrity: sha512-2qCTHimwdxLfz+YzdGfkqNlH0tLi9xjTnHddPmJwtIG9MGsdbutfTc4P+haPD7l7Cjxf/WZj+we5qfVPvvxfYw==}
@@ -830,8 +830,8 @@ packages:
       terser:
         optional: true
 
-  vitepress-plugin-group-icons@1.3.8:
-    resolution: {integrity: sha512-BIx1HgXEvbDeJX8NqVvthWHQqEW2slj1SkAWLMNoUR5IJq1dq6LmrURYCyznMJCB3/0g+YY89ifvQp3in1fX3g==}
+  vitepress-plugin-group-icons@1.5.1:
+    resolution: {integrity: sha512-IF4xZ5C/BNbod7QFJk3z3XnxckJPw1Dc1pHUQp7FaJxPRt0Y7j11fM1krSR1S8D5FBEpbYp7KJI9XVmrpFOU5w==}
 
   vitepress@1.6.3:
     resolution: {integrity: sha512-fCkfdOk8yRZT8GD9BFqusW3+GggWYZ/rYncOfmgcDtP3ualNHCAg+Robxp2/6xfH1WwPHtGpPwv7mbA3qomtBw==}
@@ -1084,7 +1084,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/vscode-icons@1.2.17':
+  '@iconify-json/vscode-icons@1.2.19':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -1364,7 +1364,7 @@ snapshots:
 
   confbox@0.1.8: {}
 
-  confbox@0.2.1: {}
+  confbox@0.2.2: {}
 
   copy-anything@3.0.5:
     dependencies:
@@ -1503,7 +1503,7 @@ snapshots:
       acorn: 8.14.1
       pathe: 2.0.3
       pkg-types: 1.3.1
-      ufo: 1.5.4
+      ufo: 1.6.1
 
   ms@2.1.3: {}
 
@@ -1533,7 +1533,7 @@ snapshots:
 
   pkg-types@2.1.0:
     dependencies:
-      confbox: 0.2.1
+      confbox: 0.2.2
       exsolve: 1.0.4
       pathe: 2.0.3
 
@@ -1621,7 +1621,7 @@ snapshots:
 
   trim-lines@3.0.1: {}
 
-  ufo@1.5.4: {}
+  ufo@1.6.1: {}
 
   unist-util-is@6.0.0:
     dependencies:
@@ -1664,10 +1664,10 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  vitepress-plugin-group-icons@1.3.8:
+  vitepress-plugin-group-icons@1.5.1:
     dependencies:
       '@iconify-json/logos': 1.2.4
-      '@iconify-json/vscode-icons': 1.2.17
+      '@iconify-json/vscode-icons': 1.2.19
       '@iconify/utils': 2.3.0
     transitivePeerDependencies:
       - supports-color
