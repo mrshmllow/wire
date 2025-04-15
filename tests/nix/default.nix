@@ -23,7 +23,7 @@ let
 in
 {
   imports = [
-    ./suite/test_basic_deploy
+    ./suite/test_remote_deploy
     ./suite/test_local_deploy
   ];
   options.wire.testing = mkOption {

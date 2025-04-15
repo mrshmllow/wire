@@ -5,7 +5,6 @@ let
   flake = import ../../../.;
 in
 {
-
   # This is glue for the newly deployed VMs as they need specific configuration
   # such as static network configuration and other nitpicky VM-specific options.
   # I thank Colmena & NixOps devs for providing me pointers on how to correctly create this, so
@@ -22,8 +21,12 @@ in
         (
           {
             modulesPath,
+            pkgs,
             ...
           }:
+          let
+            snakeOil = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
+          in
           {
             imports = [
               "${modulesPath}/virtualisation/qemu-vm.nix"
@@ -33,6 +36,9 @@ in
 
             nixpkgs.hostPlatform = system;
             boot.loader.grub.enable = false;
+
+            services.openssh.enable = true;
+            users.users.root.openssh.authorizedKeys.keys = [ snakeOil.snakeOilEd25519PublicKey ];
           }
         )
       ];
