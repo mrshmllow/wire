@@ -22,7 +22,10 @@ let
   cfg = config.wire.testing;
 in
 {
-  imports = [ ./suite/test_basic_deploy ];
+  imports = [
+    ./suite/test_basic_deploy
+    ./suite/test_local_deploy
+  ];
   options.wire.testing = mkOption {
     type = attrsOf (
       submodule (
