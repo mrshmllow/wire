@@ -56,14 +56,6 @@ in
           inputs'.nixpkgs_prev_stable
         ];
         nix = [
-          # NOTE: nix version 2.26+ caused a regression with how additionalPaths work, but basically flake-compat
-          # tries to fetch the inputs that are supposed to be prepopulated in the VMs, and as the VM being
-          # inaccessible from the outside world, it fails the test.
-          #
-          # Relevant links:
-          # - https://discord.com/channels/1209971237770498088/1262564341413056632/1360866631214956615
-          # - https://nix.dev/manual/nix/latest/release-notes/rl-2.26 (possible breaking changes here)
-
           "nix"
           "lix"
         ];
@@ -77,6 +69,7 @@ in
           nixpkgs,
         }:
         let
+          # NOTE: nix is pinned to current_stable until #126 is solved
           nixPackage =
             if nix == "lix" then
               nixpkgs.legacyPackages.lix
