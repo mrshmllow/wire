@@ -17,20 +17,34 @@
       # --no-keys should never push a key
       receiver.fail("test -f /run/keys/source_string")
 
-      # push keys
-      deployer.succeed("wire apply keys --on receiver --no-progress --path ${config.wire.testing.test_remote_deploy.testDir}/hive.nix -vvv >&2")
+      def test_keys():
+          deployer.succeed("wire apply keys --on receiver --no-progress --path ${config.wire.testing.test_remote_deploy.testDir}/hive.nix -vvv >&2")
 
-      receiver.succeed("test -f /run/keys/source_string")
-      source_string = receiver.succeed("cat /run/keys/source_string")
-      assert "hello_world_source" in source_string, "source secret correct"
+          keys = [
+            ("/run/keys/source_string", "hello_world_source", "root root 600"),
+            ("/etc/keys/file", "hello_world_file", "root root 644"),
+            ("/home/owner/some/deep/path/command", "hello_world_command", "owner owner 644"),
+          ]
 
-      receiver.succeed("test -f /run/keys/file")
-      file_string = receiver.succeed("cat /run/keys/file")
-      assert "hello_world_file" in file_string, "file secret correct"
+          for path, value, permissions in keys:
+              # test existence & value
+              source_string = receiver.succeed(f"cat {path}")
+              assert value in source_string, f"{path} has correct contents"
 
-      receiver.succeed("test -f /run/keys/command")
-      command_string = receiver.succeed("cat /run/keys/command")
-      assert "hello_world_command" in command_string, "command secret correct"
+              stat = receiver.succeed(f"stat -c '%U %G %a' {path}").rstrip()
+              assert permissions == stat, f"{path} has correct permissions"
+
+      test_keys()
+
+      # Mess with the keys to make sure that every push refreshes the permissions
+      receiver.succeed("echo 'incorrect_value' > /run/keys/source_string")
+      receiver.succeed("chown 600 /etc/keys/file")
+      # Test having a key that doesn't exist mixed with keys that do
+      receiver.succeed("rm /home/owner/some/deep/path/command")
+
+      # Test keys twice to ensure the operation is idempotent,
+      # especially around directory creation.
+      test_keys()
     '';
   };
 }
