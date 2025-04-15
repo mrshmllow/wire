@@ -25,3 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - v1.0.0 Cargo Dependency Updates.
 - v1.0.0 `doc/` Dependency Updates.
 - v1.0.0 `flake.nix` Input Updates.
+
+### Fixed
+
+- v1.0.0 Keys with a path source will now be correctly parsed as `path` instead
+  of `string` by @mrshmllow in https://github.com/wires-org/wire/pull/131.
