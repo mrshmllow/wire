@@ -77,11 +77,14 @@ in
           nixpkgs,
         }:
         let
+          nixPackage =
+            if nix == "lix" then
+              nixpkgs.legacyPackages.lix
+            else
+              inputs'.nixpkgs_current_stable.legacyPackages.nix;
           sanitizeName =
             str: lib.strings.sanitizeDerivationName (builtins.replaceStrings [ "." ] [ "_" ] str);
-          identifier = sanitizeName "${nixpkgs.legacyPackages.lib.trivial.release}-${
-            nixpkgs.legacyPackages.${nix}.name
-          }";
+          identifier = sanitizeName "${nixpkgs.legacyPackages.lib.trivial.release}-${nixPackage.name}";
           path = "tests/nix/suite/${testName}";
           injectedFlakeDir = pkgs.runCommand "injected-flake-dir" { } ''
             cp -r ${../..} $out
@@ -125,7 +128,7 @@ in
               {
                 imports = [ ./test-opts.nix ];
                 nix = {
-                  package = pkgs.nixVersions.git;
+                  package = nixPackage;
                   nixPath = [ "nixpkgs=${pkgs.path}" ];
                   settings.substituters = lib.mkForce [ ];
                 };
