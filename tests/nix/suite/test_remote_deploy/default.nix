@@ -8,6 +8,9 @@
       _wire.receiver = true;
     };
     testScript = ''
+      deployer_so = collect_store_objects(deployer)
+      receiver_so = collect_store_objects(receiver)
+
       deployer.succeed("wire apply --on receiver --no-progress --path ${config.wire.testing.test_remote_deploy.testDir}/hive.nix --no-keys -vvv >&2")
 
       receiver.wait_for_unit("sshd.service")
@@ -45,6 +48,18 @@
       # Test keys twice to ensure the operation is idempotent,
       # especially around directory creation.
       test_keys()
+
+      new_deployer_store_objects = collect_store_objects(deployer).difference(deployer_so)
+      new_receiver_store_objects = collect_store_objects(receiver).difference(receiver_so)
+
+      # no one should have any keys introduced by the operation
+      for node, objects in [
+        (deployer, new_deployer_store_objects),
+        (receiver, new_receiver_store_objects),
+      ]:
+        assert_store_not_posioned(node, "hello_world_source", objects)
+        assert_store_not_posioned(node, "hello_world_file", objects)
+        assert_store_not_posioned(node, "hello_world_command", objects)
     '';
   };
 }

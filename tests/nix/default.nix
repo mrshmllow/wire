@@ -107,6 +107,7 @@ in
                 package = pkgs.nixVersions.nix_2_24;
               };
 
+              environment.systemPackages = [ pkgs.ripgrep ];
               virtualisation.memorySize = 4096;
               virtualisation.additionalPaths = flatten (nodes ++ (mapAttrsToList (_: fetchLayer) inputs));
             };
@@ -123,6 +124,8 @@ in
           testScript =
             ''
               start_all()
+
+              ${builtins.readFile ./tools.py}
             ''
             + lib.concatStringsSep "\n" (mapAttrsToList (_: value: value._wire.testScript) value.nodes)
             + opts.testScript;
