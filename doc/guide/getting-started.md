@@ -8,7 +8,7 @@ description: Getting started with Wire Tool!
 
 ## Installation
 
-Wire can be heavy to compile. You should enable the subsitutor `wires.cachix.org`.
+Wire can be heavy to compile. You should enable the substituter `wires.cachix.org`.
 
 ::: code-group
 
@@ -31,7 +31,7 @@ Wire can be heavy to compile. You should enable the subsitutor `wires.cachix.org
 ## Your First Hive
 
 Wire groups your machines into _nodes_, which are NixOS configurations with
-additional information. Start by creating a `hive.nix` in the same directory as your
+additional information for deployment. Start by creating a `hive.nix` in the same directory as your
 `configuration.nix`.
 
 A `hive.nix` is an attribute set with NixOS configurations, each with a unique
@@ -53,7 +53,7 @@ name. Add a node for your local machine:
 
 Now, assuming your host machine is currently `my-local-machine`, simply running
 [`wire apply`](/reference/cli.html#wire-apply) will evaluate, build, and
-activate your system, which would be the equivelent of `nixos-rebuild switch`.
+activate your system, which would be the equivalent of `nixos-rebuild switch`.
 
 ```sh
 wire apply switch -v

@@ -1,0 +1,44 @@
+docs-page:
+  - changed-files:
+      - any-glob-to-any-file:
+          - doc/guide/**
+          - doc/reference/**
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: doc/**
+
+github_actions:
+  - changed-files:
+      - any-glob-to-any-file: .github/workflows/**
+
+"github / ci / meta":
+  - changed-files:
+      - any-glob-to-any-file: .github/**
+
+javascript:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.ts"
+          - "**/*.js"
+          - "**/package.json"
+          - "**/pnpm-lock.yaml"
+
+nix:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.nix"
+
+rust:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.rs"
+          - "**/Cargo.toml"
+          - "**/Cargo.lock"
+
+tests:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "tests/**"
+
+release:
+  - base-branch: "main"
