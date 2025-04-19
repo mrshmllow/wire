@@ -11,7 +11,7 @@ description: Keys, files, and other out-of-store paths with Wire Tool.
 ::: warning
 
 Pushing keys to your local machine is currently unimplemented and is planned for
-v1.0.0.
+v2.0.0.
 
 :::
 
