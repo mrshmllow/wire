@@ -4,10 +4,11 @@
       pkgs,
       lib,
       craneLib,
+      commonArgs,
       ...
     }:
     {
-      _module.args = rec {
+      _module.args = {
         commonArgs =
           let
             inherit (lib.fileset)
