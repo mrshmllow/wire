@@ -10,11 +10,8 @@ description: Tags, nodes, and how to target them with Wire Tool.
 
 ## The Basics
 
-You can assign 'tags' to nodes, which allow you to put nodes into sets. A node
-can have 0 or more tags.
-
-You can target nodes to deploy using tags with the `--on` argument, prefixing
-tags with an `@`.
+Nodes can have _tags_, which allows you to easily target multiple, related
+nodes for deployment.
 
 ```nix:line-numbers [hive.nix]
 {
@@ -42,6 +39,7 @@ tags with an `@`.
 }
 ```
 
+To target all nodes with a specific tag, prefix tags with an `@`.
 For example, to deploy only nodes with the `cloud` tag, use
 
 ```sh
@@ -66,7 +64,7 @@ and node names with `--on`:
 wire apply --on @cloud node-5
 ```
 
-This will deploy all nodes in `@cloud`, alongside the node `node-a`.
+This will deploy all nodes in `@cloud`, alongside the node `node-5`.
 
 ### Targeting Many Tags (Union)
 
@@ -76,5 +74,5 @@ You can specify many tags together:
 wire apply --on @cloud @on-prem
 ```
 
-This is equivelent to a union between the set of nodes with tag `@cloud` and the
+This is equivalent to a union between the set of nodes with tag `@cloud` and the
 set of nodes with tag `@on-prem`.

@@ -68,7 +68,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: "https://github.com/wires-org/wire/edit/main/docs/:path",
+      pattern: "https://github.com/wires-org/wire/edit/main/doc/:path",
       text: "Edit this page on GitHub",
     },
 
