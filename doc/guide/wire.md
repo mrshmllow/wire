@@ -4,6 +4,20 @@ comment: true
 
 # What is Wire?
 
+<p style="display: flex; gap: 8px">
+  <a href="https://github.com/wires-org/wire/actions/workflows/test.yml?query=branch%3Amain">
+    <img alt="Test Suite Status" src="https://img.shields.io/github/actions/workflow/status/wires-org/wire/test.yml?branch=main&style=flat-square&label=Test%20Suite">
+  </a>
+
+  <a href="https://github.com/wires-org/wire/actions/workflows/build.yml?query=branch%3Amain">
+    <img alt="Build Status" src="https://img.shields.io/github/actions/workflow/status/wires-org/wire/build.yml?branch=main&style=flat-square&label=Builds">
+  </a>
+
+  <a href="https://github.com/wires-org/wire/actions/workflows/pages.yml?query=branch%3Amain">
+    <img alt="Documentation Status" src="https://img.shields.io/github/actions/workflow/status/wires-org/wire/pages.yml?branch=main&style=flat-square&label=Documentation">
+  </a>
+</p>
+
 Wire is a tool to deploy NixOS systems. Its configuration is a superset[^1] of [colmena](https://colmena.cli.rs/), however it is **not** a fork.
 
 [^1]: Any colmena configuration will continue to work with wire, but wire has additional ergonomic changes you can take advantage of.
