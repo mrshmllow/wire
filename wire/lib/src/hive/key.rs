@@ -35,7 +35,7 @@ pub enum Error {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
-#[serde(untagged)]
+#[serde(tag = "t", content = "c")]
 pub enum Source {
     String(String),
     Path(PathBuf),

@@ -3,6 +3,7 @@ use nix::unistd::{Group, User};
 use prost::Message;
 use std::env;
 use std::os::unix::fs::PermissionsExt;
+use std::path::{Path, PathBuf};
 use std::{
     io::{Cursor, Read},
     os::unix::fs::chown,
@@ -11,6 +12,13 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 
 use key_agent::keys::Keys;
+
+fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
+    let prefix = key_path.parent().unwrap();
+    std::fs::create_dir_all(prefix)?;
+
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -25,7 +33,10 @@ async fn main() -> Result<(), anyhow::Error> {
     println!("{msg:?}");
 
     for key in msg.keys {
-        let mut file = File::create(&key.destination).await?;
+        let path = PathBuf::from(&key.destination);
+        create_path(&path)?;
+
+        let mut file = File::create(path).await?;
         let mut permissions = file.metadata().await?.permissions();
 
         permissions.set_mode(key.permissions);
