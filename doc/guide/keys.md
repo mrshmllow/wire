@@ -169,7 +169,7 @@ providing a certificate that is only readable by the caddy service.
 
       # inherit the user and group that caddy runs under
       # the key will only readable by the caddy service
-      inherit (services.caddy) user group;
+      inherit (config.services.caddy) user group;
     };
 
     # ^^ repeat for `some.host.key`
