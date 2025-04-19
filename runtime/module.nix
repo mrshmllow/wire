@@ -173,6 +173,18 @@ in
   };
 
   config = {
-    deployment._keys = lib.mapAttrsToList (_: value: value) config.deployment.keys;
+    deployment._keys = lib.mapAttrsToList (
+      _: value:
+      value
+      // {
+        source = {
+          # Attach type to internally tag serde enum
+          t = builtins.replaceStrings [ "path" "string" "list" ] [ "Path" "String" "Command" ] (
+            builtins.typeOf value.source
+          );
+          c = value.source;
+        };
+      }
+    ) config.deployment.keys;
   };
 }

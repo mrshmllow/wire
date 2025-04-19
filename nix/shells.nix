@@ -2,7 +2,6 @@
   perSystem =
     {
       config,
-      self',
       lib,
       craneLib,
       pkgs,
@@ -23,7 +22,8 @@
           pkgs.cargo-nextest
           pkgs.pnpm
         ];
-        inputsFrom = [ self'.packages.wire ];
+
+        PROTOC = lib.getExe pkgs.protobuf;
         shellHook = builtins.concatStringsSep "\n" [
           cfg.installationScript
           ''
