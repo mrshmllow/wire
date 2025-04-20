@@ -71,6 +71,13 @@ rec {
 
   inspect = {
     inherit path;
-    nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
+    nodes = builtins.mapAttrs (
+      _: v:
+      v.config.deployment
+      // {
+        # Necessary for the agent so it can know what architecture it should push to
+        inherit (v.config.nixpkgs.hostPlatform) system;
+      }
+    ) nodes;
   };
 }

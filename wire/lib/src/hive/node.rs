@@ -57,6 +57,11 @@ pub struct Node {
 
     #[serde(rename(deserialize = "_keys", serialize = "keys"))]
     pub keys: im::Vector<Key>,
+
+    #[serde()]
+    // system is the architecture of the host, this is mainly used for
+    // determining the correct binary to push to the host's machine.
+    pub system: Option<String>,
 }
 
 impl Default for Node {
@@ -67,6 +72,7 @@ impl Default for Node {
             tags: im::HashSet::new(),
             allow_local_deployment: true,
             build_remotely: false,
+            system: None,
         }
     }
 }
