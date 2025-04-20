@@ -62,7 +62,7 @@ pub struct Node {
     #[serde()]
     // system is the architecture of the host, this is mainly used for
     // determining the correct binary to push to the host's machine.
-    pub system: Option<String>,
+    pub system: String,
 }
 
 #[cfg(test)]
@@ -74,7 +74,7 @@ impl Default for Node {
             tags: im::HashSet::new(),
             allow_local_deployment: true,
             build_remotely: false,
-            system: None,
+            system: String::from("x86_64-linux"),
         }
     }
 }

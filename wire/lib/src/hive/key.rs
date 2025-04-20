@@ -284,14 +284,22 @@ impl ExecuteStep for PushAgentStep {
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let agent_directory = match env::var_os("WIRE_AGENT") {
-            Some(agent) => agent.into_string().unwrap(),
-            None => panic!("WIRE_AGENT environment variable not set"),
-        };
+        let mut agent_directory = PathBuf::from(
+            env::var_os("WIRE_AGENT")
+                .expect("WIRE_AGENT environment variable not set!")
+                .into_string()
+                .unwrap(),
+        );
 
-        push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
+        agent_directory.push(ctx.node.system.as_str());
 
-        ctx.state.agent_directory = Some(agent_directory);
+        let path = String::from(agent_directory.to_str().unwrap());
+
+        debug!("agent path: {path}");
+
+        push(ctx.node, ctx.name, Push::Path(&path)).await?;
+
+        ctx.state.agent_directory = Some(path);
 
         Ok(())
     }

@@ -1,7 +1,9 @@
+{ self, ... }:
 {
   perSystem =
     {
       pkgs,
+      lib,
       self',
       buildRustProgram,
       ...
@@ -29,11 +31,19 @@
           nativeBuildInputs = [
             pkgs.makeWrapper
           ];
-          postBuild = ''
-            wrapProgram $out/bin/wire \
-                --set WIRE_RUNTIME ${../../runtime} \
-                --set WIRE_AGENT ${self'.packages.agent}
-          '';
+          postBuild =
+            let
+              agents = lib.mapAttrsToList (name: value: {
+                inherit name;
+                path = value.agent;
+              }) (lib.filterAttrs (_: value: value ? agent) self.packages);
+
+            in
+            ''
+              wrapProgram $out/bin/wire \
+                  --set WIRE_RUNTIME ${../../runtime} \
+                  --set WIRE_AGENT ${pkgs.linkFarm "wire-agents-farm" agents}
+            '';
           meta.mainProgram = "wire";
         };
       };
