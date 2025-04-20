@@ -10,7 +10,7 @@ description: Deduplicate options with default node configuration.
 
 ## Introduction
 
-At the top level of a hive wire reserves the `defaults` attribute. Its applied
+At the top level of a hive wire reserves the `defaults` attribute. It's applied
 to every node.
 
 ::: warning
