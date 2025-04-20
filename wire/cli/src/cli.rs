@@ -14,7 +14,8 @@ use std::{
 #[command(
     name = "wire",
     bin_name = "wire",
-    about = "a tool to deploy nixos systems"
+    about = "a tool to deploy nixos systems",
+    version
 )]
 pub struct Cli {
     #[command(subcommand)]

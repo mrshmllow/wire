@@ -50,7 +50,7 @@ wire apply --on @cloud
 
 ::: info
 
-Other operations such as an `--ignore` argument are unimplemented as of wire `v0.1.0`.
+Other operations such as an `--ignore` argument are unimplemented as of wire `v0.2.0`.
 
 :::
 
