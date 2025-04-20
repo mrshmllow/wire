@@ -50,8 +50,7 @@ wire apply --on @cloud
 
 ::: info
 
-Other operations such as intersection or a theoretical `--ignore` argument
-(subtracting a set of nodes) are unimplemented as of wire `v0.1.0`.
+Other operations such as an `--ignore` argument are unimplemented as of wire `v0.1.0`.
 
 :::
 
@@ -74,5 +73,4 @@ You can specify many tags together:
 wire apply --on @cloud @on-prem
 ```
 
-This is equivalent to a union between the set of nodes with tag `@cloud` and the
-set of nodes with tag `@on-prem`.
+This is a union between `@cloud` and `@on-prem`.

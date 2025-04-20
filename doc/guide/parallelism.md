@@ -8,7 +8,7 @@ description: A deeper dive into parallelism with Wire Tool.
 
 {{ $frontmatter.description }}
 
-## Controlling GPU Usage
+## Controlling CPU Usage
 
 Wire evaluates, builds, pushes, and deploys each node completely independently
 from each other. Internally Wire calls this process a "node execution".

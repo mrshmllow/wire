@@ -10,16 +10,13 @@ description: Deduplicate options with default node configuration.
 
 ## Introduction
 
-At the top level of a hive wire reserves the `default` attribute. Its applied
+At the top level of a hive wire reserves the `defaults` attribute. Its applied
 to every node.
 
 ::: warning
 
-The `default` configuration must be a "pure configuration", while a node may be
-"impure".
-
-That is to say, `default` must not rely on modules that a
-node imports, but a node may rely on modules that default imports.
+`defaults` must not rely on modules that a node imports, but a
+node may rely on modules that default imports.
 
 :::
 
@@ -27,8 +24,8 @@ node imports, but a node may rely on modules that default imports.
 {
   meta.nixpkgs = import <nixpkgs> {};
 
-  default = {
-    # name of the node that default is being applied to
+  defaults = {
+    # name of the node that defaults is being applied to
     name,
     # attribute set of all nodes
     nodes,
