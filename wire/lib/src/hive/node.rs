@@ -31,6 +31,7 @@ pub struct Target {
     pub port: u32,
 }
 
+#[cfg(test)]
 impl Default for Target {
     fn default() -> Self {
         Target {
@@ -64,6 +65,7 @@ pub struct Node {
     pub system: Option<String>,
 }
 
+#[cfg(test)]
 impl Default for Node {
     fn default() -> Self {
         Node {
