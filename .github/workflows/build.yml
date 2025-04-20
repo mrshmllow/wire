@@ -1,3 +1,4 @@
+---
 name: "Build Packages"
 on:
   pull_request:
@@ -23,9 +24,15 @@ jobs:
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
       - uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            extra-platforms = aarch64-linux i686-linux
       - uses: cachix/cachix-action@v16
         with:
           name: wires
