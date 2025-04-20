@@ -238,7 +238,8 @@ impl ExecuteStep for UploadKeyStep {
         let mut child = command
             .args([
                 format!("{agent_directory}/bin/agent"),
-                buf.len().to_string(),
+                "push-keys".to_string(),
+                format!("--length {}", buf.len()),
             ])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

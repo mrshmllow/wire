@@ -22,6 +22,7 @@ name = "agent"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap",
  "nix",
  "prost 0.13.5",
  "prost-build",
