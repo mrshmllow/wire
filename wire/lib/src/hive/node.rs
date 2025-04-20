@@ -31,6 +31,7 @@ pub struct Target {
     pub port: u32,
 }
 
+#[cfg(test)]
 impl Default for Target {
     fn default() -> Self {
         Target {
@@ -59,6 +60,7 @@ pub struct Node {
     pub keys: im::Vector<Key>,
 }
 
+#[cfg(test)]
 impl Default for Node {
     fn default() -> Self {
         Node {
