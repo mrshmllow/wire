@@ -7,29 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [0.2.0] - 2025-04-21
+
 ### Added
 
-- v0.2.0 Getting Started Guide by @mrshmllow.
-- v0.2.0 Web documentation for various features by @mrshmllow.
-- v0.2.0 Initial NixOS VM Testing Framework by @itslychee in https://github.com/wires-org/wire/pull/93.
+- Getting Started Guide by @mrshmllow.
+- Web documentation for various features by @mrshmllow.
+- Initial NixOS VM Testing Framework by @itslychee in https://github.com/wires-org/wire/pull/93.
 
 ### Changed
 
-- v0.2.0 `runtime/evaluate.nix`: force system to be null by @itslychee in https://github.com/wires-org/wire/pull/84.
+- `runtime/evaluate.nix`: force system to be null by @itslychee in https://github.com/wires-org/wire/pull/84.
 
 > [!IMPORTANT]  
 > You will have to update your nodes to include `nixpkgs.hostPlatform = "<ARCH>";`
 
-- v0.2.0 GH Workflows, Formatting, and other DevOps yak shaving.
-- v0.2.0 Issue Templates.
-- v0.2.0 Cargo Dependency Updates.
-- v0.2.0 `doc/` Dependency Updates.
-- v0.2.0 `flake.nix` Input Updates.
+- GH Workflows, Formatting, and other DevOps yak shaving.
+- Issue Templates.
+- Cargo Dependency Updates.
+- `doc/` Dependency Updates.
+- `flake.nix` Input Updates.
 
 ### Fixed
 
-- v0.2.0 Keys with a path source will now be correctly parsed as `path` instead
+- Keys with a path source will now be correctly parsed as `path` instead
   of `string` by @mrshmllow in https://github.com/wires-org/wire/pull/131.
-- v0.2.0 `deployment.keys.<name>.destDir` will be automatically created if it
+- `deployment.keys.<name>.destDir` will be automatically created if it
   does not exist. Nothing about it other than existence is guaranteed. By
   @mrshmllow in https://github.com/wires-org/wire/pull/131.
