@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-package key_agent.keys;
+
+package agent;
 
 message Key {
   string destination = 1;
@@ -12,4 +13,10 @@ message Key {
 
 message Keys {
   repeated Key keys = 1;
+}
+
+
+// TODO (opcode signaling and other stuff like logs maybe)
+message Rollback {
+
 }

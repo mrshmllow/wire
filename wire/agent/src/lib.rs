@@ -1,3 +1,4 @@
+pub mod cli;
 pub mod keys {
-    include!(concat!(env!("OUT_DIR"), "/key_agent.keys.rs"));
+    include!(concat!(env!("OUT_DIR"), "/agent.rs"));
 }

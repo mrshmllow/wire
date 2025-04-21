@@ -1,10 +1,8 @@
 #![deny(clippy::pedantic)]
 use agent::keys::Keys;
-use anyhow::bail;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use nix::unistd::{Group, User};
 use prost::Message;
-use std::env;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::{
@@ -13,27 +11,15 @@ use std::{
 };
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tokio::net::UnixListener;
+
+mod cli;
 
 fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
     let prefix = key_path.parent().unwrap();
     std::fs::create_dir_all(prefix)?;
 
     Ok(())
-}
-
-#[derive(Subcommand, Debug)]
-enum Operations {
-    #[command()]
-    PushKeys {
-        #[arg(short, long)]
-        length: usize,
-    },
-}
-
-#[derive(Parser, Debug)]
-struct Args {
-    #[command(subcommand)]
-    operation: Operations,
 }
 
 async fn push_keys(length: usize) -> Result<(), anyhow::Error> {
@@ -76,11 +62,35 @@ async fn push_keys(length: usize) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+async fn magic_rollback(
+    grace_period: cli::Time,
+    timeout: cli::Time,
+    known_working_closure: Box<Path>,
+) -> Result<(), anyhow::Error> {
+    // NOTE: The default permissions of the socket do seem to be good enough
+    // (755, rwxr-xr-x), but we may wish to revisit this to set it to 700.
+    let socket = UnixListener::bind(".wire-agent").unwrap();
+
+    loop {
+        match socket.accept().await {
+            Ok((stream, _)) => {}
+            Err(e) => {
+                println!("accept() encountered an issue: {e}");
+            }
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let args = Args::parse();
+    let args = cli::Args::parse();
 
     match args.operation {
-        Operations::PushKeys { length } => push_keys(length).await,
+        cli::Operations::PushKeys { length } => push_keys(length).await,
+        cli::Operations::Rollback {
+            grace_period,
+            timeout,
+            known_working_closure,
+        } => magic_rollback(grace_period, timeout, known_working_closure).await,
     }
 }
