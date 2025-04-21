@@ -11,6 +11,7 @@ use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
+use cli::ApplyTarget;
 use indicatif::style::ProgressStyle;
 use lib::hive::Hive;
 use nix::fcntl::fcntl;
@@ -18,6 +19,7 @@ use nix::fcntl::FcntlArg::F_GETFL;
 use nix::fcntl::FcntlArg::F_SETFL;
 use nix::fcntl::OFlag;
 use nix::libc::O_NONBLOCK;
+use tracing::debug;
 use tracing::warn;
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
@@ -60,14 +62,15 @@ async fn main() -> Result<(), anyhow::Error> {
         } => {
             let stdin = std::io::stdin();
 
-            // set fd to nonblocking so it won't hang the program for piping
+            // set fd to nonblocking so it won't hang the program in case if
+            // there is no piping to stdin
             let fdflags = fcntl(stdin.as_raw_fd(), F_GETFL)?;
             let newflags = OFlag::from_bits_retain(fdflags | O_NONBLOCK);
             fcntl(stdin.as_raw_fd(), F_SETFL(newflags))?;
 
             let mut handle = stdin.lock();
 
-            // I am proud of this monstrosity
+            // This could be improved probably, but for now this stays.
             let nodes = {
                 let mut buf: Vec<u8> = Vec::new();
                 let mut c: u8 = 0;
@@ -97,9 +100,30 @@ async fn main() -> Result<(), anyhow::Error> {
                         },
                     }
                 }
+
                 String::from_utf8(buf)
+                    .unwrap()
+                    .trim_end()
+                    .split(',')
+                    .filter(|x| !x.is_empty())
+                    .map(|node| ApplyTarget::from(node.to_string()))
+                    .collect::<Vec<ApplyTarget>>()
             };
-            println!("\nnodes: {nodes:?}\n");
+
+            let on = if let Some(n) = on {
+                if !nodes.is_empty() {
+                    bail!("ambiguous targets specified by parameter and stdin");
+                }
+                n
+            } else {
+                if nodes.is_empty() {
+                    bail!("no provided targets found");
+                }
+                nodes
+            };
+
+            debug!("selected targets: {:?}", on);
+
             let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
 
             apply::apply(

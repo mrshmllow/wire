@@ -78,7 +78,7 @@ pub enum Commands {
 
         /// List of literal node names or `@` prefixed tags.
         #[arg(short, long, value_name = "NODE | @TAG", num_args = 1..)]
-        on: Vec<ApplyTarget>,
+        on: Option<Vec<ApplyTarget>>,
 
         #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
         parallel: usize,
