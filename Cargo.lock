@@ -1610,6 +1610,7 @@ dependencies = [
  "indicatif",
  "itertools",
  "lib",
+ "nix",
  "serde",
  "serde_json",
  "tokio",

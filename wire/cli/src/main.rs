@@ -1,7 +1,11 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::missing_panics_doc)]
+use std::io::BufRead;
+use std::os::fd::AsRawFd;
+
 use crate::cli::Cli;
 use crate::cli::ToSubCommandModifiers;
+use anyhow::bail;
 use anyhow::Ok;
 use clap::CommandFactory;
 use clap::Parser;
@@ -9,6 +13,11 @@ use clap_complete::generate;
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use indicatif::style::ProgressStyle;
 use lib::hive::Hive;
+use nix::fcntl::fcntl;
+use nix::fcntl::FcntlArg::F_GETFL;
+use nix::fcntl::FcntlArg::F_SETFL;
+use nix::fcntl::OFlag;
+use nix::libc::O_NONBLOCK;
 use tracing::warn;
 use tracing_indicatif::IndicatifLayer;
 use tracing_log::AsTrace;
@@ -49,7 +58,50 @@ async fn main() -> Result<(), anyhow::Error> {
             no_keys,
             always_build_local,
         } => {
+            let stdin = std::io::stdin();
+
+            // set fd to nonblocking so it won't hang the program for piping
+            let fdflags = fcntl(stdin.as_raw_fd(), F_GETFL)?;
+            let newflags = OFlag::from_bits_retain(fdflags | O_NONBLOCK);
+            fcntl(stdin.as_raw_fd(), F_SETFL(newflags))?;
+
+            let mut handle = stdin.lock();
+
+            // I am proud of this monstrosity
+            let nodes = {
+                let mut buf: Vec<u8> = Vec::new();
+                let mut c: u8 = 0;
+                loop {
+                    match handle.read_until(b'\n', &mut buf) {
+                        Result::Ok(0) => break,
+                        Result::Ok(_) => {
+                            break;
+                        }
+                        Err(e) => match e.raw_os_error() {
+                            Some(11) => {
+                                // Resource temporarily unavailable is a normal
+                                // error response when reading from stdin
+                                // nonblocking
+                                //
+                                // as for if there should be a counter for this,
+                                // this is undecided.
+                                if c >= 2 {
+                                    break;
+                                }
+                                c += 1;
+                            }
+                            Some(code) => {
+                                bail!("unhandled stdin error: {code} {e}");
+                            }
+                            None => bail!(e),
+                        },
+                    }
+                }
+                String::from_utf8(buf)
+            };
+            println!("\nnodes: {nodes:?}\n");
             let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
+
             apply::apply(
                 &mut hive,
                 goal.try_into()?,
