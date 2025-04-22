@@ -78,7 +78,7 @@ async fn main() -> Result<(), anyhow::Error> {
                     match handle.read_until(b'\n', &mut buf) {
                         Result::Ok(0) => break,
                         Result::Ok(_) => {
-                            break;
+                            c = 0;
                         }
                         Err(e) => match e.raw_os_error() {
                             Some(11) => {
@@ -103,6 +103,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
                 String::from_utf8(buf)
                     .unwrap()
+                    .replace(['\n', ' '], ",")
                     .trim_end()
                     .split(',')
                     .filter(|x| !x.is_empty())
