@@ -5,7 +5,7 @@ use std::process::{Command, ExitStatus};
 use std::sync::LazyLock;
 use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
-use tracing::{error, info, trace, Instrument, Span};
+use tracing::{Instrument, Span, error, info, trace};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::hive::node::Name;

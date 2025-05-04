@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fmt::{Debug, Display};
-use tracing::{event, info, Level as tracing_level};
+use tracing::{Level as tracing_level, event, info};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]

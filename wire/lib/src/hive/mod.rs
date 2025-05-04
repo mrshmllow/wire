@@ -1,13 +1,13 @@
 use node::{Name, Node};
-use std::collections::hash_map::OccupiedEntry;
 use std::collections::HashMap;
+use std::collections::hash_map::OccupiedEntry;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument, trace};
 
 use serde::{Deserialize, Serialize};
 
-use crate::nix::{get_eval_command, EvalGoal};
+use crate::nix::{EvalGoal, get_eval_command};
 use crate::{HiveLibError, SubCommandModifiers};
 pub mod key;
 pub mod node;

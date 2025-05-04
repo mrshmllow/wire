@@ -6,15 +6,15 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tracing::{error, info, instrument, trace, Instrument, Span};
+use tracing::{Instrument, Span, error, info, instrument, trace};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
-use crate::nix::StreamTracing;
 use crate::SubCommandModifiers;
+use crate::nix::StreamTracing;
 
+use super::HiveLibError;
 use super::key::{Key, PushKeyAgentStep, UploadKeyAt, UploadKeyStep};
 use super::steps::activate::SwitchToConfigurationStep;
-use super::HiveLibError;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
