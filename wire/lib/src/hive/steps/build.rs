@@ -2,13 +2,12 @@ use std::fmt::Display;
 
 use async_trait::async_trait;
 use tokio::process::Command;
-use tracing::{info, instrument, Instrument};
+use tracing::{Instrument, info, instrument};
 
 use crate::{
-    create_ssh_command,
+    HiveLibError, create_ssh_command,
     hive::node::{Context, ExecuteStep, Goal},
     nix::StreamTracing,
-    HiveLibError,
 };
 
 pub struct Step;

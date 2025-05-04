@@ -12,12 +12,12 @@ use thiserror::Error;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{debug, info, trace, warn, Span};
+use tracing::{Span, debug, info, trace, warn};
 
-use crate::hive::node::{should_apply_locally, Push};
-use crate::{create_ssh_command, HiveLibError};
+use crate::hive::node::{Push, should_apply_locally};
+use crate::{HiveLibError, create_ssh_command};
 
-use super::node::{push, Context, ExecuteStep, Goal};
+use super::node::{Context, ExecuteStep, Goal, push};
 
 #[derive(Debug, Error)]
 pub enum Error {

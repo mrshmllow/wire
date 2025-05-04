@@ -2,14 +2,13 @@ use std::{fmt::Display, process::Output};
 
 use async_trait::async_trait;
 use tokio::process::Command;
-use tracing::{info, instrument, warn, Instrument};
+use tracing::{Instrument, info, instrument, warn};
 use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::{
-    create_ssh_command,
-    hive::node::{should_apply_locally, Context, ExecuteStep, Goal, SwitchToConfigurationGoal},
+    HiveLibError, create_ssh_command,
+    hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
     nix::StreamTracing,
-    HiveLibError,
 };
 
 pub struct SwitchToConfigurationStep;

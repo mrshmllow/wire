@@ -1,11 +1,11 @@
 use futures::StreamExt;
 use indicatif::ProgressStyle;
 use itertools::Itertools;
-use lib::hive::node::{Context, Goal, GoalExecutor, StepState};
 use lib::hive::Hive;
+use lib::hive::node::{Context, Goal, GoalExecutor, StepState};
 use lib::{HiveLibError, SubCommandModifiers};
 use std::collections::HashSet;
-use tracing::{error, info, instrument, Span};
+use tracing::{Span, error, info, instrument};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::cli::ApplyTarget;

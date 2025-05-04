@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use tracing::{instrument, warn};
 
 use crate::{
-    hive::node::{push, should_apply_locally, Context, ExecuteStep, Goal},
     HiveLibError,
+    hive::node::{Context, ExecuteStep, Goal, push, should_apply_locally},
 };
 
 pub struct EvaluatedOutputStep;

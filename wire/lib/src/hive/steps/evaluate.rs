@@ -1,12 +1,12 @@
 use std::fmt::Display;
 
 use async_trait::async_trait;
-use tracing::{instrument, Instrument};
+use tracing::{Instrument, instrument};
 
 use crate::{
-    hive::node::{Context, Derivation, ExecuteStep, Goal},
-    nix::{get_eval_command, EvalGoal, StreamTracing},
     HiveLibError,
+    hive::node::{Context, Derivation, ExecuteStep, Goal},
+    nix::{EvalGoal, StreamTracing, get_eval_command},
 };
 
 pub struct Step;
