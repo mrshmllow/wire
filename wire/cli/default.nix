@@ -1,11 +1,21 @@
+{ getSystem, inputs, ... }:
 {
   perSystem =
     {
       pkgs,
+      lib,
       self',
       buildRustProgram,
       ...
     }:
+    let
+      agents = lib.strings.concatMapStrings (
+        system:
+        "--set WIRE_KEY_AGENT_${
+          lib.replaceStrings [ "-" ] [ "_" ] system
+        } ${(getSystem system).packages.agent} "
+      ) (import inputs.linux-systems);
+    in
     {
       packages = {
         default = self'.packages.wire;
@@ -32,7 +42,8 @@
           postBuild = ''
             wrapProgram $out/bin/wire \
                 --set WIRE_RUNTIME ${../../runtime} \
-                --set WIRE_KEY_AGENT ${self'.packages.agent}
+                --set WIRE_KEY_AGENT ${self'.packages.agent} \
+                ${agents}
           '';
           meta.mainProgram = "wire";
         };

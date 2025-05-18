@@ -284,9 +284,18 @@ impl ExecuteStep for PushKeyAgentStep {
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let agent_directory = match env::var_os("WIRE_KEY_AGENT") {
+        let arg_name = format!(
+            "WIRE_KEY_AGENT_{platform}",
+            platform = ctx.node.host_platform.replace('-', "_")
+        );
+
+        let agent_directory = match env::var_os(&arg_name) {
             Some(agent) => agent.into_string().unwrap(),
-            None => panic!("WIRE_KEY_AGENT environment variable not set"),
+            None => panic!(
+                "{arg_name} environment variable not set!\
+                Wire was not built with the ability to deploy keys to this platform.\
+                Please create an issue: https://github.com/wires-org/wire/issues/new?template=bug_report.md"
+            ),
         };
 
         push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
