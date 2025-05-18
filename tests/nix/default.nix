@@ -116,7 +116,7 @@ in
             inherit testName;
             snakeOil = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
             inherit (opts) testDir;
-            inherit (self'.packages) wire;
+            inherit (self'.packages) wire-small;
           };
           # NOTE: there is surely a better way of doing this in a more
           # "controlled" manner, but until a need is asked for, this will remain

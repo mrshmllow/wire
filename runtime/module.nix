@@ -76,6 +76,11 @@ in
       readOnly = true;
     };
 
+    _hostPlatform = lib.mkOption {
+      internal = true;
+      readOnly = true;
+    };
+
     keys = lib.mkOption {
       type = types.attrsOf (
         types.submodule (
@@ -173,18 +178,22 @@ in
   };
 
   config = {
-    deployment._keys = lib.mapAttrsToList (
-      _: value:
-      value
-      // {
-        source = {
-          # Attach type to internally tag serde enum
-          t = builtins.replaceStrings [ "path" "string" "list" ] [ "Path" "String" "Command" ] (
-            builtins.typeOf value.source
-          );
-          c = value.source;
-        };
-      }
-    ) config.deployment.keys;
+    deployment = {
+      _keys = lib.mapAttrsToList (
+        _: value:
+        value
+        // {
+          source = {
+            # Attach type to internally tag serde enum
+            t = builtins.replaceStrings [ "path" "string" "list" ] [ "Path" "String" "Command" ] (
+              builtins.typeOf value.source
+            );
+            c = value.source;
+          };
+        }
+      ) config.deployment.keys;
+
+      _hostPlatform = config.nixpkgs.hostPlatform.system;
+    };
   };
 }

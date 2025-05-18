@@ -9,6 +9,9 @@
     fenix.url = "github:nix-community/fenix";
     fenix.inputs.nixpkgs.follows = "nixpkgs";
     treefmt-nix.url = "github:numtide/treefmt-nix";
+
+    # determines systems available for deployment
+    linux-systems.url = "github:nix-systems/default-linux";
   };
   outputs =
     {

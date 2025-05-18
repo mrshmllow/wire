@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Dependency Updates.
 
+### Fixed
+
+- Not bundling the key agent for all supported target platforms.
+
 ## [0.2.0] - 2025-04-21
 
 ### Added

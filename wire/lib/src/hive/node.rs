@@ -58,6 +58,9 @@ pub struct Node {
 
     #[serde(rename(deserialize = "_keys", serialize = "keys"))]
     pub keys: im::Vector<Key>,
+
+    #[serde(rename(deserialize = "_hostPlatform", serialize = "host_platform"))]
+    pub host_platform: Arc<str>,
 }
 
 #[cfg(test)]
@@ -69,6 +72,7 @@ impl Default for Node {
             tags: im::HashSet::new(),
             allow_local_deployment: true,
             build_remotely: false,
+            host_platform: "x86_64-linux".into(),
         }
     }
 }

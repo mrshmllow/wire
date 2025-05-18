@@ -1,7 +1,7 @@
 {
   lib,
   snakeOil,
-  wire,
+  wire-small,
   config,
   ...
 }:
@@ -31,7 +31,7 @@ in
       systemd.tmpfiles.rules = [
         "C+ /root/.ssh/id_ed25519 600 - - - ${snakeOil.snakeOilEd25519PrivateKey}"
       ];
-      environment.systemPackages = [ wire ];
+      environment.systemPackages = [ wire-small ];
       # It's important to note that you should never ever use this configuration
       # for production. You are risking a MITM attack with this!
       programs.ssh.extraConfig = ''
