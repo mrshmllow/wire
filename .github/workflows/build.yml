@@ -14,12 +14,32 @@ jobs:
         with:
           concurrent_skipping: "same_content_newer"
           cancel_others: "true"
+  agent:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        system: ["x86_64-linux", "aarch64-linux"]
+    needs: pre-job
+    if: needs.pre-job.outputs.should_skip != 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y qemu-user-static
+      - uses: cachix/install-nix-action@v31
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            system = ${{ matrix.system }}
+      - uses: cachix/cachix-action@v16
+        with:
+          name: wires
+          authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
+      - run: nix build .#agent
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         package: [wire, docs]
-    needs: pre-job
+    needs: agent
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
       - uses: actions/checkout@v4
