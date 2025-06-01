@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Dependency Updates.
-
-### Fixed
-
-- Not bundling the key agent for all supported target platforms.
+- Wire now compiles and includes key agents for multiple architectures, currently only linux.
+- There is a new package output, `wire-small`, for testing purposes.
+  It only compiles the key agent for the host that builds `wire-small`.
 
 ## [0.2.0] - 2025-04-21
 
