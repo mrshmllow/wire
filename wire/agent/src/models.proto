@@ -17,6 +17,16 @@ message Keys {
 
 
 // TODO (opcode signaling and other stuff like logs maybe)
-message Rollback {
+enum OpCode {
+  OP_CODE_UNSPECIFIED = 0;
+  OP_CODE_FINISH = 1; // mark rollback as successful and close
+  OP_CODE_QUERY = 2; // query for current info such as duration left and closure
+}
 
+message Rollback {
+  OpCode opcode = 1;
+  uint64 timeout = 2;
+  uint64 grace_period = 3;
+  string closure = 4;
+  string message = 5; // server only
 }

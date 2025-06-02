@@ -1,10 +1,10 @@
-use std::{path::Path, str::FromStr, time::Duration};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 
 use anyhow::bail;
 use clap::{Parser, Subcommand};
 
 #[derive(Clone, Eq, PartialEq, Debug)]
-pub struct Time(Duration);
+pub struct Time(pub Duration);
 
 #[derive(Subcommand, Debug)]
 pub enum Operations {
@@ -29,8 +29,10 @@ pub enum Operations {
         timeout: Time,
         /// Store path to known-working system closure, typically the
         /// current/previous one.
-        known_working_closure: Box<Path>,
+        known_working_closure: PathBuf,
     },
+    #[command()]
+    Dummy,
 }
 
 impl FromStr for Time {
