@@ -92,17 +92,12 @@ jobs:
       matrix:
         test: ${{ fromJSON(needs.find-vm-tests.outputs.tests) }}
     steps:
-      - run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /opt/hostedtoolcache/CodeQL
-          sudo docker image prune --all --force
       - uses: actions/checkout@v4
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      - name: QEMU static binaries
+        run: sudo apt-get update && sudo apt-get -y --no-install-recommends install qemu-user-static
+      - uses: wimpysworld/nothing-but-nix@main
         with:
-          platforms: arm64
+          nix-permission-edict: true
       - uses: cachix/install-nix-action@v31
         with:
           nix_path: nixpkgs=channel:nixos-unstable
