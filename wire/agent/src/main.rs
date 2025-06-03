@@ -1,8 +1,9 @@
 #![deny(clippy::pedantic)]
 use agent::keys::{Keys, OpCode, Rollback};
+use anyhow::bail;
 use clap::Parser;
 use cli::Time;
-use nix::unistd::{Group, User};
+use nix::unistd::{geteuid, Group, User};
 use prost::bytes::BytesMut;
 use prost::Message;
 use std::os::unix::fs::PermissionsExt;
@@ -18,7 +19,7 @@ use tokio::net::{UnixListener, UnixStream};
 use tokio::process::Command;
 use tokio::select;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, info_span};
+use tracing::{debug, error, info, info_span, instrument};
 use tracing_subscriber::fmt;
 
 mod cli;
@@ -30,6 +31,7 @@ fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+#[instrument]
 async fn push_keys(length: usize) -> Result<(), anyhow::Error> {
     let mut stdin = std::io::stdin();
     let mut msg_buf = vec![0u8; length];
@@ -70,6 +72,7 @@ async fn push_keys(length: usize) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+#[instrument]
 async fn rollback(
     grace_period: Time,
     timeout: Time,
@@ -148,6 +151,9 @@ async fn rollback(
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     let args = cli::Args::parse();
+    if !geteuid().is_root() {
+        bail!("agent must be ran as root");
+    }
     let format = fmt::format()
         .with_level(false)
         .without_time()
