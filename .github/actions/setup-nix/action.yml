@@ -16,6 +16,7 @@ runs:
     - name: Install QEMU static binary
       if: inputs.withQEMU == true
       run: sudo apt-get update && sudo apt-get -y --no-install-recommends install qemu-user-static
+      shell: bash
     - uses: wimpysworld/nothing-but-nix@main
     - uses: cachix/install-nix-action@v31
       with:
