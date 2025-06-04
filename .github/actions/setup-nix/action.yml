@@ -14,6 +14,7 @@ runs:
   using: "composite"
   steps:
     - name: Install QEMU static binary
+      shell: bash
       if: inputs.withQEMU == true
       run: |
         sudo apt-get update
