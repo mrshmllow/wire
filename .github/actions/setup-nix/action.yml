@@ -1,0 +1,29 @@
+---
+name: Set up Nix
+description: |
+  Sets up the Nix environment for wire, removing unnecessary bloat and installing Nix along with proper
+  substituters being set
+inputs:
+  cachixToken:
+    description: Cachix token
+    required: true
+  withQEMU:
+    description: Skip QEMU installation
+    default: false
+runs:
+  using: "composite"
+  steps:
+    - name: Install QEMU static binary
+      if: inputs.withQEMU == true
+      run: sudo apt-get update && sudo apt-get -y --no-install-recommends install qemu-user-static
+    - uses: wimpysworld/nothing-but-nix@main
+    - uses: cachix/install-nix-action@v31
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          system-features = nixos-test benchmark big-parallel kvm
+          extra-platforms = aarch64-linux i686-linux
+    - uses: cachix/cachix-action@v16
+      with:
+        name: wires
+        authToken: "${{ inputs.CACHIX_AUTH_TOKEN }}"
