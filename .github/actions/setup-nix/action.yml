@@ -22,7 +22,7 @@ runs:
         nix_path: nixpkgs=channel:nixos-unstable
         extra_nix_config: |
           system-features = nixos-test benchmark big-parallel kvm
-          extra-platforms = aarch64-linux i686-linux
+          ${{ inputs.withQEMU && "extra-platforms = aarch64-linux i686-linux" }}
     - uses: cachix/cachix-action@v16
       with:
         name: wires
