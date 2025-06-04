@@ -15,15 +15,19 @@ runs:
   steps:
     - name: Install QEMU static binary
       if: inputs.withQEMU == true
-      run: sudo apt-get update && sudo apt-get -y --no-install-recommends install qemu-user-static
-      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get -y --no-install-recommends install qemu-user-static
+        sudo mkdir -p /etc/nix
+        cat <<-EOF>/etc/nix/nix.conf
+          extra-platforms = aarch64-linux i686-linux
+        EOF
     - uses: wimpysworld/nothing-but-nix@main
     - uses: cachix/install-nix-action@v31
       with:
         nix_path: nixpkgs=channel:nixos-unstable
-        extra_nix_config:
-          ${{ join("system-features = nixos-test benchmark big-parallel kvm", {{ inputs.withQEMU && "extra-platforms = i686-linux aarch64-linux" }},
-          "\n") }} ${{ inputs.withQEMU && "extra-platforms = aarch64-linux i686-linux" }}
+        extra_nix_config: |
+          system-features = nixos-test benchmark big-parallel kvm
     - uses: cachix/cachix-action@v16
       with:
         name: wires
