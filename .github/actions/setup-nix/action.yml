@@ -8,7 +8,7 @@ inputs:
     description: Cachix token
     required: true
   withQEMU:
-    description: Skip QEMU installation
+    description: Enable QEMU
     default: false
 runs:
   using: "composite"
@@ -16,9 +16,6 @@ runs:
     - uses: wimpysworld/nothing-but-nix@main
       with:
         hatchet-protocol: "carve"
-    - name: Set up QEMU
-      if: inputs.withQEMU == true
-      uses: docker/setup-qemu-action@v3
     - name: Generate nix.conf
       shell: bash
       id: config
@@ -37,6 +34,20 @@ runs:
       with:
         nix_path: nixpkgs=channel:nixos-unstable
         extra_nix_config: ${{ steps.config.outputs.config }}
+    - name: Sanity check nix.conf
+      if: ${{ inputs.withQEMU == true && runner.debug == '1' }}
+      shell: bash
+      run: cat /etc/nix/nix.conf
+    - name: Register binfmt
+      if: inputs.withQEMU == true
+      shell: bash
+      run: |
+        docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - name: Sanity check binfmt
+      if: ${{ inputs.withQEMU == true && runner.debug == '1' }}
+      shell: bash
+      run: |
+        cat /proc/sys/fs/binfmt_misc/qemu-aarch64
     - uses: cachix/cachix-action@v16
       with:
         name: wires
