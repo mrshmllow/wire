@@ -6,8 +6,8 @@
     clippy::missing_panics_doc
 )]
 use hive::{
-    key::Error,
     node::{Name, SwitchToConfigurationGoal, Target},
+    steps::keys::Error,
 };
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
