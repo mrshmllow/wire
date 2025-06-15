@@ -7,7 +7,7 @@
 )]
 use hive::{
     node::{Name, SwitchToConfigurationGoal, Target},
-    steps::keys::Error,
+    steps::keys::KeyError,
 };
 use nix_log::{NixLog, Trace};
 use std::path::PathBuf;
@@ -81,7 +81,7 @@ pub enum HiveLibError {
     KeyCommandError(Name, Vec<String>),
 
     #[error("failed to push a key")]
-    KeyError(#[source] Error),
+    KeyError(#[source] KeyError),
 
     #[error("node {0} not exist in hive")]
     NodeDoesNotExist(String),
