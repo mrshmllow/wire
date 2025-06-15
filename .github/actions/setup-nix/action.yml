@@ -40,4 +40,4 @@ runs:
     - uses: cachix/cachix-action@v16
       with:
         name: wires
-        authToken: "${{ inputs.CACHIX_AUTH_TOKEN }}"
+        authToken: "${{ inputs.cachixToken }}"
