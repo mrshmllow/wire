@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - A non-existant key owner user/group would not default to gid/uid `0`.
+- Keys can now be deployed to localhost.
 
 ## [0.2.0] - 2025-04-21
 
