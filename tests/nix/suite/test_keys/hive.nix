@@ -37,9 +37,13 @@ in
     };
   };
 
-  receiver = mkHiveNode { hostname = "receiver"; } {
-    environment.etc."a".text = "b";
-  };
+  receiver = mkHiveNode { hostname = "receiver"; } (
+    { pkgs, ... }:
+    {
+      environment.etc."a".text = "b";
+      environment.systemPackages = [ pkgs.ripgrep ];
+    }
+  );
 
   deployer = mkHiveNode { hostname = "deployer"; } {
     environment.etc."a".text = "b";

@@ -39,6 +39,8 @@ in
 
             services.openssh.enable = true;
             users.users.root.openssh.authorizedKeys.keys = [ snakeOil.snakeOilEd25519PublicKey ];
+
+            environment.systemPackages = [ pkgs.ripgrep ];
           }
         )
       ];
