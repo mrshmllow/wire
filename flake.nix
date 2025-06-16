@@ -15,7 +15,6 @@
 
     # testing inputs
     nixpkgs_current_stable.url = "github:NixOS/nixpkgs/nixos-25.05";
-    nixpkgs_prev_stable.url = "github:NixOS/nixpkgs/nixos-24.11";
   };
   outputs =
     {
