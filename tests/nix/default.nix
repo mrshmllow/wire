@@ -25,6 +25,7 @@ in
   imports = [
     ./suite/test_remote_deploy
     ./suite/test_local_deploy
+    ./suite/test_keys
   ];
   options.wire.testing = mkOption {
     type = attrsOf (
