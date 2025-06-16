@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Added
+
+- Run tests against `unstable`, `24.11` and `24.05` by @mrshmllow in https://github.com/wires-org/wire/pull/122.
+
 ### Changed
 
 - Dependency Updates.

@@ -17,6 +17,15 @@ Wire can be heavy to compile. You should enable the substituter `wires.cachix.or
 
 :::
 
+### Supported Nix & NixOS versions
+
+Wire is currently _tested_ against `unstable`, `24.11` and `25.05`.
+For each channel, it is tested against the given channel's `pkgs.lix`.
+
+There is currently a bug when our VM tests are ran with nixcpp. Nixcpp will try
+to download a file in a network sandbox, whereas Lix will not. We don't know
+how to solve it. Please see (#126)[https://github.com/wires-org/wire/issues/126]
+
 ### NixOS / Home Manager
 
 ::: code-group
