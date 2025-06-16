@@ -14,6 +14,9 @@ in
         source = ./file.txt;
         destDir = "/etc/keys/";
         permissions = "644";
+        # Test defaulting to root when user or group does not exist
+        user = "USERDOESNOTEXIST";
+        group = "USERDOESNOTEXIST";
       };
       command = {
         source = [

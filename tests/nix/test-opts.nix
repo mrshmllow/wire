@@ -40,6 +40,14 @@ in
           UserKnownHostsFile /dev/null
       '';
 
+      # owner user used to test keys on the deployer.
+      # here instead of in the test case hive because we lose the wire binary when
+      # applying to deployer.
+      users.groups."owner" = { };
+      users.users."owner" = {
+        group = "owner";
+        isNormalUser = true;
+      };
     })
     (mkIf cfg.receiver {
       services.openssh.enable = true;
