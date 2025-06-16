@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Run tests against `unstable` and `25.05` by @mrshmllow in https://github.com/wires-org/wire/pull/122.
+- Run tests against `unstable` and `25.05` by @mrshmllow in https://github.com/wires-org/wire/pull/176.
 
 ### Changed
 
