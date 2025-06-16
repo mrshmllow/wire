@@ -47,8 +47,10 @@ async fn main() -> Result<(), anyhow::Error> {
 
         chown(
             key.destination,
-            user.map(|user| user.uid.into()),
-            group.map(|group| group.gid.into()),
+            // Default uid/gid to 0. This is then wrapped around an Option again for
+            // the function.
+            Some(user.map_or(0, |user| user.uid.into())),
+            Some(group.map_or(0, |group| group.gid.into())),
         )?;
 
         let mut file_buf = vec![
