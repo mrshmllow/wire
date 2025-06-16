@@ -13,7 +13,6 @@
       postBuild = ''
         wrapProgram $out/bin/wire \
                     --set WIRE_RUNTIME ${../../runtime} \
-                    --set WIRE_KEY_AGENT ${self'.packages.agent} \
       '';
       cleanSystem = system: lib.replaceStrings [ "-" ] [ "_" ] system;
       agents = lib.strings.concatMapStrings (
