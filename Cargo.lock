@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "key_agent"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "nix",
@@ -580,7 +580,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "lib"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "derive_more",
@@ -1618,7 +1618,7 @@ checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
 
 [[package]]
 name = "wire"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "clap",
