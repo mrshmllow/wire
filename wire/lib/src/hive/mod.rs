@@ -180,22 +180,18 @@ mod tests {
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn flake_hive() {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
-        // let mut path = get_test_path!();
 
         let hive = Hive::new_from_path(tmp_dir.path(), SubCommandModifiers::default())
             .await
             .unwrap();
 
-        let node = Node {
-            target: node::Target {
-                host: "node-a".into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        };
-
         let mut nodes = HashMap::new();
-        nodes.insert(Name("node-a".into()), node);
+
+        // a merged node
+        nodes.insert(Name("node-a".into()), Node::from_host("node-a"));
+        // a non-merged node
+        nodes.insert(Name("node-b".into()), Node::from_host("node-b"));
+        // omit a node called system-c
 
         let mut path = tmp_dir.path().to_path_buf();
         path.push("flake.nix");
