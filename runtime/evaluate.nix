@@ -7,8 +7,6 @@
 let
   module = import ./module.nix;
 
-  # filteredNixosConfigurations = builtins.filterAttrs
-
   mergedHive =
     {
       meta = { };
