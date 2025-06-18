@@ -185,6 +185,24 @@ mod tests {
         let hive = Hive::new_from_path(tmp_dir.path(), SubCommandModifiers::default())
             .await
             .unwrap();
+
+        let node = Node {
+            target: node::Target {
+                host: "node-a".into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+
+        let mut nodes = HashMap::new();
+        nodes.insert(Name("node-a".into()), node);
+
+        let mut path = tmp_dir.path().to_path_buf();
+        path.push("flake.nix");
+
+        assert_eq!(hive, Hive { nodes, path });
+
+        tmp_dir.close().unwrap();
     }
 
     #[tokio::test]
