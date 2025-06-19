@@ -102,8 +102,8 @@ mod tests {
 
     use crate::{
         get_test_path,
-        test_support::make_flake_sandbox,
         hive::steps::keys::{Key, Source, UploadKeyAt},
+        test_support::make_flake_sandbox,
     };
 
     use super::*;
