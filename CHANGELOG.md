@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   It only compiles the key agent for the host that builds `wire-small`.
 - `--no-progress` now defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
 - Added an error for the internal hive evluation parse failure.
+- The `inspect` command now has `show` as an alias.
 
 ### Fixed
 

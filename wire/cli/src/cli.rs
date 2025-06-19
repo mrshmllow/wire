@@ -93,6 +93,7 @@ pub enum Commands {
         always_build_local: Vec<String>,
     },
     /// Inspect hive
+    #[clap(visible_alias = "show")]
     Inspect {
         /// Include liveliness
         #[arg(short, long, default_value_t = false)]
