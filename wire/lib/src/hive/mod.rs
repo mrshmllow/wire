@@ -45,7 +45,8 @@ impl Hive {
         debug!("Output of nix eval: {stdout}");
 
         if command.status.success() {
-            let hive: Hive = serde_json::from_str(&stdout).unwrap();
+            let hive: Hive =
+                serde_json::from_str(&stdout).map_err(HiveLibError::ParseEvaluateError)?;
 
             return Ok(hive);
         }

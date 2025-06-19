@@ -94,6 +94,9 @@ pub enum HiveLibError {
     #[error("failed to parse nix log \"{0}\"")]
     ParseLogError(String, #[source] serde_json::Error),
 
+    #[error("failed to parse internal wire json. please create an issue!")]
+    ParseEvaluateError(#[source] serde_json::Error),
+
     #[error("an operation failed in regards to buffers")]
     BufferOperationError(#[source] tokio::io::Error),
 
