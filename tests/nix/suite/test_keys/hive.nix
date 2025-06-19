@@ -1,5 +1,5 @@
 let
-  mkHiveNode = import ../utils.nix { testName = "test_keys"; };
+  mkHiveNode = import ../utils.nix { testName = "test_keys-@IDENT@"; };
 in
 {
   meta.nixpkgs = import <nixpkgs> { system = "x86_64-linux"; };
