@@ -104,6 +104,7 @@ pub enum Commands {
         json: bool,
     },
     /// Generates shell completions
+    #[clap(hide = true)]
     Completions {
         #[arg()]
         // Shell to generate completions for

@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added an error for the internal hive evluation parse failure.
 - The `inspect` command now has `show` as an alias.
 - Remove `log` command as there are currently no plans to implement the feature
+- The `completions` command is now hidden from the help page
 
 ### Fixed
 
