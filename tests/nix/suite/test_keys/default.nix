@@ -13,7 +13,7 @@
       receiver_so = collect_store_objects(receiver)
 
       # build all nodes without any keys
-      deployer.succeed("wire apply --no-progress --on receiver --path ${config.wire.testing.test_keys.testDir}/hive.nix --no-keys -vvv >&2")
+      deployer.succeed(f"wire apply --no-progress --on receiver --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
 
       receiver.wait_for_unit("sshd.service")
 
