@@ -1,6 +1,10 @@
 #![feature(let_chains)]
 #![deny(clippy::pedantic)]
-#![allow(clippy::missing_errors_doc, clippy::must_use_candidate)]
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::missing_panics_doc
+)]
 use hive::{
     key::Error,
     node::{Name, SwitchToConfigurationGoal, Target},
