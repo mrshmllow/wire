@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--no-progress` now defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
 - Added an error for the internal hive evluation parse failure.
 - The `inspect` command now has `show` as an alias.
+- Remove `log` command as there are currently no plans to implement the feature
 
 ### Fixed
 

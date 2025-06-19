@@ -70,9 +70,6 @@ async fn main() -> Result<(), anyhow::Error> {
                 format!("{hive:#?}")
             }
         }),
-        cli::Commands::Log { .. } => {
-            todo!()
-        }
         cli::Commands::Completions { shell } => {
             let mut cmd = Cli::command();
             let name = cmd.clone();

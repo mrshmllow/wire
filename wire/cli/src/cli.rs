@@ -103,15 +103,6 @@ pub enum Commands {
         #[arg(short, long, default_value_t = false)]
         json: bool,
     },
-    /// Inspect log of builds
-    Log {
-        /// Host identifier
-        #[arg()]
-        host: String,
-        /// Reverse-index of log. 0 is the latest
-        #[arg(default_value_t = 0)]
-        index: i32,
-    },
     /// Generates shell completions
     Completions {
         #[arg()]
