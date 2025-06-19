@@ -1,4 +1,3 @@
-{ config, ... }:
 {
   wire.testing.test_remote_deploy = {
     nodes.deployer = {
@@ -11,7 +10,7 @@
       deployer_so = collect_store_objects(deployer)
       receiver_so = collect_store_objects(receiver)
 
-      deployer.succeed("wire apply --on receiver --no-progress --path ${config.wire.testing.test_remote_deploy.testDir}/hive.nix --no-keys -vvv >&2")
+      deployer.succeed(f"wire apply --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
 
       receiver.wait_for_unit("sshd.service")
 
@@ -21,7 +20,7 @@
       receiver.fail("test -f /run/keys/source_string")
 
       def test_keys():
-          deployer.succeed("wire apply keys --on receiver --no-progress --path ${config.wire.testing.test_remote_deploy.testDir}/hive.nix -vvv >&2")
+          deployer.succeed(f"wire apply keys --on receiver --no-progress --path {TEST_DIR}/hive.nix -vvv >&2")
 
           keys = [
             ("/run/keys/source_string", "hello_world_source", "root root 600"),

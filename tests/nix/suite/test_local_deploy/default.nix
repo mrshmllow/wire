@@ -1,4 +1,3 @@
-{ config, ... }:
 {
   wire.testing.test_local_deploy = {
     nodes.deployer = {
@@ -6,7 +5,7 @@
       _wire.receiver = true;
     };
     testScript = ''
-      deployer.succeed("wire apply --on deployer --no-progress --path ${config.wire.testing.test_local_deploy.testDir}/hive.nix --no-keys -vvv >&2")
+      deployer.succeed(f"wire apply --on deployer --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
       deployer.succeed("test -f /etc/a")
     '';
   };
