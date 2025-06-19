@@ -10,10 +10,10 @@ use tracing::{Instrument, Span, error, info, instrument, trace};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::SubCommandModifiers;
+use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
 use crate::nix::StreamTracing;
 
 use super::HiveLibError;
-use super::key::{Key, PushKeyAgentStep, UploadKeyAt, UploadKeyStep};
 use super::steps::activate::SwitchToConfigurationStep;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
@@ -166,19 +166,19 @@ impl<'a> GoalExecutor<'a> {
         Self {
             steps: vec![
                 Box::new(PushKeyAgentStep),
-                Box::new(UploadKeyStep {
-                    moment: UploadKeyAt::AnyOpportunity,
+                Box::new(KeysStep {
+                    filter: UploadKeyAt::NoFilter,
                 }),
-                Box::new(UploadKeyStep {
-                    moment: UploadKeyAt::PreActivation,
+                Box::new(KeysStep {
+                    filter: UploadKeyAt::PreActivation,
                 }),
                 Box::new(super::steps::evaluate::Step),
                 Box::new(super::steps::push::EvaluatedOutputStep),
                 Box::new(super::steps::build::Step),
                 Box::new(super::steps::push::BuildOutputStep),
                 Box::new(SwitchToConfigurationStep),
-                Box::new(UploadKeyStep {
-                    moment: UploadKeyAt::PostActivation,
+                Box::new(KeysStep {
+                    filter: UploadKeyAt::PostActivation,
                 }),
             ],
             context,

@@ -4,23 +4,25 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fmt::Display;
+use std::io::Cursor;
 use std::pin::Pin;
 use std::process::{ExitStatus, Stdio};
 use std::str::from_utf8;
-use std::{io::Cursor, path::PathBuf};
+use std::{num::ParseIntError, path::PathBuf};
 use thiserror::Error;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt as _, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{Span, debug, info, trace, warn};
+use tracing::{debug, info, trace, warn};
 
-use crate::hive::node::{Push, should_apply_locally};
+use crate::hive::node::{
+    Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, push, should_apply_locally,
+};
+use crate::hive::steps::activate::get_elevation;
 use crate::{HiveLibError, create_ssh_command};
 
-use super::node::{Context, ExecuteStep, Goal, push};
-
 #[derive(Debug, Error)]
-pub enum Error {
+pub enum KeyError {
     #[error("error reading file")]
     File(#[source] std::io::Error),
 
@@ -32,6 +34,9 @@ pub enum Error {
 
     #[error("Command list empty")]
     Empty,
+
+    #[error("Failed to parse key permissions")]
+    ParseKeyPermissions(#[source] ParseIntError),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
@@ -49,7 +54,7 @@ pub enum UploadKeyAt {
     #[serde(rename = "post-activation")]
     PostActivation,
     #[serde(skip)]
-    AnyOpportunity,
+    NoFilter,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
@@ -66,35 +71,50 @@ pub struct Key {
     pub upload_at: UploadKeyAt,
 }
 
-pub trait PushKeys {
-    fn push_keys(
-        self,
-        target: UploadKeyAt,
-        span: &Span,
-    ) -> impl std::future::Future<Output = Result<(), HiveLibError>> + Send;
+fn should_execute(filter: &UploadKeyAt, ctx: &crate::hive::node::Context) -> bool {
+    if ctx.no_keys {
+        return false;
+    }
+
+    // should execute if no filter, and the goal is keys.
+    // otherwise, only execute if the goal is switch
+    matches!(
+        (filter, &ctx.goal),
+        (UploadKeyAt::NoFilter, Goal::Keys)
+            | (
+                _,
+                Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch)
+            )
+    )
 }
 
-async fn create_reader(source: &'_ Source) -> Result<Pin<Box<dyn AsyncRead + Send + '_>>, Error> {
+fn get_u32_permission(key: &Key) -> Result<u32, KeyError> {
+    u32::from_str_radix(&key.permissions, 8).map_err(KeyError::ParseKeyPermissions)
+}
+
+async fn create_reader(
+    source: &'_ Source,
+) -> Result<Pin<Box<dyn AsyncRead + Send + '_>>, KeyError> {
     match source {
-        Source::Path(path) => Ok(Box::pin(File::open(path).await.map_err(Error::File)?)),
+        Source::Path(path) => Ok(Box::pin(File::open(path).await.map_err(KeyError::File)?)),
         Source::String(string) => Ok(Box::pin(Cursor::new(string))),
         Source::Command(args) => {
-            let output = Command::new(args.first().ok_or(Error::Empty)?)
+            let output = Command::new(args.first().ok_or(KeyError::Empty)?)
                 .args(&args[1..])
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()
-                .map_err(Error::CommandSpawnError)?
+                .map_err(KeyError::CommandSpawnError)?
                 .wait_with_output()
                 .await
-                .map_err(Error::CommandSpawnError)?;
+                .map_err(KeyError::CommandSpawnError)?;
 
             if output.status.success() {
                 return Ok(Box::pin(Cursor::new(output.stdout)));
             }
 
-            Err(Error::CommandError(
+            Err(KeyError::CommandError(
                 output.status,
                 from_utf8(&output.stderr).unwrap().to_string(),
             ))
@@ -128,7 +148,7 @@ async fn copy_buffers<T: AsyncWriteExt + Unpin>(
     Ok(())
 }
 
-async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error> {
+async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyError> {
     let mut reader = create_reader(&key.source).await?;
 
     let mut buf = Vec::new();
@@ -153,22 +173,21 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), Error
                 .expect("Failed to conver usize buf length to i32"),
             user: key.user.clone(),
             group: key.group.clone(),
-            permissions: u32::from_str_radix(&key.permissions, 8)
-                .expect("Failed to convert octal string to u32"),
+            permissions: get_u32_permission(key)?,
             destination: destination.into_os_string().into_string().unwrap(),
         },
         buf,
     ))
 }
 
-pub struct UploadKeyStep {
-    pub moment: UploadKeyAt,
+pub struct KeysStep {
+    pub filter: UploadKeyAt,
 }
 pub struct PushKeyAgentStep;
 
-impl Display for UploadKeyStep {
+impl Display for KeysStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Upload key @ {:?}", self.moment)
+        write!(f, "Upload key @ {:?}", self.filter)
     }
 }
 
@@ -178,32 +197,10 @@ impl Display for PushKeyAgentStep {
     }
 }
 
-fn should_execute(moment: &UploadKeyAt, ctx: &Context) -> bool {
-    if ctx.no_keys {
-        return false;
-    }
-    if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-        warn!(
-            "SKIP STEP FOR {}: Pushing keys locally is unimplemented",
-            ctx.name.to_string()
-        );
-        return false;
-    }
-
-    if *moment == UploadKeyAt::AnyOpportunity && matches!(ctx.goal, Goal::Keys) {
-        return true;
-    }
-
-    matches!(
-        ctx.goal,
-        Goal::SwitchToConfiguration(super::node::SwitchToConfigurationGoal::Switch)
-    )
-}
-
 #[async_trait]
-impl ExecuteStep for UploadKeyStep {
+impl ExecuteStep for KeysStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        should_execute(&self.moment, ctx)
+        should_execute(&self.filter, ctx)
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
@@ -214,15 +211,15 @@ impl ExecuteStep for UploadKeyStep {
             .keys
             .iter()
             .filter(|key| {
-                self.moment == UploadKeyAt::AnyOpportunity
-                    || (self.moment != UploadKeyAt::AnyOpportunity && key.upload_at != self.moment)
+                self.filter == UploadKeyAt::NoFilter
+                    || (self.filter != UploadKeyAt::NoFilter && key.upload_at != self.filter)
             })
             .map(|key| async move { process_key(key).await });
 
         let (keys, bufs): (Vec<key_agent::keys::Key>, Vec<Vec<u8>>) = join_all(futures)
             .await
             .into_iter()
-            .collect::<Result<Vec<_>, Error>>()
+            .collect::<Result<Vec<_>, KeyError>>()
             .map_err(HiveLibError::KeyError)?
             .into_iter()
             .unzip();
@@ -233,7 +230,14 @@ impl ExecuteStep for UploadKeyStep {
 
         let buf = msg.encode_to_vec();
 
-        let mut command = create_ssh_command(&ctx.node.target, true);
+        let mut command =
+            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                warn!("Placing keys locally for node {0}", ctx.name);
+                get_elevation("wire key agent")?;
+                Command::new("sudo")
+            } else {
+                create_ssh_command(&ctx.node.target, true)
+            };
 
         let mut child = command
             .args([
@@ -280,7 +284,7 @@ impl ExecuteStep for UploadKeyStep {
 #[async_trait]
 impl ExecuteStep for PushKeyAgentStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        should_execute(&UploadKeyAt::AnyOpportunity, ctx)
+        should_execute(&UploadKeyAt::NoFilter, ctx)
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
@@ -298,7 +302,9 @@ impl ExecuteStep for PushKeyAgentStep {
             ),
         };
 
-        push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
+        if !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+            push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
+        }
 
         ctx.state.key_agent_directory = Some(agent_directory);
 

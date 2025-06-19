@@ -587,6 +587,7 @@ dependencies = [
  "gethostname",
  "im",
  "key_agent",
+ "nix",
  "prost",
  "regex",
  "serde",

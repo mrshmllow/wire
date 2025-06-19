@@ -3,6 +3,7 @@
   snakeOil,
   wire-small,
   config,
+  pkgs,
   ...
 }:
 let
@@ -31,7 +32,10 @@ in
       systemd.tmpfiles.rules = [
         "C+ /root/.ssh/id_ed25519 600 - - - ${snakeOil.snakeOilEd25519PrivateKey}"
       ];
-      environment.systemPackages = [ wire-small ];
+      environment.systemPackages = [
+        wire-small
+        pkgs.ripgrep
+      ];
       # It's important to note that you should never ever use this configuration
       # for production. You are risking a MITM attack with this!
       programs.ssh.extraConfig = ''
@@ -40,6 +44,14 @@ in
           UserKnownHostsFile /dev/null
       '';
 
+      # owner user used to test keys on the deployer.
+      # here instead of in the test case hive because we lose the wire binary when
+      # applying to deployer.
+      users.groups."owner" = { };
+      users.users."owner" = {
+        group = "owner";
+        isNormalUser = true;
+      };
     })
     (mkIf cfg.receiver {
       services.openssh.enable = true;

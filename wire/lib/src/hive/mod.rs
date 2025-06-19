@@ -9,9 +9,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::nix::{EvalGoal, get_eval_command};
 use crate::{HiveLibError, SubCommandModifiers};
-pub mod key;
 pub mod node;
-mod steps;
+pub mod steps;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Hive {
@@ -101,7 +100,11 @@ fn find_hive(path: &Path) -> Option<PathBuf> {
 mod tests {
     use im::vector;
 
-    use crate::{get_test_path, test_support::make_flake_sandbox};
+    use crate::{
+        get_test_path,
+        hive::steps::keys::{Key, Source, UploadKeyAt},
+        test_support::make_flake_sandbox,
+    };
 
     use super::*;
     use std::env;
@@ -156,15 +159,15 @@ mod tests {
                 user: "root".into(),
                 port: 22,
             },
-            keys: vector![key::Key {
+            keys: vector![Key {
                 name: "different-than-a".into(),
                 dest_dir: "/run/keys/".into(),
                 path: "/run/keys/different-than-a".into(),
                 group: "root".into(),
                 user: "root".into(),
                 permissions: "0600".into(),
-                source: key::Source::String("hi".into()),
-                upload_at: key::UploadKeyAt::PreActivation,
+                source: Source::String("hi".into()),
+                upload_at: UploadKeyAt::PreActivation,
             }],
             ..Default::default()
         };
