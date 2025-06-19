@@ -146,6 +146,11 @@ in
                 default = "pre-activation";
                 description = "When to upload the key. Either `pre-activation` or `post-activation`.";
               };
+              environment = lib.mkOption {
+                type = types.attrsOf types.str;
+                default = { };
+                description = "Key-Value environment variables to use when creating the key if the key source is a command.";
+              };
             };
           }
         )

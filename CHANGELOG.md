@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Run tests against `unstable` and `25.05` by @mrshmllow in https://github.com/wires-org/wire/pull/176.
+- Added `deployment.keys.environment` to give key commands environment variables.
 
 ### Changed
 
@@ -22,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `inspect` command now has `show` as an alias.
 - Remove `log` command as there are currently no plans to implement the feature
 - The `completions` command is now hidden from the help page
+- Key commands will now be ran with a clean environment (no environment
+  variables).
 
 ### Fixed
 
