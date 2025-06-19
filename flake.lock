@@ -220,22 +220,6 @@
         "type": "github"
       }
     },
-    "nixpkgs_prev_stable": {
-      "locked": {
-        "lastModified": 1749834526,
-        "narHash": "sha256-izgPGLeUeFB9loC+n2X6TO2n8pOGvVcR3jKqxTGOwgc=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "db8414903dd6b3042e1ac471eafc18ca4ccb54a4",
-        "type": "github"
-      },
-      "original": {
-        "owner": "NixOS",
-        "ref": "nixos-24.11",
-        "repo": "nixpkgs",
-        "type": "github"
-      }
-    },
     "root": {
       "inputs": {
         "crane": "crane",
@@ -246,7 +230,6 @@
         "linux-systems": "linux-systems",
         "nixpkgs": "nixpkgs_2",
         "nixpkgs_current_stable": "nixpkgs_current_stable",
-        "nixpkgs_prev_stable": "nixpkgs_prev_stable",
         "systems": "systems",
         "treefmt-nix": "treefmt-nix"
       }
