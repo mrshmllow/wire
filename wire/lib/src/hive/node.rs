@@ -42,6 +42,16 @@ impl Default for Target {
     }
 }
 
+#[cfg(test)]
+impl Target {
+    fn from_host(host: &str) -> Self {
+        Target {
+            host: host.into(),
+            ..Default::default()
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Node {
     #[serde(rename = "target")]
@@ -73,6 +83,16 @@ impl Default for Node {
             allow_local_deployment: true,
             build_remotely: false,
             host_platform: "x86_64-linux".into(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Node {
+    pub fn from_host(host: &str) -> Self {
+        Node {
+            target: Target::from_host(host),
+            ..Default::default()
         }
     }
 }

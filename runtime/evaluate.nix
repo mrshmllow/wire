@@ -28,7 +28,7 @@ let
       "meta"
       "defaults"
     ]
-  ) (builtins.attrNames mergedHive);
+  ) (builtins.filter (name: builtins.hasAttr name hive) (builtins.attrNames mergedHive));
 
   resolvedNixpkgs =
     if mergedHive.meta ? "nixpkgs" then

@@ -31,7 +31,7 @@ in
             imports = [
               "${modulesPath}/virtualisation/qemu-vm.nix"
               "${modulesPath}/testing/test-instrumentation.nix"
-              flake.checks.${system}."nixos-vm-test-${testName}".nodes.${hostname}.system.build.networkConfig
+              flake.checks.${system}."vm-${testName}".nodes.${hostname}.system.build.networkConfig
             ];
 
             nixpkgs.hostPlatform = system;

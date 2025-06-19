@@ -94,7 +94,7 @@ in
           '';
         in
         rec {
-          name = "nixos-vm-test-${testName}-${identifier}";
+          name = "vm-${testName}-${identifier}";
           value = pkgs.testers.runNixOSTest {
             inherit (opts) nodes;
             inherit name;

@@ -65,7 +65,7 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           nix eval --impure --json --expr \
-            'with builtins; filter ((import <nixpkgs>{}).lib.hasPrefix "nixos-vm-test") (attrNames (getFlake "${{ github.workspace }}").checks.x86_64-linux)' \
+            'with builtins; filter ((import <nixpkgs>{}).lib.hasPrefix "vm-") (attrNames (getFlake "${{ github.workspace }}").checks.x86_64-linux)' \
             > tests.json
       - name: set output
         id: tests

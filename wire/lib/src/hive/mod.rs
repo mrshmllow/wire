@@ -102,6 +102,7 @@ mod tests {
 
     use crate::{
         get_test_path,
+        test_support::make_flake_sandbox,
         hive::steps::keys::{Key, Source, UploadKeyAt},
     };
 
@@ -177,6 +178,31 @@ mod tests {
         path.push("hive.nix");
 
         assert_eq!(hive, Hive { nodes, path });
+    }
+
+    #[tokio::test]
+    #[cfg_attr(feature = "no_web_tests", ignore)]
+    async fn flake_hive() {
+        let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
+
+        let hive = Hive::new_from_path(tmp_dir.path(), SubCommandModifiers::default())
+            .await
+            .unwrap();
+
+        let mut nodes = HashMap::new();
+
+        // a merged node
+        nodes.insert(Name("node-a".into()), Node::from_host("node-a"));
+        // a non-merged node
+        nodes.insert(Name("node-b".into()), Node::from_host("node-b"));
+        // omit a node called system-c
+
+        let mut path = tmp_dir.path().to_path_buf();
+        path.push("flake.nix");
+
+        assert_eq!(hive, Hive { nodes, path });
+
+        tmp_dir.close().unwrap();
     }
 
     #[tokio::test]
