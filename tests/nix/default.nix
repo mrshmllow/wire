@@ -90,7 +90,7 @@ in
           injectedFlakeDir = pkgs.runCommand "injected-flake-dir" { } ''
             cp -r ${../..} $out
             chmod -R +w $out
-            substituteInPlace $out/${path}/hive.nix --replace @IDENT@ ${identifier}
+            substituteInPlace $out/${path}/hive.nix --replace-fail @IDENT@ ${identifier}
           '';
         in
         rec {
