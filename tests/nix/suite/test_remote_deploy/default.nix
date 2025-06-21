@@ -10,6 +10,8 @@
       deployer_so = collect_store_objects(deployer)
       receiver_so = collect_store_objects(receiver)
 
+      deployer.fail(f"wire apply --on receiver-unreachable --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
+
       deployer.succeed(f"wire apply --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
 
       receiver.wait_for_unit("sshd.service")
