@@ -27,7 +27,7 @@ pub struct Target {
     pub port: u32,
 
     #[serde(skip)]
-    pub current_host: usize,
+    current_host: usize,
 }
 
 #[cfg(test)]
@@ -54,7 +54,7 @@ impl Target {
     }
 
     #[cfg(test)]
-    fn from_host(host: &str) -> Self {
+    pub fn from_host(host: &str) -> Self {
         Target {
             hosts: vec![host.into()],
             ..Default::default()

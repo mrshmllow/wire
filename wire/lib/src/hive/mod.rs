@@ -128,12 +128,7 @@ mod tests {
             .unwrap();
 
         let node = Node {
-            target: node::Target {
-                hosts: vec!["192.168.122.96".into()],
-                user: "root".into(),
-                port: 22,
-                ..Default::default()
-            },
+            target: node::Target::from_host("192.168.122.96"),
             ..Default::default()
         };
 
@@ -155,12 +150,7 @@ mod tests {
             .unwrap();
 
         let node = Node {
-            target: node::Target {
-                hosts: vec!["name".into()],
-                user: "root".into(),
-                port: 22,
-                ..Default::default()
-            },
+            target: node::Target::from_host("name"),
             keys: vector![Key {
                 name: "different-than-a".into(),
                 dest_dir: "/run/keys/".into(),
