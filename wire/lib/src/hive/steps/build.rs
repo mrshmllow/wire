@@ -29,7 +29,7 @@ impl ExecuteStep for Step {
         let top_level = ctx.state.evaluation.as_ref().unwrap();
 
         let mut command = if ctx.node.build_remotely {
-            let mut command = create_ssh_command(&ctx.node.target, false);
+            let mut command = create_ssh_command(&ctx.node.target, false)?;
             command.arg("nix");
             command
         } else {

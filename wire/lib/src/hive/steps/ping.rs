@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use async_trait::async_trait;
 use tokio::process::Command;
-use tracing::{Instrument, instrument};
+use tracing::{Instrument, info, instrument, warn};
 
 use crate::{
     HiveLibError,
@@ -25,33 +25,36 @@ impl ExecuteStep for PingStep {
 
     #[instrument(skip_all, name = "ping")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let mut command = Command::new("nix");
+        loop {
+            info!("Attempting host {}", ctx.node.target.get_preffered_host()?);
 
-        command
-            .args(["--extra-experimental-features", "nix-command"])
-            .arg("store")
-            .arg("ping")
-            .arg("--store")
-            .arg(format!(
-                "ssh://{}@{}",
-                ctx.node.target.user, ctx.node.target.host
-            ))
-            .env("NIX_SSHOPTS", format!("-p {}", ctx.node.target.port));
+            let mut command = Command::new("nix");
 
-        let (status, _stdout, stderr_vec) = crate::nix::StreamTracing::execute(&mut command, true)
-            .in_current_span()
-            .await?;
+            command
+                .args(["--extra-experimental-features", "nix-command"])
+                .arg("store")
+                .arg("ping")
+                .arg("--store")
+                .arg(format!(
+                    "ssh://{}@{}",
+                    ctx.node.target.user,
+                    ctx.node.target.get_preffered_host()?
+                ))
+                .env("NIX_SSHOPTS", format!("-p {}", ctx.node.target.port));
 
-        if !status.success() {
-            let stderr: Vec<String> = stderr_vec
-                .into_iter()
-                .map(|l| l.to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
+            let (status, _stdout, _) = crate::nix::StreamTracing::execute(&mut command, true)
+                .in_current_span()
+                .await?;
 
-            return Err(HiveLibError::NodeUnreachable(ctx.name.clone(), stderr));
+            if status.success() {
+                return Ok(());
+            }
+
+            warn!(
+                "Failed to ping host {}",
+                ctx.node.target.get_preffered_host()?
+            );
+            ctx.node.target.host_failed();
         }
-
-        Ok(())
     }
 }

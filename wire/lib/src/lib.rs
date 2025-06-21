@@ -24,19 +24,19 @@ mod test_macros;
 #[cfg(test)]
 mod test_support;
 
-fn create_ssh_command(target: &Target, sudo: bool) -> Command {
+fn create_ssh_command(target: &Target, sudo: bool) -> Result<Command, HiveLibError> {
     let mut command = Command::new("ssh");
 
     command
         .args(["-l", target.user.as_ref()])
-        .arg(target.host.as_ref())
+        .arg(target.get_preffered_host()?.as_ref())
         .args(["-p", &target.port.to_string()]);
 
     if sudo && target.user != "root".into() {
         command.args(["sudo", "-H", "--"]);
     }
 
-    command
+    Ok(command)
 }
 
 fn format_error_lines(lines: &[String]) -> String {
@@ -114,6 +114,9 @@ pub enum HiveLibError {
 
     #[error("Cannot ping {0}:\n{lines}", lines = format_error_lines(.1))]
     NodeUnreachable(Name, Vec<String>),
+
+    #[error("Ran out of contactable hosts")]
+    HostsExhausted,
 }
 
 #[derive(Debug, Default, Clone, Copy)]

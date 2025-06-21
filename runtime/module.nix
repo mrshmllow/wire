@@ -13,7 +13,7 @@ in
       inherit (lib) mkAliasOptionModule;
     in
     [
-      (mkAliasOptionModule [ "deployment" "targetHost" ] [ "deployment" "target" "host" ])
+      (mkAliasOptionModule [ "deployment" "targetHost" ] [ "deployment" "target" "hosts" ])
       (mkAliasOptionModule [ "deployment" "targetUser" ] [ "deployment" "target" "user" ])
       (mkAliasOptionModule [ "deployment" "targetPort" ] [ "deployment" "target" "port" ])
     ];
@@ -21,17 +21,15 @@ in
   options.deployment = {
     target = lib.mkOption {
       type = types.submodule {
+        imports = [
+          (lib.mkAliasOptionModule [ "host" ] [ "hosts" ])
+        ];
         options = {
-          host = lib.mkOption {
-            type = types.str;
-            description = "Host to connect to.";
-            default = name;
-          };
           hosts = lib.mkOption {
-            type = types.listOf types.str;
-            description = "Additional hosts to attempt to connect to, if `deployment.target.host` cannot be reached.";
+            type = types.coercedTo types.str lib.singleton (types.listOf types.str);
+            description = "IPs or hostnames to attempt to connect to. They are tried in order.";
             default = lib.singleton name;
-            apply = list: lib.unique ([ name ] ++ list);
+            apply = lib.unique;
           };
           user = lib.mkOption {
             type = types.str;

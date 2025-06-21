@@ -54,7 +54,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                     command.arg("nix-env");
                     command
                 } else {
-                    let mut command = create_ssh_command(&ctx.node.target, true);
+                    let mut command = create_ssh_command(&ctx.node.target, true)?;
                     command.arg("nix-env");
                     command
                 };
@@ -92,7 +92,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 command.arg(cmd);
                 command
             } else {
-                let mut command = create_ssh_command(&ctx.node.target, true);
+                let mut command = create_ssh_command(&ctx.node.target, true)?;
                 command.arg(cmd);
                 command
             };

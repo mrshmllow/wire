@@ -129,9 +129,10 @@ mod tests {
 
         let node = Node {
             target: node::Target {
-                host: "192.168.122.96".into(),
+                hosts: vec!["192.168.122.96".into()],
                 user: "root".into(),
                 port: 22,
+                ..Default::default()
             },
             ..Default::default()
         };
@@ -155,9 +156,10 @@ mod tests {
 
         let node = Node {
             target: node::Target {
-                host: "name".into(),
+                hosts: vec!["name".into()],
                 user: "root".into(),
                 port: 22,
+                ..Default::default()
             },
             keys: vector![Key {
                 name: "different-than-a".into(),

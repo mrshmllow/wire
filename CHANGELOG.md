@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Wire will now ping the node before it proceeds executing.
+- Wire will now properly respect `deployment.target.hosts`.
+- Wire will now attempt each target host in order until a valid one is found.
 
 ## [0.3.0] - 2025-06-20
 
