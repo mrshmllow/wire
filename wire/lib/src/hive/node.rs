@@ -22,32 +22,41 @@ pub struct Name(pub Arc<str>);
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Target {
-    #[serde(rename = "host")]
-    pub host: Arc<str>,
-
-    #[serde(rename = "user")]
+    pub hosts: Vec<Arc<str>>,
     pub user: Arc<str>,
-
-    #[serde(rename = "port")]
     pub port: u32,
+
+    #[serde(skip)]
+    current_host: usize,
 }
 
 #[cfg(test)]
 impl Default for Target {
     fn default() -> Self {
         Target {
-            host: "NAME".into(),
+            hosts: vec!["NAME".into()],
             user: "root".into(),
             port: 22,
+            current_host: 0,
         }
     }
 }
 
-#[cfg(test)]
 impl Target {
-    fn from_host(host: &str) -> Self {
+    pub fn get_preffered_host(&self) -> Result<&Arc<str>, HiveLibError> {
+        self.hosts
+            .get(self.current_host)
+            .ok_or(HiveLibError::HostsExhausted)
+    }
+
+    pub fn host_failed(&mut self) {
+        self.current_host += 1;
+    }
+
+    #[cfg(test)]
+    pub fn from_host(host: &str) -> Self {
         Target {
-            host: host.into(),
+            hosts: vec![host.into()],
             ..Default::default()
         }
     }
@@ -149,7 +158,7 @@ pub struct StepState {
 
 pub struct Context<'a> {
     pub name: &'a Name,
-    pub node: &'a Node,
+    pub node: &'a mut Node,
     pub hivepath: PathBuf,
     pub modifiers: SubCommandModifiers,
     pub no_keys: bool,
@@ -220,7 +229,11 @@ pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLi
         .arg("copy")
         .arg("--substitute-on-destination")
         .arg("--to")
-        .arg(format!("ssh://{}@{}", node.target.user, node.target.host))
+        .arg(format!(
+            "ssh://{}@{}",
+            node.target.user,
+            node.target.get_preffered_host()?
+        ))
         .env("NIX_SSHOPTS", format!("-p {}", node.target.port));
 
     match push {

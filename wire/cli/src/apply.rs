@@ -42,7 +42,7 @@ pub async fn apply(
 
     let mut set = hive
         .nodes
-        .iter()
+        .iter_mut()
         .filter(|(name, node)| {
             on.is_empty() || names.contains(name) || node.tags.iter().any(|tag| tags.contains(tag))
         })

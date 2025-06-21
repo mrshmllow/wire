@@ -236,7 +236,7 @@ impl ExecuteStep for KeysStep {
                 get_elevation("wire key agent")?;
                 Command::new("sudo")
             } else {
-                create_ssh_command(&ctx.node.target, true)
+                create_ssh_command(&ctx.node.target, true)?
             };
 
         let mut child = command
