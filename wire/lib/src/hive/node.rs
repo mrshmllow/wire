@@ -11,6 +11,7 @@ use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::SubCommandModifiers;
 use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
+use crate::hive::steps::ping::PingStep;
 use crate::nix::StreamTracing;
 
 use super::HiveLibError;
@@ -165,6 +166,7 @@ impl<'a> GoalExecutor<'a> {
     pub fn new(context: Context<'a>) -> Self {
         Self {
             steps: vec![
+                Box::new(PingStep),
                 Box::new(PushKeyAgentStep),
                 Box::new(KeysStep {
                     filter: UploadKeyAt::NoFilter,

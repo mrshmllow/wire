@@ -111,6 +111,9 @@ pub enum HiveLibError {
 
     #[error("failed to elevate")]
     FailedToElevate(#[source] std::io::Error),
+
+    #[error("Cannot ping {0}:\n{lines}", lines = format_error_lines(.1))]
+    NodeUnreachable(Name, Vec<String>),
 }
 
 #[derive(Debug, Default, Clone, Copy)]
