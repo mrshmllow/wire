@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Nodes may now fail without stopping the entire hive from continuing. A summary
+  of errors will be presented at the end of the apply process.
 - Wire will now ping the node before it proceeds executing.
 - Wire will now properly respect `deployment.target.hosts`.
 - Wire will now attempt each target host in order until a valid one is found.

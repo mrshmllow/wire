@@ -1,10 +1,12 @@
-use futures::StreamExt;
+use anyhow::anyhow;
+use futures::{FutureExt, StreamExt};
 use indicatif::ProgressStyle;
-use itertools::Itertools;
+use itertools::{Either, Itertools};
+use lib::SubCommandModifiers;
 use lib::hive::Hive;
 use lib::hive::node::{Context, Goal, GoalExecutor, StepState};
-use lib::{HiveLibError, SubCommandModifiers};
 use std::collections::HashSet;
+use std::fmt::Write;
 use tracing::{Span, error, info, instrument};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
@@ -19,7 +21,7 @@ pub async fn apply(
     no_keys: bool,
     always_build_local: Vec<String>,
     modifiers: SubCommandModifiers,
-) -> Result<(), HiveLibError> {
+) -> Result<(), anyhow::Error> {
     let header_span = Span::current();
     header_span.pb_set_style(&ProgressStyle::default_bar());
     header_span.pb_set_length(1);
@@ -62,7 +64,9 @@ pub async fn apply(
                 modifiers,
             };
 
-            GoalExecutor::new(context).execute(span)
+            GoalExecutor::new(context)
+                .execute(span)
+                .map(move |result| (node.0, result))
         })
         .peekable();
 
@@ -71,10 +75,38 @@ pub async fn apply(
     }
 
     let futures = futures::stream::iter(set).buffer_unordered(parallel);
-    let result: Result<(), _> = futures.collect::<Vec<_>>().await.into_iter().collect();
+    let result = futures.collect::<Vec<_>>().await;
+    let (successful, errors): (Vec<_>, Vec<_>) =
+        result
+            .into_iter()
+            .partition_map(|(name, result)| match result {
+                Ok(..) => Either::Left(name),
+                Err(err) => Either::Right((name, err)),
+            });
+
+    if !successful.is_empty() {
+        info!(
+            "Successfully applied goal to {} node(s): {:?}",
+            successful.len(),
+            successful
+        );
+    }
 
     std::mem::drop(header_span_enter);
     std::mem::drop(header_span);
 
-    result
+    if !errors.is_empty() {
+        return Err(anyhow!(
+            "{} node(s) failed to apply. {}",
+            errors.len(),
+            errors
+                .iter()
+                .fold(String::new(), |mut output, (name, error)| {
+                    let _ = write!(output, "\n\n{name}: {error}");
+                    output
+                })
+        ));
+    }
+
+    Ok(())
 }
