@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wire will now properly respect `deployment.target.hosts`.
 - Wire will now attempt each target host in order until a valid one is found.
 
+### Changed
+
+- Wire now directly evaluates your hive instead of shipping extra nix code along with its binary.
+  You must now use `outputs.makeHive { ... }` instead of a raw attribute.
+  This can be obtained with npins or a flake input.
+
 ## [0.3.0] - 2025-06-20
 
 ### Added
