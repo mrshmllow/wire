@@ -8,13 +8,6 @@ description: Keys, files, and other out-of-store paths with Wire Tool.
 
 {{ $frontmatter.description }}
 
-::: warning
-
-Pushing keys to your local machine is currently unimplemented and is planned for
-v2.0.0.
-
-:::
-
 ## Introduction
 
 Wire Tool is very unopinionated as to how you encrypt your secrets, Wire only
