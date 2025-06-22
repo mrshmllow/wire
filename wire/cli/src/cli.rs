@@ -1,8 +1,10 @@
+use clap::crate_version;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
 use lib::SubCommandModifiers;
+use lib::hive::Hive;
 use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
 use std::io::IsTerminal;
 
@@ -16,7 +18,7 @@ use std::{
     name = "wire",
     bin_name = "wire",
     about = "a tool to deploy nixos systems",
-    version
+    version = format!("{}\nDebug: Hive::SCHEMA_VERSION {}", crate_version!(), Hive::SCHEMA_VERSION)
 )]
 pub struct Cli {
     #[command(subcommand)]
