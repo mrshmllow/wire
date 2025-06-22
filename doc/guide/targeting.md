@@ -14,8 +14,11 @@ Nodes can have _tags_, which allows you to easily target multiple, related
 nodes for deployment.
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   node-1 = {
     # ...

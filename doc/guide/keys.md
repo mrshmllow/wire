@@ -31,8 +31,11 @@ work well with wire keys include:
 ### A Trivial "Key"
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   node-1 = {
     deployment.key."file.txt" = {
@@ -52,8 +55,11 @@ Hello World!
 ### Encrypting with GPG
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   node-1 = {
     deployment.key."file.txt" = {
@@ -75,8 +81,11 @@ Hello World!
 ### A Plain Text File
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   node-1 = {
     deployment.key."file.txt" = {
@@ -108,8 +117,11 @@ Wire secrets are owned by user & group `root` (`0600`). You can change these
 with the `user` and `group` option.
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   node-1 = {
     deployment.key."file.txt" = {
@@ -135,8 +147,11 @@ You can access the full absolute path of any key with
 Here's an example with the Tailscale service:
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   node-1 = {config, ...}: {
     services.tailscale = {
@@ -159,8 +174,11 @@ further reduce duplication using the `config` argument. Here's an example of
 providing a certificate that is only readable by the caddy service.
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   some-web-server = {config, ...}: {
     deployment.keys."some.host.pem" = {

@@ -1,8 +1,6 @@
 {
   hive,
-  path,
   nixosConfigurations ? { },
-  nixpkgs ? null,
 }:
 let
   module = import ./module.nix;
@@ -38,7 +36,7 @@ let
       else
         mergedHive.meta.nixpkgs
     else
-      import nixpkgs { };
+      builtins.abort "makeHive called without meta.nixpkgs specified.";
 
   evaluateNode =
     name:
@@ -67,10 +65,12 @@ let
   getTopLevel = node: (evaluateNode node).config.system.build.toplevel.drvPath;
 in
 rec {
-  inherit evaluateNode getTopLevel nodes;
+  inherit nodes;
 
+  topLevels = builtins.mapAttrs (name: _: getTopLevel name) nodes;
   inspect = {
-    inherit path;
+    _schema = 0;
+
     nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
   };
 }

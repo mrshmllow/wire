@@ -2,9 +2,15 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs =
-    { nixpkgs, ... }@inputs:
+    { nixpkgs, self, ... }@inputs:
+    let
+      makeHive = import ./makeHive.nix;
+    in
     {
-      colmena = {
+      colmena = makeHive {
+        inherit (self) nixosConfigurations;
+        meta.nixpkgs = import nixpkgs { system = "x86_64-linux"; };
+
         node-a = { };
         node-b = {
           nixpkgs.hostPlatform = "x86_64-linux";

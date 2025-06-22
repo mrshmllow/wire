@@ -1,4 +1,7 @@
-{
+let
+  inherit (import ../../..) makeHive;
+in
+makeHive {
   meta = {
     nixpkgs = <nixpkgs>;
   };

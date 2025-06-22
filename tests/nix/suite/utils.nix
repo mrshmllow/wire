@@ -46,5 +46,5 @@ in
       ];
     };
 
-  __functor = self: self.mkHiveNode;
+  inherit (flake) makeHive;
 }

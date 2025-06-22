@@ -10,10 +10,6 @@
       ...
     }:
     let
-      postBuild = ''
-        wrapProgram $out/bin/wire \
-                    --set WIRE_RUNTIME ${../../runtime} \
-      '';
       cleanSystem = system: lib.replaceStrings [ "-" ] [ "_" ] system;
       agents = lib.strings.concatMapStrings (
         system: "--set WIRE_KEY_AGENT_${cleanSystem system} ${(getSystem system).packages.agent} "
@@ -43,7 +39,7 @@
             pkgs.makeWrapper
           ];
           postBuild = ''
-            ${postBuild} ${agents}
+            wrapProgram $out/bin/wire ${agents}
           '';
           meta.mainProgram = "wire";
         };
@@ -55,7 +51,7 @@
             pkgs.makeWrapper
           ];
           postBuild = ''
-            ${postBuild} --set WIRE_KEY_AGENT_${cleanSystem system} ${self'.packages.agent}
+            wrapProgram $out/bin/wire --set WIRE_KEY_AGENT_${cleanSystem system} ${self'.packages.agent}
           '';
           meta.mainProgram = "wire";
         };

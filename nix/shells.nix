@@ -28,7 +28,6 @@
         shellHook = builtins.concatStringsSep "\n" [
           cfg.installationScript
           ''
-            export WIRE_RUNTIME=$(realpath ./runtime)
             export WIRE_TEST_DIR=$(realpath ./tests/rust)
           ''
         ];

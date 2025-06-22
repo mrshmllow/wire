@@ -41,6 +41,11 @@
       ];
       systems = import systems;
 
+      flake = {
+        nixosModules.default = import ./runtime/module.nix;
+        makeHive = import ./runtime/makeHive.nix;
+      };
+
       perSystem =
         {
           pkgs,

@@ -1,11 +1,11 @@
 use node::{Name, Node};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument, trace};
-
-use serde::{Deserialize, Serialize};
 
 use crate::nix::{EvalGoal, get_eval_command};
 use crate::{HiveLibError, SubCommandModifiers};
@@ -13,9 +13,12 @@ pub mod node;
 pub mod steps;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Hive {
     pub nodes: HashMap<Name, Node>,
-    pub path: PathBuf,
+
+    #[serde(deserialize_with = "check_schema_version", rename = "_schema")]
+    pub schema: u32,
 }
 
 pub enum Action<'a> {
@@ -23,17 +26,27 @@ pub enum Action<'a> {
     EvaluateNode(OccupiedEntry<'a, String, Node>),
 }
 
+fn check_schema_version<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    let version = u32::deserialize(d)?;
+    if version != Hive::SCHEMA_VERSION {
+        return Err(D::Error::custom(
+            "Version mismatch for Hive. Please ensure the binary and your wire input match!",
+        ));
+    }
+    Ok(version)
+}
+
 impl Hive {
+    const SCHEMA_VERSION: u32 = 0;
+
     #[instrument]
     pub async fn new_from_path(
         path: &Path,
         modifiers: SubCommandModifiers,
     ) -> Result<Hive, HiveLibError> {
         info!("Searching upwards for hive in {}", path.display());
-        let filepath = find_hive(path).ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
-        info!("Using hive {}", filepath.display());
 
-        let command = get_eval_command(&filepath, &EvalGoal::Inspect, modifiers)
+        let command = get_eval_command(path, &EvalGoal::Inspect, modifiers)?
             .output()
             .await
             .map_err(HiveLibError::NixExecError)?;
@@ -75,7 +88,7 @@ impl Hive {
     }
 }
 
-fn find_hive(path: &Path) -> Option<PathBuf> {
+pub fn find_hive(path: &Path) -> Option<PathBuf> {
     trace!("Searching for hive in {}", path.display());
     let filepath_flake = path.join("flake.nix");
 
@@ -137,7 +150,13 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
     }
 
     #[tokio::test]
@@ -169,7 +188,13 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
     }
 
     #[tokio::test]
@@ -192,7 +217,13 @@ mod tests {
         let mut path = tmp_dir.path().to_path_buf();
         path.push("flake.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
 
         tmp_dir.close().unwrap();
     }
