@@ -45,7 +45,8 @@ additional information for deployment. Start by creating a `hive.nix` in the sam
 
 ::: info
 
-To include wire in these examples, we are using npins. To create this setup you
+To include wire in these examples, we are using
+[npins](https://github.com/andir/npins). To create this setup you
 would run `npins add github wires-org wire`.
 
 :::
