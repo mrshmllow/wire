@@ -1,5 +1,5 @@
 let
-  makeHive = import ../makeHive.nix;
+  inherit (import ../../..) makeHive;
 in
 makeHive {
 }
