@@ -106,8 +106,6 @@ in
               }:
               let
                 hive = evaluateHive {
-                  nixpkgs = pkgs.path;
-                  path = injectedFlakeDir;
                   hive = builtins.scopedImport {
                     __nixPath = _b: null;
                     __findFile = path: name: if name == "nixpkgs" then pkgs.path else throw "oops!!";
