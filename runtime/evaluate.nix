@@ -68,5 +68,9 @@ rec {
   inherit nodes;
 
   topLevels = builtins.mapAttrs (name: _: getTopLevel name) nodes;
-  inspect.nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
+  inspect = {
+    _schema = 0;
+
+    nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
+  };
 }

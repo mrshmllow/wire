@@ -58,7 +58,7 @@ pub enum HiveLibError {
     #[error("failed to execute nix command")]
     NixExecError(#[source] tokio::io::Error),
 
-    #[error("failed to evaluate nix expression (last 20 lines):\n{}", format_error_lines(.0))]
+    #[error("failed to evaluate your hive! is it valid? (last 20 lines):\n{}", format_error_lines(.0))]
     NixEvalError(Vec<String>),
 
     #[error(

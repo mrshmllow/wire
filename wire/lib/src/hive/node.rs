@@ -272,6 +272,12 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
     }
 }

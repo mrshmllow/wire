@@ -1,11 +1,11 @@
 use node::{Name, Node};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tracing::{debug, error, info, instrument, trace};
-
-use serde::{Deserialize, Serialize};
 
 use crate::nix::{EvalGoal, get_eval_command};
 use crate::{HiveLibError, SubCommandModifiers};
@@ -13,8 +13,12 @@ pub mod node;
 pub mod steps;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct Hive {
     pub nodes: HashMap<Name, Node>,
+
+    #[serde(deserialize_with = "check_schema_version", rename = "_schema")]
+    pub schema: u32,
 }
 
 pub enum Action<'a> {
@@ -22,7 +26,19 @@ pub enum Action<'a> {
     EvaluateNode(OccupiedEntry<'a, String, Node>),
 }
 
+fn check_schema_version<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    let version = u32::deserialize(d)?;
+    if version != Hive::SCHEMA_VERSION {
+        return Err(D::Error::custom(
+            "Version mismatch for Hive. Please ensure the binary and your wire input match!",
+        ));
+    }
+    Ok(version)
+}
+
 impl Hive {
+    const SCHEMA_VERSION: u32 = 0;
+
     #[instrument]
     pub async fn new_from_path(
         path: &Path,
@@ -134,7 +150,13 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
     }
 
     #[tokio::test]
@@ -166,7 +188,13 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
     }
 
     #[tokio::test]
@@ -189,7 +217,13 @@ mod tests {
         let mut path = tmp_dir.path().to_path_buf();
         path.push("flake.nix");
 
-        assert_eq!(hive, Hive { nodes });
+        assert_eq!(
+            hive,
+            Hive {
+                nodes,
+                schema: Hive::SCHEMA_VERSION
+            }
+        );
 
         tmp_dir.close().unwrap();
     }
