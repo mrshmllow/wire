@@ -10,8 +10,7 @@ description: Wire hive meta options.
 
 ## meta.nixpkgs
 
-Tells wire how to get `nixpkgs`. You can omit this option in a flake to
-default to `inputs.nixpkgs`.
+Tells wire how to get `nixpkgs`.
 
 _Type:_ A path or an instance of `nixpkgs`.
 
