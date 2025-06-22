@@ -1,4 +1,7 @@
-{
+let
+  makeHive = import ../makeHive.nix;
+in
+makeHive {
   meta = {
     nixpkgs = <nixpkgs>;
   };

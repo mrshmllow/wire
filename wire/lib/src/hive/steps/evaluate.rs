@@ -25,13 +25,13 @@ impl ExecuteStep for Step {
 
     #[instrument(skip_all, name = "eval")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let mut command = get_eval_command(
+        let command = get_eval_command(
             &ctx.hivepath,
             &EvalGoal::GetTopLevel(ctx.name),
             ctx.modifiers,
         );
 
-        let (status, stdout_vec, stderr) = command.execute(true).in_current_span().await?;
+        let (status, stdout_vec, stderr) = command?.execute(true).in_current_span().await?;
 
         if status.success() {
             let stdout: Vec<String> = stdout_vec

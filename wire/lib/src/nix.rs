@@ -1,5 +1,4 @@
 use regex::Regex;
-use std::env;
 use std::path::Path;
 use std::process::{Command, ExitStatus};
 use std::sync::LazyLock;
@@ -8,6 +7,7 @@ use tokio::io::{AsyncBufReadExt, AsyncRead};
 use tracing::{Instrument, Span, error, info, trace};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
 
+use crate::hive::find_hive;
 use crate::hive::node::Name;
 use crate::nix_log::{Action, Internal, NixLog, Trace};
 use crate::{HiveLibError, SubCommandModifiers};
@@ -44,60 +44,42 @@ pub fn get_eval_command(
     path: &Path,
     goal: &EvalGoal,
     modifiers: SubCommandModifiers,
-) -> tokio::process::Command {
-    let runtime = match env::var_os("WIRE_RUNTIME") {
-        Some(runtime) => runtime.into_string().unwrap(),
-        None => panic!("WIRE_RUNTIME environment variable not set"),
-    };
-
+) -> Result<tokio::process::Command, HiveLibError> {
     assert!(check_nix_available(), "nix is not available on this system");
 
-    let canon_path = path.canonicalize().unwrap();
+    let canon_path = find_hive(&path.canonicalize().unwrap())
+        .ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
 
     let mut command = tokio::process::Command::new("nix");
     command.args(["--extra-experimental-features", "nix-command"]);
     command.args(["--extra-experimental-features", "flakes"]);
-    command.args(["eval", "--json", "--impure"]);
+    command.args(["eval", "--json"]);
+
     if modifiers.show_trace {
         command.arg("--show-trace");
     }
-    command.args(["--expr"]);
 
-    command.arg(format!(
-        "let flake = {flake}; evaluate = import {runtime}/evaluate.nix; hive = evaluate {{hive = \
-         {hive}; path = {path}; nixosConfigurations = {nixosConfigurations}; nixpkgs = \
-         {nixpkgs};}}; in {goal}",
-        flake = if canon_path.ends_with("flake.nix") {
-            format!(
-                "(builtins.getFlake \"git+file://{path}\")",
-                path = canon_path.parent().unwrap().to_str().unwrap(),
-            )
-        } else {
-            "null".to_string()
-        },
-        hive = if canon_path.ends_with("flake.nix") {
-            "flake.colmena".to_string()
-        } else {
-            format!("import {path}", path = canon_path.to_str().unwrap())
-        },
-        nixosConfigurations = if canon_path.ends_with("flake.nix") {
-            "flake.nixosConfigurations or {}".to_string()
-        } else {
-            "{}".to_string()
-        },
-        nixpkgs = if canon_path.ends_with("flake.nix") {
-            "flake.inputs.nixpkgs.outPath or null".to_string()
-        } else {
-            "null".to_string()
-        },
-        path = canon_path.to_str().unwrap(),
-        goal = match goal {
-            EvalGoal::Inspect => "hive.inspect".to_string(),
-            EvalGoal::GetTopLevel(node) => format!("hive.getTopLevel \"{node}\""),
-        }
-    ));
+    if canon_path.ends_with("flake.nix") {
+        command.arg(format!("{}#colmena", canon_path.to_str().unwrap()));
+        command.arg("--apply");
 
-    command
+        command.arg(format!(
+            "hive: {goal}",
+            goal = match goal {
+                EvalGoal::Inspect => "hive.inspect".to_string(),
+                EvalGoal::GetTopLevel(node) => format!("hive.getTopLevel \"{node}\""),
+            }
+        ));
+    } else {
+        command.args(["--file", &canon_path.to_string_lossy()]);
+
+        command.arg(match goal {
+            EvalGoal::Inspect => "inspect".to_string(),
+            EvalGoal::GetTopLevel(node) => format!("getTopLevel \"{node}\""),
+        });
+    }
+
+    Ok(command)
 }
 
 pub async fn handle_io<R>(reader: R, should_trace: bool) -> Result<Vec<NixLog>, HiveLibError>

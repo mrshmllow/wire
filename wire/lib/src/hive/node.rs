@@ -272,6 +272,6 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(hive, Hive { nodes });
     }
 }

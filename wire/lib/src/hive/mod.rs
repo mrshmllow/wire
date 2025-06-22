@@ -15,7 +15,6 @@ pub mod steps;
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Hive {
     pub nodes: HashMap<Name, Node>,
-    pub path: PathBuf,
 }
 
 pub enum Action<'a> {
@@ -30,10 +29,8 @@ impl Hive {
         modifiers: SubCommandModifiers,
     ) -> Result<Hive, HiveLibError> {
         info!("Searching upwards for hive in {}", path.display());
-        let filepath = find_hive(path).ok_or(HiveLibError::NoHiveFound(path.to_path_buf()))?;
-        info!("Using hive {}", filepath.display());
 
-        let command = get_eval_command(&filepath, &EvalGoal::Inspect, modifiers)
+        let command = get_eval_command(path, &EvalGoal::Inspect, modifiers)?
             .output()
             .await
             .map_err(HiveLibError::NixExecError)?;
@@ -75,7 +72,7 @@ impl Hive {
     }
 }
 
-fn find_hive(path: &Path) -> Option<PathBuf> {
+pub fn find_hive(path: &Path) -> Option<PathBuf> {
     trace!("Searching for hive in {}", path.display());
     let filepath_flake = path.join("flake.nix");
 
@@ -137,7 +134,7 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(hive, Hive { nodes });
     }
 
     #[tokio::test]
@@ -169,7 +166,7 @@ mod tests {
 
         path.push("hive.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(hive, Hive { nodes });
     }
 
     #[tokio::test]
@@ -192,7 +189,7 @@ mod tests {
         let mut path = tmp_dir.path().to_path_buf();
         path.push("flake.nix");
 
-        assert_eq!(hive, Hive { nodes, path });
+        assert_eq!(hive, Hive { nodes });
 
         tmp_dir.close().unwrap();
     }

@@ -27,7 +27,6 @@
             commonArgs = {
               inherit src;
               strictDeps = true;
-              WIRE_RUNTIME = ../runtime;
               WIRE_TEST_DIR = ../tests/rust;
               PROTOC = lib.getExe pkgs.protobuf;
             };

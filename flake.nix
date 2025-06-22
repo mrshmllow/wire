@@ -41,6 +41,22 @@
       ];
       systems = import systems;
 
+      flake = {
+        nixosModules.default = import ./runtime/module.nix;
+
+        makeHive =
+          {
+            nixosConfigurations ? { },
+            ...
+          }@hive:
+          import ./runtime/evaluate.nix {
+            inherit
+              hive
+              nixosConfigurations
+              ;
+          };
+      };
+
       perSystem =
         {
           pkgs,

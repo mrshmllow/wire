@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use clap_num::number_range;
 use clap_verbosity_flag::WarnLevel;
@@ -70,28 +70,31 @@ fn more_than_zero(s: &str) -> Result<usize, String> {
     number_range(s, 1, usize::MAX)
 }
 
+#[derive(Args)]
+pub struct ApplyArgs {
+    #[arg(value_enum, default_value_t)]
+    pub goal: Goal,
+
+    /// List of literal node names or `@` prefixed tags.
+    #[arg(short, long, value_name = "NODE | @TAG", num_args = 1..)]
+    pub on: Vec<ApplyTarget>,
+
+    #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
+    pub parallel: usize,
+
+    /// Skip key uploads. noop when [GOAL] = Keys
+    #[arg(short, long, default_value_t = false)]
+    pub no_keys: bool,
+
+    /// Overrides deployment.buildOnTarget.
+    #[arg(short, long, value_name = "NODE")]
+    pub always_build_local: Vec<String>,
+}
+
 #[derive(Subcommand)]
 pub enum Commands {
     /// Deploy nodes
-    Apply {
-        #[arg(value_enum, default_value_t)]
-        goal: Goal,
-
-        /// List of literal node names or `@` prefixed tags.
-        #[arg(short, long, value_name = "NODE | @TAG", num_args = 1..)]
-        on: Vec<ApplyTarget>,
-
-        #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
-        parallel: usize,
-
-        /// Skip key uploads. noop when [GOAL] = Keys
-        #[arg(short, long, default_value_t = false)]
-        no_keys: bool,
-
-        /// Overrides deployment.buildOnTarget.
-        #[arg(short, long, value_name = "NODE")]
-        always_build_local: Vec<String>,
-    },
+    Apply(ApplyArgs),
     /// Inspect hive
     #[clap(visible_alias = "show")]
     Inspect {
