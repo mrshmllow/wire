@@ -7,7 +7,7 @@
       makeHive = import ./makeHive.nix;
     in
     {
-      colmena = makeHive {
+      wire = makeHive {
         inherit (self) nixosConfigurations;
         meta.nixpkgs = import nixpkgs { system = "x86_64-linux"; };
 

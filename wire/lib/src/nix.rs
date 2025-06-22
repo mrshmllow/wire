@@ -60,7 +60,7 @@ pub fn get_eval_command(
     }
 
     if canon_path.ends_with("flake.nix") {
-        command.arg(format!("{}#colmena", canon_path.to_str().unwrap()));
+        command.arg(format!("{}#wire", canon_path.to_str().unwrap()));
         command.arg("--apply");
 
         command.arg(format!(
