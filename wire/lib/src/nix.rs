@@ -67,7 +67,7 @@ pub fn get_eval_command(
             "hive: {goal}",
             goal = match goal {
                 EvalGoal::Inspect => "hive.inspect".to_string(),
-                EvalGoal::GetTopLevel(node) => format!("hive.getTopLevel \"{node}\""),
+                EvalGoal::GetTopLevel(node) => format!("hive.topLevels.{node}"),
             }
         ));
     } else {
@@ -75,7 +75,7 @@ pub fn get_eval_command(
 
         command.arg(match goal {
             EvalGoal::Inspect => "inspect".to_string(),
-            EvalGoal::GetTopLevel(node) => format!("getTopLevel \"{node}\""),
+            EvalGoal::GetTopLevel(node) => format!("topLevels.{node}"),
         });
     }
 
