@@ -11,9 +11,10 @@
         }@hive:
         import ./evaluate.nix {
           inherit
-            hive
             nixosConfigurations
             ;
+
+          hive = builtins.removeAttrs hive [ "nixosConfigurations" ];
         };
     in
     {

@@ -51,9 +51,10 @@
           }@hive:
           import ./runtime/evaluate.nix {
             inherit
-              hive
               nixosConfigurations
               ;
+
+            hive = builtins.removeAttrs hive [ "nixosConfigurations" ];
           };
       };
 
