@@ -15,9 +15,7 @@ default to `inputs.nixpkgs`.
 
 _Type:_ A path or an instance of `nixpkgs`.
 
-_Default (`hive.nix`):_ `null`
-
-_Default (flake attribute):_ `inputs.nixpkgs.outPath`
+_Default:_ `inputs.nixpkgs.outPath`
 
 _Examples:_
 
@@ -27,7 +25,11 @@ _Examples:_
 
   meta.nixpkgs = <nixpkgs>;
 
-  meta.nixpkgs = import <nixpkgs> {};
+  meta.nixpkgs = import <nixpkgs> { };
+
+  meta.nixpkgs = import sources.nixpkgs { };
+
+  meta.nixpkgs = inputs.nixpkgs.outPath;
 
   meta.nixpkgs = inputs.other-nixpkgs.outPath;
 }
