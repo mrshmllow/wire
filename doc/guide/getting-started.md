@@ -43,12 +43,22 @@ Wire groups your machines into _nodes_, which are NixOS configurations with
 additional information for deployment. Start by creating a `hive.nix` in the same directory as your
 `configuration.nix`.
 
+::: info
+
+To include wire in these examples, we are using npins. To create this setup you
+would run `npins add github wires-org wire`.
+
+:::
+
 A `hive.nix` is an attribute set with NixOS configurations, each with a unique
 name. Add a node for your local machine:
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   my-local-machine = {
     imports = [./configuration.nix];
@@ -73,8 +83,11 @@ wire apply switch -v
 Lets add another node to your hive! This one is an example of a remote machine.
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   my-local-machine = {
     imports = [./local-machine/configuration.nix];

@@ -21,8 +21,11 @@ node may rely on modules that default imports.
 :::
 
 ```nix:line-numbers [hive.nix]
-{
-  meta.nixpkgs = import <nixpkgs> {};
+let
+  sources = import ./npins;
+  wire = import sources.wire;
+in wire.makeHive {
+  meta.nixpkgs = import sources.nixpkgs { };
 
   defaults = {
     # name of the node that defaults is being applied to
