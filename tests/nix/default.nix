@@ -101,16 +101,13 @@ in
             defaults =
               {
                 pkgs,
-                evaluateHive,
                 ...
               }:
               let
-                hive = evaluateHive {
-                  hive = builtins.scopedImport {
-                    __nixPath = _b: null;
-                    __findFile = path: name: if name == "nixpkgs" then pkgs.path else throw "oops!!";
-                  } "${injectedFlakeDir}/${path}/hive.nix";
-                };
+                hive = builtins.scopedImport {
+                  __nixPath = _b: null;
+                  __findFile = path: name: if name == "nixpkgs" then pkgs.path else throw "oops!!";
+                } "${injectedFlakeDir}/${path}/hive.nix";
                 nodes = mapAttrsToList (_: val: val.config.system.build.toplevel.drvPath) hive.nodes;
                 # fetch **all** dependencies of a flake
                 # it's called fetchLayer because my naming skills are awful
@@ -141,7 +138,6 @@ in
                 ];
               };
             node.specialArgs = {
-              evaluateHive = import "${self}/runtime/evaluate.nix";
               testName = name;
               snakeOil = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
               inherit (opts) testDir;
