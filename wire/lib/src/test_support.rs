@@ -27,6 +27,10 @@ pub fn make_flake_sandbox(path: &Path) -> Result<TempDir, io::Error> {
         tmp_dir.as_ref().join("module.nix"),
     )?;
     fs::copy(
+        root.join(Path::new("runtime/makeHive.nix")),
+        tmp_dir.as_ref().join("makeHive.nix"),
+    )?;
+    fs::copy(
         root.join(Path::new("flake.lock")),
         tmp_dir.as_ref().join("flake.lock"),
     )?;

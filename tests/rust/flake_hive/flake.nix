@@ -4,18 +4,7 @@
   outputs =
     { nixpkgs, self, ... }@inputs:
     let
-      makeHive =
-        {
-          nixosConfigurations ? { },
-          ...
-        }@hive:
-        import ./evaluate.nix {
-          inherit
-            nixosConfigurations
-            ;
-
-          hive = builtins.removeAttrs hive [ "nixosConfigurations" ];
-        };
+      makeHive = import ./makeHive.nix;
     in
     {
       colmena = makeHive {

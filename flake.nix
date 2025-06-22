@@ -43,19 +43,7 @@
 
       flake = {
         nixosModules.default = import ./runtime/module.nix;
-
-        makeHive =
-          {
-            nixosConfigurations ? { },
-            ...
-          }@hive:
-          import ./runtime/evaluate.nix {
-            inherit
-              nixosConfigurations
-              ;
-
-            hive = builtins.removeAttrs hive [ "nixosConfigurations" ];
-          };
+        makeHive = import ./runtime/makeHive.nix;
       };
 
       perSystem =
