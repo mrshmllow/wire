@@ -18,9 +18,9 @@ comment: true
   </a>
 </p>
 
-Wire is a tool to deploy NixOS systems. Its configuration is a superset[^1] of [colmena](https://colmena.cli.rs/), however it is **not** a fork.
+Wire is a tool to deploy NixOS systems. Its usage is inspired by [colmena](https://colmena.cli.rs/). In many places it's configuration attempts to remain a superset[^1] of colmena, however it is **not** a fork.
 
-[^1]: Any colmena configuration will continue to work with wire, but wire has additional ergonomic changes you can take advantage of.
+[^1]: A lot of your colmena module options will continue to work with wire, but wire has additional ergonomic changes you can take advantage of.
 
 ::: warning
 Wire is alpha software, please use at your own risk. Many features listed in this documentation may not be complete / implemented.

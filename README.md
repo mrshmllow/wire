@@ -4,7 +4,7 @@
 ![Build Status](https://img.shields.io/github/actions/workflow/status/wires-org/wire/build.yml?branch=main&style=flat-square&label=Builds)
 ![Documentation Status](https://img.shields.io/github/actions/workflow/status/wires-org/wire/pages.yml?branch=main&style=flat-square&label=Documentation)
 
-wire is a tool to deploy nixos systems. its configuration is a superset of colmena however it is not a fork.
+wire is a tool to deploy nixos systems. its usage is inspired by colmena however it is not a fork.
 
 Read the [The Guide](https://wire.althaea.zone/guide/wire.html), or continue reading this readme for development information.
 
