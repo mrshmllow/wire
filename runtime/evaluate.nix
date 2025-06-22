@@ -65,7 +65,7 @@ let
   getTopLevel = node: (evaluateNode node).config.system.build.toplevel.drvPath;
 in
 rec {
-  inherit evaluateNode nodes;
+  inherit nodes;
 
   topLevels = builtins.mapAttrs (name: _: getTopLevel name) nodes;
   inspect.nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
