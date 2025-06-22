@@ -56,7 +56,8 @@ in
     allowLocalDeployment = lib.mkOption {
       type = types.bool;
       default = true;
-      description = "No-op, colmena compatibility right now.";
+      description = "Whether to allow or deny this node being applied to localhost when the host's hostname matches the
+      node's name.";
     };
 
     tags = lib.mkOption {
