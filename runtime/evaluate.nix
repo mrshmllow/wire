@@ -67,8 +67,5 @@ in
 rec {
   inherit evaluateNode getTopLevel nodes;
 
-  inspect = {
-    # inherit path;
-    nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
-  };
+  inspect.nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
 }
