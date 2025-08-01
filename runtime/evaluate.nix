@@ -5,20 +5,19 @@
 let
   module = import ./module.nix;
 
-  mergedHive =
-    {
-      meta = { };
+  mergedHive = {
+    meta = { };
 
-      defaults = { };
-    }
-    // hive
-    # Map nixosConfigurations into nodes
-    // (builtins.mapAttrs (name: value: {
-      imports =
-        value._module.args.modules
-        # Include any custom stuff within `colmena`
-        ++ [ hive.${name} or { } ];
-    }) nixosConfigurations);
+    defaults = { };
+  }
+  // hive
+  # Map nixosConfigurations into nodes
+  // (builtins.mapAttrs (name: value: {
+    imports =
+      value._module.args.modules
+      # Include any custom stuff within `colmena`
+      ++ [ hive.${name} or { } ];
+  }) nixosConfigurations);
 
   nodeNames = builtins.filter (
     name:
@@ -53,7 +52,8 @@ let
       system = null;
       specialArgs = {
         inherit name nodes;
-      } // mergedHive.meta.specialArgs or { };
+      }
+      // mergedHive.meta.specialArgs or { };
     };
   nodes = builtins.listToAttrs (
     map (name: {
