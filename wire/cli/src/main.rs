@@ -49,7 +49,7 @@ async fn main() -> Result<(), anyhow::Error> {
         cli::Commands::Inspect { online: _, json } => println!("{}", {
             let hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
             if json {
-                serde_json::to_string_pretty(&hive)?
+                serde_json::to_string(&hive)?
             } else {
                 warn!("use --json to output something scripting suitable");
                 format!("{hive:#?}")
