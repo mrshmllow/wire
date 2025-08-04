@@ -74,8 +74,8 @@ Hello World!
 ### Encrypting with KeepassXC
 
 A simple example of extracting a KeepassXC attachment into a wire key.
-Note that the `--stdout` and the `--key-file` are important, as wire
-expects the command to output the key to stdout and be non-interactive.
+You must pass the password through stdin as the command must be non-interactive.
+Note that the `--stdout` is important as wire expects the command to output the key to stdout.
 
 ```nix:line-numbers [hive.nix]
 let
@@ -87,14 +87,9 @@ in wire.makeHive {
   node-1 = {
     deployment.key."file.txt" = {
       source = [
-        "keepassxc-cli"
-        "attachment-export"
-        "--stdout"
-        "--key-file"
-        "~/keepass.key"
-        "~/.local/share/keepass/database.kdbx"
-        "entry-name"
-        "file.txt"
+        "bash"
+        "-c"
+        ''cat ~/pass | keepassxc-cli attachment-export --stdout ~/.local/share/keepass/database.kdbx test 'file.txt'''
       ];
     };
   };
