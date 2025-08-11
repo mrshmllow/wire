@@ -22,6 +22,8 @@ jobs:
         # https://github.com/nix-systems/default-linux
         system: ["x86_64-linux", "aarch64-linux"]
     needs: pre-job
+    permissions:
+      contents: read
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +35,8 @@ jobs:
   wire:
     runs-on: ubuntu-latest
     needs: agent
+    permissions:
+      contents: read
     strategy:
       matrix:
         # https://github.com/nix-systems/default-linux
@@ -47,6 +51,8 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     needs: pre-job
+    permissions:
+      contents: read
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
       - uses: actions/checkout@v4

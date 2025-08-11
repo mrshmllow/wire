@@ -29,6 +29,8 @@ jobs:
   nextest:
     runs-on: ubuntu-latest
     needs: pre-job
+    permissions:
+      contents: read
     if: needs.pre-job.outputs.should_skip != 'true'
     steps:
       - uses: actions/checkout@v4
@@ -47,6 +49,8 @@ jobs:
   find-vm-tests:
     runs-on: ubuntu-latest
     needs: pre-job
+    permissions:
+      contents: read
     if: needs.pre-job.outputs.should_skip != 'true'
     outputs:
       tests: ${{ steps.tests.outputs.tests }}
