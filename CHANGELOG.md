@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--reboot`. Wire will wait for the node to reconnect after rebooting.
   Wire will refuse to reboot localhost. Keys post-activation will be applied
   after rebooting!
+- Most errors now have error codes and documentation links.
 
 ### Changed
 
@@ -20,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dry-activate).
 - Nix logs with the `Talkative` and `Chatty` level have been moved to
   `tracing_level::TRACE`.
+- Error messages have been greatly improved.
 
 ## [0.4.0] - 2025-07-10
 
