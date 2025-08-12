@@ -11,7 +11,7 @@ jobs:
     outputs:
       number: ${{ steps.skip_check.outputs.number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - id: skip_check
         run: |
           echo "number=$(gh pr list --label flake-lock-update --state open --json id | jq 'length')" >> "$GITHUB_OUTPUT"
@@ -22,7 +22,7 @@ jobs:
     needs: pre-job
     if: needs.pre-job.outputs.number == '0'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ssh-key: ${{ secrets.FOLLOW_NIXPKGS_PRIVATE_KEY }}
           ref: main

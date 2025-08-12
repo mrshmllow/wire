@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: get github app token
         uses: navikt/github-app-token-generator@793caf0d755fb4d6e88150825f680f188535cb48
         id: get-token

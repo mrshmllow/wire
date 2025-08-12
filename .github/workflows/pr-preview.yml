@@ -33,7 +33,7 @@ jobs:
     outputs:
       drv: ${{ steps.drv.outputs.drv }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ needs.base-ref.outputs.base-ref }}
       - uses: ./.github/actions/setup-nix
@@ -48,7 +48,7 @@ jobs:
       drv: ${{ steps.drv.outputs.drv }}
     if: ${{ needs.get-pr.outputs.number != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-nix
         with:
           cachixToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
@@ -66,7 +66,7 @@ jobs:
     # skip if nothing changed in the docs package
     if: needs.eval-head.outputs.drv != needs.eval-base.outputs.drv
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: ./.github/actions/setup-nix
         with:
           cachixToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
