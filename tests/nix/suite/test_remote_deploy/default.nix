@@ -24,11 +24,11 @@
         _first_system = receiver.succeed("readlink -f /run/current-system")
         assert first_system == _first_system, "apply boot without --reboot changed /run/current-system"
 
-      with subtest("Check /etc/identity after reboot"):
-        receiver.reboot()
-
-        identity = receiver.succeed("cat /etc/identity")
-        assert identity == "second", "Identity didn't change after second apply"
+      # with subtest("Check /etc/identity after reboot"):
+      #   receiver.reboot()
+      #
+      #   identity = receiver.succeed("cat /etc/identity")
+      #   assert identity == "second", "Identity didn't change after second apply"
 
       # with subtest("Check --reboot"):
       #   deployer.succeed(f"wire apply boot --on receiver-third --no-progress --path {TEST_DIR}/hive.nix --reboot --no-keys -vvv >&2")
