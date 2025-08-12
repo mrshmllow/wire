@@ -8,12 +8,23 @@ description: Tags, nodes, and how to target them with Wire Tool.
 
 {{ $frontmatter.description }}
 
-## The Basics
+## Targeting Specific Nodes
+
+`wire apply --on` without an `@` prefix interprets as a literal node name. For
+example:
+
+```sh
+wire apply switch --on node-a,node-b
+```
+
+Will switch-to-configuration on node a, and node b.
+
+## Tag Basics
 
 Nodes can have _tags_, which allows you to easily target multiple, related
 nodes for deployment.
 
-```nix:line-numbers [hive.nix]
+```nix:line-numbers{9,13,17,21} [hive.nix]
 let
   sources = import ./npins;
   wire = import sources.wire;
@@ -59,8 +70,7 @@ Other operations such as an `--ignore` argument are unimplemented as of wire `v0
 
 ### Mixing Tags with Node Names
 
-`--on` without an `@` prefix interprets as a literal node name. You can mix tags
-and node names with `--on`:
+You can mix tags and node names with `--on`:
 
 ```sh
 wire apply --on @cloud node-5

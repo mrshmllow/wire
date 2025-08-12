@@ -71,14 +71,6 @@ in wire.makeHive {
 }
 ```
 
-Now, assuming your host machine is currently `my-local-machine`, simply running
-[`wire apply`](/reference/cli.html#wire-apply) will evaluate, build, and
-activate your system, which would be the equivalent of `nixos-rebuild switch`.
-
-```sh
-wire apply switch -v
-```
-
 ### A Remote Machine
 
 Lets add another node to your hive! This one is an example of a remote machine.
@@ -118,10 +110,3 @@ in wire.makeHive {
 > [!TIP]
 > Read more options in [the reference](/reference/module#deployment-target) to adjust options such as
 > ssh port.
-
-To deploy the node `my-remote-machine`, lets use `wire apply` again. Wire will
-apply both nodes in the hive at once, one local and one remote:
-
-```sh
-wire apply switch -v
-```
