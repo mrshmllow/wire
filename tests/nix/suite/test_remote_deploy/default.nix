@@ -22,7 +22,7 @@
         deployer.succeed(f"wire apply boot --on receiver-second --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
 
         _first_system = receiver.succeed("cat /etc/identity")
-        assert first_system == _first_system, "apply boot without --rebot changed /run/current-system"
+        assert first_system == _first_system, "apply boot without --reboot changed /run/current-system"
 
       with subtest("Check /etc/identity after reboot"):
         receiver.reboot()
