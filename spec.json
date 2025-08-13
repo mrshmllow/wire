@@ -1,0 +1,24 @@
+{
+  "enabled": 1,
+  "hidden": false,
+  "description": "wire tool",
+  "nixexprinput": "src",
+  "nixexprpath": "jobsets.nix",
+  "checkinterval": 300,
+  "schedulingshares": 1,
+  "enableemail": false,
+  "emailoverride": "",
+  "keepnr": 5,
+  "inputs": {
+    "src": {
+      "type": "git",
+      "value": "https://github.com/wires-org/wire.git main",
+      "emailresponsible": false
+    },
+    "prs": {
+      "type": "githubpulls",
+      "value": "wires-org wire",
+      "emailresponsible": false
+    }
+  }
+}

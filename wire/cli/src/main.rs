@@ -31,6 +31,13 @@ async fn main() -> Result<(), anyhow::Error> {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 
+    // random change
+    // another
+    // a third
+    //
+
+    print!("real functionality");
+
     let args = Cli::parse();
 
     let modifiers = args.to_subcommand_modifiers();
