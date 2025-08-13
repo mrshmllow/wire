@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `wire inspect/show --json` will no longer use a pretty print.
 - Wire will now wait for the node to reconnect if activation failed (excluding
   dry-activate).
+- Nix logs with the `Talkative` and `Chatty` level have been moved to
+  `tracing_level::TRACE`.
 
 ## [0.4.0] - 2025-07-10
 
