@@ -15,8 +15,8 @@ importers:
         specifier: ^1.1.15
         version: 1.1.15(vue@3.5.18)
       vitepress-plugin-group-icons:
-        specifier: ^1.6.2
-        version: 1.6.2(markdown-it@14.1.0)(vite@5.4.19)
+        specifier: ^1.6.3
+        version: 1.6.3(markdown-it@14.1.0)(vite@5.4.19)
     devDependencies:
       mermaid:
         specifier: ^11.9.0
@@ -1288,8 +1288,8 @@ packages:
   vitepress-plugin-comment-with-giscus@1.1.15:
     resolution: {integrity: sha512-1DJjgN+7SYvn5ZkjuSXPmz7nlqfcrh4qCGGviiZghA2ELXnaO2m9WY7m+RisPSaqCn90xqe0JbO2T4NMq8iUBg==}
 
-  vitepress-plugin-group-icons@1.6.2:
-    resolution: {integrity: sha512-soDdxP/OnDJqcAFT+ilrZ08Em1xVQXDF5gM+iHVTOmA0kJ5baaglckkjAX90MuPmcBszbJah1XTHRxkkIj7gMQ==}
+  vitepress-plugin-group-icons@1.6.3:
+    resolution: {integrity: sha512-bvPD4lhraLJw3rPtLhUIVsOvNfnHnF+F1LH7BKHekEzeZ4uqdTdqnwEyaT580AoKjjT6/F8En6hVJj7takPKDA==}
     peerDependencies:
       markdown-it: '>=14'
       vite: '>=3'
@@ -2696,7 +2696,7 @@ snapshots:
     transitivePeerDependencies:
       - vue
 
-  vitepress-plugin-group-icons@1.6.2(markdown-it@14.1.0)(vite@5.4.19):
+  vitepress-plugin-group-icons@1.6.3(markdown-it@14.1.0)(vite@5.4.19):
     dependencies:
       '@iconify-json/logos': 1.2.9
       '@iconify-json/vscode-icons': 1.2.29
