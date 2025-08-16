@@ -31,7 +31,7 @@ let
       schedulingshares ? 100,
       enableemail ? false,
       emailoverride ? "",
-      keepnr ? 5,
+      keepnr ? 3,
       flake,
     }:
     {
