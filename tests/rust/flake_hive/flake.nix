@@ -9,7 +9,7 @@
     {
       wire = makeHive {
         inherit (self) nixosConfigurations;
-        meta.nixpkgs = import nixpkgs { system = "x86_64-linux"; };
+        meta.nixpkgs = import nixpkgs { localSystem = "x86_64-linux"; };
 
         node-a = { };
         node-b = {

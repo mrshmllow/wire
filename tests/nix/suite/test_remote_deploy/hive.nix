@@ -2,7 +2,7 @@ let
   inherit (import ../utils.nix { testName = "test_keys-@IDENT@"; }) makeHive mkHiveNode;
 in
 makeHive {
-  meta.nixpkgs = import <nixpkgs> { system = "x86_64-linux"; };
+  meta.nixpkgs = import <nixpkgs> { localSystem = "x86_64-linux"; };
 
   receiver = mkHiveNode { hostname = "receiver"; } {
     environment.etc."identity".text = "first";

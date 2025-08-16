@@ -10,7 +10,7 @@
     wire = wire.makeHive {
       meta = {
         nixpkgs = import nixpkgs {
-          system = "x86_64-linux";
+          localSystem = "x86_64-linux";
         };
         specialArgs = {
           inherit inputs;
