@@ -51,7 +51,7 @@
           in
           {
             packages = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: {
-              inherit (self.packages.${system}) wire docs;
+              inherit (self.packages.${system}) wire wire-small docs;
             });
 
             tests = lib.filterAttrs (n: _: (lib.hasPrefix "vm" n)) self.checks.x86_64-linux;
