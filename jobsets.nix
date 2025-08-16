@@ -28,7 +28,7 @@ let
       type ? 1,
       description ? "",
       checkinterval ? 60,
-      schedulingshares ? 100,
+      schedulingshares ? 2,
       enableemail ? false,
       emailoverride ? "",
       keepnr ? 3,
