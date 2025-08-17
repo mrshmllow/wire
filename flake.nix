@@ -50,8 +50,11 @@
             inherit (inputs.nixpkgs) lib;
           in
           {
-            packages = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: {
-              inherit (self.packages.${system}) wire wire-small docs;
+            packages = {
+              inherit (self.packages.x86_64-linux) docs;
+            }
+            // lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: {
+              inherit (self.packages.${system}) wire wire-small;
             });
 
             tests = lib.filterAttrs (n: _: (lib.hasPrefix "vm" n)) self.checks.x86_64-linux;
