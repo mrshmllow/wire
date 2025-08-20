@@ -25,6 +25,13 @@ prost = { workspace = true }
 gethostname = "1.0.2"
 async-trait = "0.1.88"
 nix = { workspace = true }
+miette = { workspace = true }
 
 [dev-dependencies]
 tempdir = "0.3"
+
+[build-dependencies]
+miette = { workspace = true }
+syn = "2.0.104"
+proc-macro2 = "1.0.95"
+itertools = "0.14.0"

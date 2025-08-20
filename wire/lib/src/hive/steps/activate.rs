@@ -7,6 +7,7 @@ use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::{
     HiveLibError, create_ssh_command,
+    errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
     nix::StreamTracing,
 };
@@ -19,13 +20,13 @@ impl Display for SwitchToConfigurationStep {
     }
 }
 
-pub(crate) fn get_elevation(reason: &str) -> Result<Output, HiveLibError> {
+pub(crate) fn get_elevation(reason: &str) -> Result<Output, ActivationError> {
     info!("Attempting to elevate for {reason}.");
     suspend_tracing_indicatif(|| {
         let mut command = std::process::Command::new("sudo");
         command.arg("-v").output()
     })
-    .map_err(HiveLibError::FailedToElevate)
+    .map_err(ActivationError::FailedToElevate)
 }
 
 pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
@@ -46,9 +47,9 @@ pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
         }
     }
 
-    Err(HiveLibError::HostUnreachable(
+    Err(HiveLibError::NetworkError(NetworkError::HostUnreachable(
         ctx.node.target.get_preffered_host()?.to_string(),
-    ))
+    )))
 }
 
 #[async_trait]
@@ -75,7 +76,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                     // Refresh sudo timeout
                     warn!("Running nix-env ON THIS MACHINE for node {0}", ctx.name);
-                    get_elevation("nix-env")?;
+                    get_elevation("nix-env").map_err(HiveLibError::ActivationError)?;
                     let mut command = Command::new("sudo");
                     command.arg("nix-env");
                     command
@@ -96,7 +97,10 @@ impl ExecuteStep for SwitchToConfigurationStep {
                     .filter(|s| !s.is_empty())
                     .collect();
 
-                return Err(HiveLibError::NixEnvError(ctx.name.clone(), stderr));
+                return Err(HiveLibError::ActivationError(ActivationError::NixEnvError(
+                    ctx.name.clone(),
+                    stderr,
+                )));
             }
 
             info!("Set system profile");
@@ -113,7 +117,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                     "Running switch-to-configuration {goal:?} ON THIS MACHINE for node {0}",
                     ctx.name
                 );
-                get_elevation("switch-to-configuration")?;
+                get_elevation("switch-to-configuration").map_err(HiveLibError::ActivationError)?;
                 let mut command = Command::new("sudo");
                 command.arg(cmd);
                 command
@@ -167,8 +171,10 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 host = ctx.node.target.get_preffered_host()?
             );
 
-            return Err(HiveLibError::HostUnreachableAfterReboot(
-                ctx.node.target.get_preffered_host()?.to_string(),
+            return Err(HiveLibError::NetworkError(
+                NetworkError::HostUnreachableAfterReboot(
+                    ctx.node.target.get_preffered_host()?.to_string(),
+                ),
             ));
         }
 
@@ -188,10 +194,8 @@ impl ExecuteStep for SwitchToConfigurationStep {
         if matches!(goal, SwitchToConfigurationGoal::DryActivate)
             || should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
         {
-            return Err(HiveLibError::SwitchToConfigurationError(
-                *goal,
-                ctx.name.clone(),
-                stderr,
+            return Err(HiveLibError::ActivationError(
+                ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), stderr),
             ));
         }
 
@@ -205,10 +209,8 @@ impl ExecuteStep for SwitchToConfigurationStep {
             host = ctx.node.target.get_preffered_host()?
         );
 
-        return Err(HiveLibError::SwitchToConfigurationError(
-            *goal,
-            ctx.name.clone(),
-            stderr,
+        return Err(HiveLibError::ActivationError(
+            ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), stderr),
         ));
     }
 }
