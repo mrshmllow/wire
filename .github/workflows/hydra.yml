@@ -20,7 +20,7 @@ jobs:
           state: all
       - name: Wait for build to succeed
         uses: fountainhead/action-wait-for-check@v1.2.0
-        id: wait-for-build
+        if: contains(github.event.pull_request.labels.*.name, 'hydra')
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           checkName: "ci/hydra:wire:pr_${{ steps.find-pr.outputs.number }}:packages.docs"
