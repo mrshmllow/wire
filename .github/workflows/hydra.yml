@@ -1,7 +1,7 @@
 permissions:
   contents: read
   pull-requests: read
-name: "Wait for Hydra"
+name: "Hydra"
 on:
   - pull_request
 
@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  get-pr:
+  wait:
     runs-on: ubuntu-latest
     steps:
       - uses: jwalton/gh-find-current-pr@master
