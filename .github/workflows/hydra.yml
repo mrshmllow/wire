@@ -3,7 +3,6 @@ permissions:
   pull-requests: read
 name: "Wait for Hydra"
 on:
-  - push
   - pull_request
 
 concurrency:
@@ -19,9 +18,8 @@ jobs:
         with:
           state: all
       - name: Wait for build to succeed
-        uses: fountainhead/action-wait-for-check@v1.2.0
+        uses: autotelic/action-wait-for-status-check@v1
         if: contains(github.event.pull_request.labels.*.name, 'hydra')
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: "ci/hydra:wire:pr_${{ steps.find-pr.outputs.number }}:packages.docs"
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          statusName: "ci/hydra:wire:pr_${{ steps.find-pr.outputs.number }}:packages.docs"
