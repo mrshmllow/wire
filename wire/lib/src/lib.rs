@@ -12,6 +12,7 @@ use crate::errors::HiveLibError;
 pub mod hive;
 mod nix;
 mod nix_log;
+mod ssh;
 
 #[cfg(test)]
 mod test_macros;

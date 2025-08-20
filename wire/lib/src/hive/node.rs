@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::net::unix::SocketAddr;
 use tokio::process::Command;
 use tracing::{Instrument, Span, error, info, instrument, trace};
 use tracing_indicatif::span_ext::IndicatifSpanExt;
@@ -25,7 +26,7 @@ pub struct Name(pub Arc<str>);
 pub struct Target {
     pub hosts: Vec<Arc<str>>,
     pub user: Arc<str>,
-    pub port: u32,
+    pub port: u16,
 
     #[serde(skip)]
     current_host: usize,
@@ -60,6 +61,12 @@ impl Target {
             hosts: vec![host.into()],
             ..Default::default()
         }
+    }
+
+    pub fn as_preferred_as_tuple(&self) -> Result<(&str, u16), HiveLibError> {
+        let host = self.get_preffered_host()?;
+
+        Ok((host, self.port))
     }
 }
 

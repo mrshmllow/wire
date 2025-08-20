@@ -26,6 +26,7 @@ gethostname = "1.0.2"
 async-trait = "0.1.88"
 nix = { workspace = true }
 miette = { workspace = true }
+russh = "0.54.1"
 
 [dev-dependencies]
 tempdir = "0.3"

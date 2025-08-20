@@ -227,6 +227,23 @@ pub enum NixChildError {
 }
 
 #[derive(Debug, Diagnostic, Error)]
+pub enum SshError {
+    #[diagnostic(
+        code(wire::ssh::Generic),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("there was an error related to SSH")]
+    RusshError(#[source] russh::Error),
+
+    #[diagnostic(
+        code(wire::ssh::Keys),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("there was an error related to SSH keys")]
+    KeysError(#[source] russh::keys::Error),
+}
+
+#[derive(Debug, Diagnostic, Error)]
 pub enum HiveLibError {
     #[error(transparent)]
     #[diagnostic(transparent)]
@@ -258,6 +275,10 @@ pub enum HiveLibError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     NixChildError(NixChildError),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    SshError(SshError),
 
     #[diagnostic(
         code(wire::EvaluateNode),
