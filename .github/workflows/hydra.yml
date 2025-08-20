@@ -4,6 +4,7 @@ permissions:
 name: "Wait for Hydra"
 on:
   - push
+  - pull_request
 
 jobs:
   get-pr:
