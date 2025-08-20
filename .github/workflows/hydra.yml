@@ -25,7 +25,7 @@ jobs:
             github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              commit_sha: context.sha,
+              sha: context.sha,
               state: 'pending',
               description: 'Waiting for hydra to evaluate this PR...',
               context: 'ci/hydra:wire:pr_${{ steps.find-pr.outputs.number }}:packages.docs'
