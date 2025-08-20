@@ -1,0 +1,19 @@
+name: "Wait for Hydra"
+on:
+  - push
+
+jobs:
+  get-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jwalton/gh-find-current-pr@master
+        id: find-pr
+        with:
+          state: all
+      - name: Wait for build to succeed
+        uses: fountainhead/action-wait-for-check@v1.2.0
+        id: wait-for-build
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          checkName: "ci/hydra:wire:pr_${{ steps.find-pr.outputs.number }}:packages.docs"
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
