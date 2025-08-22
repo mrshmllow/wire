@@ -22,4 +22,4 @@ anyhow = "1.0.98"
 prost = "0.14.1"
 nix = { version = "0.30.1", features = ["user"] }
 miette = { version = "7.6.0", features = ["fancy"] }
-thiserror = "2.0.12"
+thiserror = "2.0.16"
