@@ -87,8 +87,16 @@ in
             str: lib.strings.sanitizeDerivationName (builtins.replaceStrings [ "." ] [ "_" ] str);
           identifier = sanitizeName "${nixpkgs.legacyPackages.lib.trivial.release}-${nixPackage.name}";
           path = "tests/nix/suite/${testName}";
+
+          flakeDirFileset = lib.fileset.toSource {
+            root = ../..;
+            fileset = lib.fileset.union ./. (
+              lib.fileset.fileFilter (file: (file.hasExt "nix") || (file.hasExt "lock")) ../..
+            );
+          };
+
           injectedFlakeDir = pkgs.runCommand "injected-flake-dir" { } ''
-            cp -r ${../..} $out
+            cp -r ${flakeDirFileset} $out
             chmod -R +w $out
             substituteInPlace $out/${path}/hive.nix --replace-fail @IDENT@ ${identifier}
           '';
