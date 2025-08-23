@@ -79,8 +79,8 @@ in
     // (mapAttrs' (n: pr: {
       name = "pr_${n}";
       value = mkJobset {
-        description = pr.title;
-        flake = "git+ssh://git@github.com/${repo.owner}/${repo.name}?ref=${pr.head.ref}";
+        description = "${pr.title} ${pr.html_url}";
+        flake = "git+ssh://${pr.head.repo.ssh_url}?ref=${pr.head.ref}";
       };
     }) pull_requests)
   );
