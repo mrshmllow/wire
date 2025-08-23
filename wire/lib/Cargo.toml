@@ -32,6 +32,6 @@ tempdir = "0.3"
 
 [build-dependencies]
 miette = { workspace = true }
-syn = "2.0.104"
+syn = "2.0.106"
 proc-macro2 = "1.0.101"
 itertools = "0.14.0"
