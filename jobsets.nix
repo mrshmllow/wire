@@ -80,7 +80,7 @@ in
       name = "pr_${n}";
       value = mkJobset {
         description = "${pr.title} ${pr.html_url}";
-        flake = "git+ssh://${pr.head.repo.ssh_url}?ref=${pr.head.ref}";
+        flake = "git+ssh://git@github.com/${pr.head.repo.full_name}?ref=${pr.head.ref}";
       };
     }) pull_requests)
   );
