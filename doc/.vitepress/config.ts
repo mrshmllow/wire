@@ -56,8 +56,8 @@ export default withMermaid(
             ],
           },
           {
-            text: "Use cases",
-            items: [{ text: "Tailscale", link: "/guide/tailscale" }],
+            text: "Caveats",
+            items: [{ text: "Securing Root SSH", link: "/guide/caveats/root" }],
           },
         ],
         "/reference/": [
@@ -101,6 +101,8 @@ export default withMermaid(
             "hive.nix": "vscode-icons:file-type-nix",
             "flake.nix": "vscode-icons:file-type-nix",
             "module.nix": "vscode-icons:file-type-nix",
+            "login.tailscale.com/admin/acls/file":
+              "vscode-icons:file-type-json",
             home: localIconLoader(import.meta.url, "../assets/homemanager.svg"),
             ".conf": "vscode-icons:file-type-config",
           },
