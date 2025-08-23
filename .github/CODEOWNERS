@@ -2,3 +2,7 @@
 
 # owned by nobody
 flake.lock
+**/Cargo.toml
+‎**/Cargo.lock
+doc/package.json
+doc/pnpm-lock.yaml
