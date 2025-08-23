@@ -9,7 +9,7 @@ limitation of wire itself [^1].
     Every time wire runs a remote command, sudo will require a password. This
     is because every `ssh` session is a new shell.
 
-You must have `dpeloyment.target.user` set to a user that can run sudo without a
+You must have `deployment.target.user` set to a user that can run sudo without a
 password or authentication, most commonly root.
 
 This limitation means you can apply `push` and `build` while `deployment.target.user != "root"`,
@@ -26,7 +26,7 @@ requiring "interaction".
 ## Hardening `root` with Tailscale Checks
 
 [Tailscale](https://tailscale.com/kb/1151/what-is-tailscale) can place a OAuth
-check gate on any ssh user. This will require you re-authenticate with tailscale
+check gate on any ssh user. This will require you re-authenticate with Tailscale
 in a browser to deploy your nodes. It looks like this:
 
 ```txt
@@ -102,7 +102,7 @@ in wire.makeHive {
 ### Step 3. Disabling `root` outside of your Tailnet
 
 All nodes in your tailnet have an IPv4 in the range `100.64.0.0/10` [^2]. We can
-tell openssh to refuse root connections from outside of this rnage.
+tell openssh to refuse root connections from outside of this range.
 
 [^2]: ["Tailscale - IP pool"](https://tailscale.com/kb/1304/ip-pool)
 
@@ -136,8 +136,8 @@ in
 
 ### Step 4. Enable Tailscale SSH
 
-You must provide a authKeyFile to tailscale if you want your node to always
-authenticate to tailscale. This can easily be achieved with a wire secret.
+You must provide a authKeyFile to Tailscale if you want your node to always
+authenticate to Tailscale. This can easily be achieved with a wire secret.
 
 [Generate an Auth Key](https://tailscale.com/kb/1085/auth-keys), and ensure it
 is:
@@ -152,7 +152,7 @@ is:
 :::
 
 Save and encrypt your key, ready to be deployed. Given that the key must exist
-**before** tailscale starts, make sure that the key is `uploadAt =
+**before** Tailscale starts, make sure that the key is `uploadAt =
 "pre-activation"`.
 
 ```nix:line-numbers [node-a/configuration.nix]
