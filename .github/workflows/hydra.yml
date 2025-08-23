@@ -1,9 +1,9 @@
 permissions:
   contents: read
   pull-requests: read
-name: "Hydra"
+name: "Hydra Stopgap"
 on:
-  - pull_request
+  - pull_request_target
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.number }}
@@ -22,7 +22,7 @@ jobs:
             github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              sha: context.sha,
+              sha: github.event.pull_request.head.sha,
               state: 'pending',
               description: 'Waiting for hydra to evaluate this PR...',
               context: 'ci/hydra:wire:pr_${{ github.event.number }}:packages.docs'
