@@ -210,17 +210,17 @@ impl<'a> GoalExecutor<'a> {
                 Box::new(KeysStep {
                     filter: UploadKeyAt::NoFilter,
                 }),
-                Box::new(KeysStep {
-                    filter: UploadKeyAt::PreActivation,
-                }),
-                Box::new(super::steps::evaluate::Step),
-                Box::new(super::steps::push::EvaluatedOutputStep),
-                Box::new(super::steps::build::Step),
-                Box::new(super::steps::push::BuildOutputStep),
-                Box::new(SwitchToConfigurationStep),
-                Box::new(KeysStep {
-                    filter: UploadKeyAt::PostActivation,
-                }),
+                // Box::new(KeysStep {
+                //     filter: UploadKeyAt::PreActivation,
+                // }),
+                // Box::new(super::steps::evaluate::Step),
+                // Box::new(super::steps::push::EvaluatedOutputStep),
+                // Box::new(super::steps::build::Step),
+                // Box::new(super::steps::push::BuildOutputStep),
+                // Box::new(SwitchToConfigurationStep),
+                // Box::new(KeysStep {
+                //     filter: UploadKeyAt::PostActivation,
+                // }),
             ],
             context,
         }

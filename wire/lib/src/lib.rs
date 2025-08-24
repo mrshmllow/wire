@@ -10,6 +10,7 @@ use tokio::process::Command;
 
 use crate::errors::HiveLibError;
 
+pub mod commands;
 pub mod hive;
 mod nix;
 mod nix_log;

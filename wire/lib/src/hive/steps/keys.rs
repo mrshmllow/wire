@@ -4,21 +4,25 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fmt::Display;
-use std::io::Cursor;
+use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::process::Stdio;
 use std::str::from_utf8;
+use std::thread::sleep;
+use std::time::Duration;
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{debug, info, trace, warn};
+use tracing::{debug, info, trace};
+use tracing_indicatif::suspend_tracing_indicatif;
 
-use crate::errors::{KeyAgentError, KeyError};
+use crate::commands::new::RemoteNewCommand;
+use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
+use crate::errors::KeyError;
 use crate::hive::node::{
     Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, push, should_apply_locally,
 };
-use crate::hive::steps::activate::get_elevation;
 use crate::{HiveLibError, create_ssh_command};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
@@ -111,27 +115,17 @@ async fn create_reader(
     }
 }
 
-async fn copy_buffer<T: AsyncWriteExt + Unpin>(
-    reader: &mut T,
-    buf: &[u8],
-) -> Result<(), HiveLibError> {
+fn copy_buffer<T: Write + Unpin>(reader: &mut T, buf: &[u8]) -> Result<(), HiveLibError> {
     reader
         .write_all(buf)
-        .await
         .map_err(HiveLibError::BufferOperationError)?;
-    reader
-        .flush()
-        .await
-        .map_err(HiveLibError::BufferOperationError)
+    reader.flush().map_err(HiveLibError::BufferOperationError)
 }
 
-async fn copy_buffers<T: AsyncWriteExt + Unpin>(
-    reader: &mut T,
-    bufs: Vec<Vec<u8>>,
-) -> Result<(), HiveLibError> {
+fn copy_buffers<T: Write + Unpin>(reader: &mut T, bufs: Vec<Vec<u8>>) -> Result<(), HiveLibError> {
     for (index, buf) in bufs.iter().enumerate() {
         trace!("Pushing buf {}", index);
-        copy_buffer(reader, buf).await?;
+        copy_buffer(reader, buf)?;
     }
 
     Ok(())
@@ -218,58 +212,70 @@ impl ExecuteStep for KeysStep {
 
         let msg = key_agent::keys::Keys { keys };
 
-        trace!("Sending message {msg:?}");
+        trace!("Will send message {msg:?}");
 
         let buf = msg.encode_to_vec();
 
+        // let mut command =
+        //     if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+        //         warn!("Placing keys locally for node {0}", ctx.name);
+        //         get_elevation("wire key agent").map_err(HiveLibError::ActivationError)?;
+        //         Command::new("sudo")
+        //     } else {
+        //         create_ssh_command(&ctx.node.target, true)?
+        //     };
+
         let mut command =
-            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                warn!("Placing keys locally for node {0}", ctx.name);
-                get_elevation("wire key agent").map_err(HiveLibError::ActivationError)?;
-                Command::new("sudo")
-            } else {
-                create_ssh_command(&ctx.node.target, true)?
-            };
+            RemoteNewCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
+        let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
-        let mut child = command
-            .args([
-                format!("{agent_directory}/bin/key_agent"),
-                buf.len().to_string(),
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .stdin(Stdio::piped())
-            .spawn()
-            .map_err(|err| HiveLibError::KeyAgentError(KeyAgentError::SpawningAgent(err)))?;
+        let mut child = suspend_tracing_indicatif(|| {
+            // command.run_command("echo 'hello' && head -n 1 && echo 'hi'")
+            // command.run_command("echo 'hello' && sleep 1 && echo 'hi'")
+            command.run_command(command_string)
+        })?;
 
-        // take() stdin so it will be dropped out of block
-        if let Some(mut stdin) = child.stdin.take() {
-            trace!("Pushing msg");
-            copy_buffer(&mut stdin, &buf).await?;
-            copy_buffers(&mut stdin, bufs).await?;
+        // sleep(Duration::from_secs(5));
+
+        // info!("Finished sleeping");
+
+        // child.write_stdin(b"from stdin!\n".to_vec()).await?;
+
+        // info!("wrote to stdin");
+        //
+        // // take() stdin so it will be dropped out of block
+        // trace!("Pushing msg");
+        child.write_stdin(buf).await?;
+
+        for buf in bufs {
+            trace!("Pushing buf");
+            child.write_stdin(buf).await?;
         }
 
-        let output = child
-            .wait_with_output()
-            .await
-            .map_err(|err| HiveLibError::KeyAgentError(KeyAgentError::ResolvingError(err)))?;
+        // copy_buffers(&mut child.master_writer, bufs)?;
 
-        if output.status.success() {
-            info!("Successfully pushed keys to {}", ctx.name);
-            trace!("Agent stdout: {}", String::from_utf8_lossy(&output.stdout));
+        let status = child.get_status().await.unwrap();
 
-            return Ok(());
-        }
+        info!("status: {status:?}");
 
-        let stderr = String::from_utf8_lossy(&output.stderr);
+        // if status.success() {
+        //     info!("Successfully pushed keys to {}", ctx.name);
+        //     // trace!("Agent stdout: {}", String::from_utf8_lossy(&output.stdout));
+        //
+        // return Ok(());
+        // }
 
-        Err(HiveLibError::KeyAgentError(KeyAgentError::AgentFailed(
-            ctx.name.clone(),
-            stderr
-                .split('\n')
-                .map(std::string::ToString::to_string)
-                .collect(),
-        )))
+        panic!("Failed...");
+
+        // let stderr = String::from_utf8_lossy(&output.stderr);
+
+        // Err(HiveLibError::KeyAgentError(KeyAgentError::AgentFailed(
+        //     ctx.name.clone(),
+        //     stderr
+        //         .split('\n')
+        //         .map(std::string::ToString::to_string)
+        //         .collect(),
+        // )))
     }
 }
 
