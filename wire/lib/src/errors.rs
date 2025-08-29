@@ -1,4 +1,7 @@
-use std::{num::ParseIntError, path::PathBuf, process::ExitStatus, sync::mpsc::RecvError};
+use std::{
+    collections::VecDeque, num::ParseIntError, path::PathBuf, process::ExitStatus,
+    sync::mpsc::RecvError,
+};
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
@@ -271,16 +274,8 @@ pub enum DetachedError {
         help("This should never happen, please create an issue!"),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("There was no handle to io")]
+    #[error("There was no handle to child io")]
     NoHandle,
-
-    #[diagnostic(
-        code(wire::Detached::FailSpawnSudo),
-        help("please create an issue!"),
-        url("{DOCS_URL}#{}", self.code().unwrap())
-    )]
-    #[error("Failed to spawn sudo on node")]
-    FailSpawnSudo(#[source] std::io::Error),
 
     #[diagnostic(
         code(wire::Detached::WritingClientStdout),
@@ -303,6 +298,14 @@ pub enum DetachedError {
     )]
     #[error("Failed to receive a message from the begin channel")]
     RecvError(#[source] RecvError),
+
+    #[diagnostic(
+        code(wire::Detached::CommandFailed),
+        url("{DOCS_URL}#{}", self.code().unwrap()),
+        help("`nix` commands are filtered, run with -vvv to view all"),
+    )]
+    #[error("{} failed: (last 20 lines)", .command_ran)]
+    CommandFailed { command_ran: String, logs: String },
 }
 
 #[derive(Debug, Diagnostic, Error)]
@@ -322,13 +325,6 @@ pub enum HiveLibError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     DetachedError(DetachedError),
-
-    #[diagnostic()]
-    #[error("Multiple errors occured in a detached command.")]
-    MultipleDetachedErrors {
-        #[related]
-        errors: Vec<DetachedError>,
-    },
 
     #[error("Failed to apply key {}", .0)]
     KeyError(

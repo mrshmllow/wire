@@ -9,15 +9,13 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::process::Stdio;
 use std::str::from_utf8;
-use std::thread::sleep;
-use std::time::Duration;
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt};
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
 use tracing::{debug, info, trace};
 use tracing_indicatif::suspend_tracing_indicatif;
 
-use crate::commands::remote::RemoteNewCommand;
+use crate::commands::elevated::ElevatedCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::KeyError;
 use crate::hive::node::{
@@ -226,13 +224,17 @@ impl ExecuteStep for KeysStep {
         //     };
 
         let mut command =
-            RemoteNewCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
+            ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
-        let mut child = suspend_tracing_indicatif(|| {
+        let child = suspend_tracing_indicatif(|| {
             // command.run_command("echo 'hello' && head -n 1 && echo 'hi'")
             // command.run_command("echo 'hello' && sleep 1 && echo 'hi'")
-            command.run_command(command_string, true)
+            command.run_command(
+                command_string,
+                true,
+                should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+            )
         })?;
 
         child.write_stdin(buf).await?;

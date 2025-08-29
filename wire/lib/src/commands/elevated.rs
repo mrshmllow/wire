@@ -5,6 +5,8 @@ use nix::{
 };
 use portable_pty::{NativePtySystem, PtySize};
 use rand::distr::Alphabetic;
+use std::collections::VecDeque;
+use std::sync::Mutex;
 use std::sync::mpsc::{self, Sender};
 use std::{
     io::{Read, Write},
@@ -14,6 +16,7 @@ use std::{
 use tracing::{debug, error, info, trace, warn};
 
 use crate::errors::DetachedError;
+use crate::nix_log::NixLog;
 use crate::{
     commands::{ChildOutputMode, WireCommand, WireCommandChip},
     errors::HiveLibError,
@@ -24,31 +27,35 @@ type MasterWriter = Box<dyn Write + Send>;
 type MasterReader = Box<dyn Read + Send>;
 type Child = Box<dyn portable_pty::Child + Send + Sync>;
 
-pub(crate) struct RemoteNewCommand<'t> {
+pub(crate) struct ElevatedCommand<'t> {
     target: &'t Target,
     output_mode: Arc<ChildOutputMode>,
     quit_needle: Arc<String>,
     start_needle: Arc<String>,
 }
 
-pub(crate) struct RemoteChildChip {
+pub(crate) struct ElevatedChildChip {
     child: Child,
 
     cancel_stdin_pipe_w: OwnedFd,
     write_stdin_pipe_w: OwnedFd,
+
+    error_collection: Arc<Mutex<VecDeque<String>>>,
+
+    command_string: String
 }
 
 /// the underlying command began
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 
-impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
-    type ChildChip = RemoteChildChip;
+impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
+    type ChildChip = ElevatedChildChip;
 
     async fn spawn_new(
         target: &'t Target,
         output_mode: ChildOutputMode,
-    ) -> Result<RemoteNewCommand<'t>, HiveLibError> {
+    ) -> Result<ElevatedCommand<'t>, HiveLibError> {
         let output_mode = Arc::new(output_mode);
         let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
         let quit_needle = Arc::new(format!("{tmp_prefix}_WIRE_QUIT"));
@@ -66,6 +73,7 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
+        local: bool,
     ) -> Result<Self::ChildChip, crate::errors::HiveLibError> {
         warn!(
             "Please authenticate for \"sudo {}\"",
@@ -101,13 +109,22 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
 
         debug!("{command_string}");
 
-        let mut command = create_sync_ssh_command(self.target)?;
+        let mut command = if local {
+            let mut command = portable_pty::CommandBuilder::new("sh");
 
-        command.args([
+            command.arg("-c");
+
+            command
+        } else {
+            let mut command = create_sync_ssh_command(self.target)?;
+
             // force ssh to use our pesudo terminal
-            "-tt",
-            &format!("sudo -u root sh -c \"{command_string}\""),
-        ]);
+            command.arg("-tt");
+
+            command
+        };
+
+        command.args([&format!("sudo -u root sh -c \"{command_string}\"")]);
 
         let child = pty_pair
             .slave
@@ -127,28 +144,34 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
             .take_writer()
             .map_err(|x| HiveLibError::DetachedError(DetachedError::PortablePty(x)))?;
 
-        let stdout_quit_needle = self.quit_needle.clone();
-        let stdout_start_needle = self.start_needle.clone();
-        let stdout_output_mode = self.output_mode.clone();
-
+        let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let (began_tx, began_rx) = mpsc::channel::<()>();
 
-        let (write_pipe_r, write_pipe_w) =
+        {
+            let quit_needle = self.quit_needle.clone();
+            let start_needle = self.start_needle.clone();
+            let output_mode = self.output_mode.clone();
+            let error_collection = error_collection.clone();
+
+            std::thread::spawn(move || {
+                dynamic_watch_sudo_stdout(
+                    &began_tx,
+                    reader,
+                    &quit_needle,
+                    &start_needle,
+                    &output_mode,
+                    &error_collection,
+                )
+            });
+        }
+
+        let (write_stdin_pipe_r, write_stdin_pipe_w) =
             posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
-        let (cancel_pipe_r, cancel_pipe_w) =
+        let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
             posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
 
         std::thread::spawn(move || {
-            dynamic_watch_sudo_stdout(
-                &began_tx,
-                reader,
-                &stdout_quit_needle,
-                &stdout_start_needle,
-                &stdout_output_mode,
-            )
-        });
-        std::thread::spawn(move || {
-            watch_stdin_from_user(&cancel_pipe_r, master_writer, &write_pipe_r)
+            watch_stdin_from_user(&cancel_stdin_pipe_r, master_writer, &write_stdin_pipe_r)
         });
 
         info!("Setup threads");
@@ -160,30 +183,26 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
         if keep_stdin_open {
             trace!("Sending THREAD_BEGAN_SIGNAL");
 
-            posix_write(&cancel_pipe_w, THREAD_BEGAN_SIGNAL)
+            posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
                 .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
         } else {
             trace!("Sending THREAD_QUIT_SIGNAL");
 
-            posix_write(&cancel_pipe_w, THREAD_QUIT_SIGNAL)
+            posix_write(&cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
                 .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
         }
 
-        Ok(RemoteChildChip::new(child, cancel_pipe_w, write_pipe_w))
-    }
-}
-
-impl RemoteChildChip {
-    fn new(child: Child, cancel_stdin_pipe_w: OwnedFd, write_stdin_pipe_w: OwnedFd) -> Self {
-        Self {
+        Ok(ElevatedChildChip {
             child,
             cancel_stdin_pipe_w,
             write_stdin_pipe_w,
-        }
+            error_collection,
+            command_string: command_string.to_string()
+        })
     }
 }
 
-impl WireCommandChip for RemoteChildChip {
+impl WireCommandChip for ElevatedChildChip {
     type ExitStatus = portable_pty::ExitStatus;
 
     async fn get_status(mut self) -> Result<Self::ExitStatus, HiveLibError> {
@@ -195,6 +214,17 @@ impl WireCommandChip for RemoteChildChip {
             .await
             .map_err(|x| HiveLibError::DetachedError(DetachedError::JoinError(x)))?
             .map_err(|x| HiveLibError::DetachedError(DetachedError::WaitForStatus(x)))?;
+
+        let mut collection = self.error_collection.lock().unwrap();
+
+        if exit_status.success() {
+            let logs = collection.make_contiguous().join("\n");
+
+            return Err(HiveLibError::DetachedError(DetachedError::CommandFailed {
+                command_ran: self.command_string,
+                logs,
+            }));
+        }
 
         posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
             .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
@@ -229,6 +259,7 @@ fn dynamic_watch_sudo_stdout(
     quit_needle: &Arc<String>,
     start_needle: &Arc<String>,
     output_mode: &Arc<ChildOutputMode>,
+    collection: &Arc<Mutex<VecDeque<String>>>,
 ) -> Result<(), DetachedError> {
     let mut buffer = [0u8; 1024];
     let mut stdout = std::io::stdout();
@@ -255,7 +286,16 @@ fn dynamic_watch_sudo_stdout(
                     }
 
                     if began {
-                        output_mode.trace(line.to_string());
+                        let log = output_mode.trace(line.to_string());
+
+                        if let Some(NixLog::Internal(log)) = log {
+                            if let Some(message) = log.is_error_ish() {
+                                let mut queue = collection.lock().unwrap();
+                                // add at most 10 message to the front, drop the rest.
+                                queue.push_front(message);
+                                queue.truncate(10);
+                            }
+                        }
                     } else {
                         stdout
                             .write_all(new_data.as_bytes())

@@ -4,7 +4,8 @@ use crate::{
     nix_log::{Action, Internal, NixLog, Trace},
 };
 
-pub(crate) mod remote;
+pub(crate) mod elevated;
+pub(crate) mod nonelevated;
 
 #[derive(Copy, Clone)]
 pub(crate) enum ChildOutputMode {
@@ -24,6 +25,7 @@ pub(crate) trait WireCommand<'target>: Sized {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
+        local: bool,
     ) -> Result<Self::ChildChip, HiveLibError>;
 }
 
@@ -35,8 +37,8 @@ pub(crate) trait WireCommandChip {
 }
 
 impl ChildOutputMode {
-    fn trace(self, line: String) {
-        let line = match self {
+    fn trace(self, line: String) -> Option<NixLog> {
+        let log = match self {
             ChildOutputMode::Nix => {
                 let log =
                     serde_json::from_str::<Internal>(line.strip_prefix("@nix ").unwrap_or(&line))
@@ -48,7 +50,7 @@ impl ChildOutputMode {
                     action: Action::Stop,
                 }) = log
                 {
-                    return;
+                    return None;
                 }
 
                 log
@@ -56,6 +58,8 @@ impl ChildOutputMode {
             Self::Raw => NixLog::Raw(line),
         };
 
-        line.trace();
+        log.trace();
+
+        Some(log)
     }
 }
