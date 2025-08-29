@@ -1,6 +1,3 @@
-use tokio::process::ChildStdin;
-use tracing::info;
-
 use crate::{
     errors::HiveLibError,
     hive::node::Target,
@@ -27,12 +24,6 @@ pub(crate) trait WireCommand<'target>: Sized {
         &mut self,
         command_string: S,
     ) -> Result<Self::ChildChip, HiveLibError>;
-
-    // Consumes self and returns the underlying command's status
-    async fn get_status(
-        self,
-        command_child: Self::ChildChip,
-    ) -> Result<portable_pty::ExitStatus, HiveLibError>;
 }
 
 pub(crate) trait WireCommandChip {

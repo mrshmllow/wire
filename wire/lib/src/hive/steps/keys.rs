@@ -235,16 +235,6 @@ impl ExecuteStep for KeysStep {
             command.run_command(command_string)
         })?;
 
-        // sleep(Duration::from_secs(5));
-
-        // info!("Finished sleeping");
-
-        // child.write_stdin(b"from stdin!\n".to_vec()).await?;
-
-        // info!("wrote to stdin");
-        //
-        // // take() stdin so it will be dropped out of block
-        // trace!("Pushing msg");
         child.write_stdin(buf).await?;
 
         for buf in bufs {

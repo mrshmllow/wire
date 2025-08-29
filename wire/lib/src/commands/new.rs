@@ -19,20 +19,18 @@ use crate::{
     hive::node::Target,
 };
 
+type MasterWriter = Box<dyn Write + Send>;
+type MasterReader = Box<dyn Read + Send>;
+type Child = Box<dyn portable_pty::Child + Send + Sync>;
+
 pub(crate) struct RemoteNewCommand<'t> {
     target: &'t Target,
     output_mode: Arc<ChildOutputMode>,
     quit_needle: Arc<String>,
-
-    cancel_stdin_pipe_r: Option<OwnedFd>,
-    cancel_stdin_pipe_w: Option<OwnedFd>,
-    write_stdin_pipe_r: Option<OwnedFd>,
-    write_stdin_pipe_w: Option<OwnedFd>,
 }
 
 pub(crate) struct RemoteChildChip {
-    child: Box<dyn portable_pty::Child + Send + Sync>,
-    cancel_token: CancellationToken,
+    child: Child,
 
     cancel_stdin_pipe_w: OwnedFd,
     write_stdin_pipe_w: OwnedFd,
@@ -48,17 +46,11 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
         let output_mode = Arc::new(output_mode);
         let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
         let quit_needle = Arc::new(format!("{tmp_prefix}_WIRE_QUIT"));
-        let (pipe_r, pipe_w) = posix_pipe().unwrap();
-        let (write_pipe_r, write_pipe_w) = posix_pipe().unwrap();
 
         Ok(Self {
             target,
             output_mode,
             quit_needle,
-            cancel_stdin_pipe_r: Some(pipe_r),
-            cancel_stdin_pipe_w: Some(pipe_w),
-            write_stdin_pipe_r: Some(write_pipe_r),
-            write_stdin_pipe_w: Some(write_pipe_w),
         })
     }
 
@@ -105,7 +97,7 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
             &format!("sudo -u root sh -c \"{command_string}\""),
         ]);
 
-        let mut child = pty_pair.slave.spawn_command(command).unwrap();
+        let child = pty_pair.slave.spawn_command(command).unwrap();
 
         // Release any handles owned by the slave: we don't need it now
         // that we've spawned the child.
@@ -118,7 +110,7 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
         let stdout_token = cancel_token.clone();
         let stdout_quit_needle = self.quit_needle.clone();
         let stdout_output_mode = self.output_mode.clone();
-        let stdout_thread = std::thread::spawn(move || {
+        std::thread::spawn(move || {
             dynamic_watch_sudo_stdout(
                 &stdout_token,
                 reader,
@@ -127,12 +119,11 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
             );
         });
 
-        let pipe_r = self.cancel_stdin_pipe_r.take().unwrap();
-        let pipe_w = self.cancel_stdin_pipe_w.take().unwrap();
-        let write_pipe_r = self.write_stdin_pipe_r.take().unwrap();
-        let write_pipe_w = self.write_stdin_pipe_w.take().unwrap();
-        let stdin_thread = std::thread::spawn(move || {
-            watch_stdin_from_user(&pipe_r, master_writer, &write_pipe_r);
+        let (write_pipe_r, write_pipe_w) = posix_pipe().unwrap();
+        let (cancel_pipe_r, cancel_pipe_w) = posix_pipe().unwrap();
+
+        std::thread::spawn(move || {
+            watch_stdin_from_user(&cancel_pipe_r, master_writer, &write_pipe_r);
         });
 
         info!("Setup threads");
@@ -145,37 +136,14 @@ impl<'t> WireCommand<'t> for RemoteNewCommand<'t> {
 
         info!("Cancelled...");
 
-        // posix_write(&self.cancel_stdin_pipe_w.unwrap(), b"x").unwrap();
-
-        // stdin_thread.join().unwrap();
-        // let a = stdout_thread.join().unwrap();
-        // info!("Joined stdin");
-
-        // let child = child.wait().unwrap();
-        // info!("child!? {child}");
-
-        Ok(RemoteChildChip::new(child, pipe_w, write_pipe_w))
-    }
-
-    async fn get_status(
-        self,
-        command_child: Self::ChildChip,
-    ) -> Result<portable_pty::ExitStatus, crate::errors::HiveLibError> {
-        todo!();
+        Ok(RemoteChildChip::new(child, cancel_pipe_w, write_pipe_w))
     }
 }
 
 impl RemoteChildChip {
-    fn new(
-        child: Box<dyn portable_pty::Child + Send + Sync>,
-        cancel_stdin_pipe_w: OwnedFd,
-        write_stdin_pipe_w: OwnedFd,
-    ) -> Self {
-        let cancel_token = CancellationToken::new();
-
+    fn new(child: Child, cancel_stdin_pipe_w: OwnedFd, write_stdin_pipe_w: OwnedFd) -> Self {
         Self {
             child,
-            cancel_token,
             cancel_stdin_pipe_w,
             write_stdin_pipe_w,
         }
@@ -222,7 +190,7 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
 /// Cancels on `"WIRE_BEGIN"` written to `reader`
 fn dynamic_watch_sudo_stdout(
     token: &CancellationToken,
-    mut reader: Box<dyn Read + Send>,
+    mut reader: MasterReader,
     quit_needle: &Arc<String>,
     output_mode: &Arc<ChildOutputMode>,
 ) {
@@ -235,7 +203,6 @@ fn dynamic_watch_sudo_stdout(
             Ok(0) => break 'outer,
             Ok(n) => {
                 let new_data = String::from_utf8_lossy(&buffer[..n]);
-                // debug!("got {n}: {new_data}");
 
                 for line in new_data.split_inclusive('\n') {
                     trace!("line: {line}");
@@ -274,7 +241,7 @@ fn dynamic_watch_sudo_stdout(
 /// Exits on any data written to `cancel_pipe_r`
 fn watch_stdin_from_user(
     cancel_pipe_r: &OwnedFd,
-    mut master_writer: Box<dyn Write + Send>,
+    mut master_writer: MasterWriter,
     write_pipe_r: &OwnedFd,
 ) {
     let mut buffer = [0u8; 1024];
@@ -296,25 +263,23 @@ fn watch_stdin_from_user(
             Ok(_) => {
                 if let Some(events) = poll_fds[0].revents() {
                     if events.contains(PollFlags::POLLIN) {
-                        debug!("Got stdin...");
+                        trace!("Got stdin...");
                         let n = posix_read(stdin_fd, &mut buffer).unwrap();
-                        // info!("Going to write: {}", String::from_utf8_lossy(&buffer[..n]));
                         master_writer.write_all(&buffer[..n]).unwrap();
                         master_writer.flush().unwrap();
                     }
                 }
                 if let Some(events) = poll_fds[1].revents() {
                     if events.contains(PollFlags::POLLIN) {
-                        debug!("Stdin reader: Got cancel from cancel_pipe_r");
+                        trace!("Stdin reader: Got cancel from cancel_pipe_r");
                         let _ = posix_read(pipe_r_fd, &mut pipe_buf);
                         break;
                     }
                 }
                 if let Some(events) = poll_fds[2].revents() {
                     if events.contains(PollFlags::POLLIN) {
-                        debug!("Got stdin from writer...");
+                        trace!("Got stdin from writer...");
                         let n = posix_read(write_pipe_r, &mut buffer).unwrap();
-                        // info!("Going to write: {}", String::from_utf8_lossy(&buffer[..n]));
                         master_writer.write_all(&buffer[..n]).unwrap();
                         master_writer.flush().unwrap();
                     }
