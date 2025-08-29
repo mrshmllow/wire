@@ -4,7 +4,7 @@ use crate::{
     nix_log::{Action, Internal, NixLog, Trace},
 };
 
-pub(crate) mod new;
+pub(crate) mod remote;
 
 #[derive(Copy, Clone)]
 pub(crate) enum ChildOutputMode {
@@ -23,6 +23,7 @@ pub(crate) trait WireCommand<'target>: Sized {
     fn run_command<S: AsRef<str>>(
         &mut self,
         command_string: S,
+        keep_stdin_open: bool,
     ) -> Result<Self::ChildChip, HiveLibError>;
 }
 

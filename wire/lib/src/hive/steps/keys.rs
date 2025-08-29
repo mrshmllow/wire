@@ -17,7 +17,7 @@ use tokio::{fs::File, io::AsyncRead};
 use tracing::{debug, info, trace};
 use tracing_indicatif::suspend_tracing_indicatif;
 
-use crate::commands::new::RemoteNewCommand;
+use crate::commands::remote::RemoteNewCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::KeyError;
 use crate::hive::node::{
@@ -232,7 +232,7 @@ impl ExecuteStep for KeysStep {
         let mut child = suspend_tracing_indicatif(|| {
             // command.run_command("echo 'hello' && head -n 1 && echo 'hi'")
             // command.run_command("echo 'hello' && sleep 1 && echo 'hi'")
-            command.run_command(command_string)
+            command.run_command(command_string, true)
         })?;
 
         child.write_stdin(buf).await?;
