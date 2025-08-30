@@ -1,5 +1,6 @@
 use crate::{
     errors::HiveLibError,
+    errors::DetachedError,
     hive::node::Target,
     nix_log::{Action, Internal, NixLog, Trace},
 };
@@ -32,7 +33,7 @@ pub(crate) trait WireCommand<'target>: Sized {
 pub(crate) trait WireCommandChip {
     type ExitStatus;
 
-    async fn get_status(self) -> Result<Self::ExitStatus, HiveLibError>;
+    async fn wait_till_success(self) -> Result<Self::ExitStatus, DetachedError>;
     async fn write_stdin(&self, data: Vec<u8>) -> Result<(), HiveLibError>;
 }
 

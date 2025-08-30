@@ -10,6 +10,7 @@ use tokio::{
     sync::Mutex,
     task::JoinSet,
 };
+use tracing::debug;
 
 use crate::{
     Target,
@@ -26,7 +27,8 @@ pub(crate) struct LocalCommand<'t> {
 pub(crate) struct LocalChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
     child: Child,
-    joinset: JoinSet<Result<(), HiveLibError>>,
+    joinset: JoinSet<()>,
+    command_string: String
 }
 
 impl<'t> WireCommand<'t> for LocalCommand<'t> {
@@ -101,6 +103,7 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
             error_collection,
             child,
             joinset,
+            command_string: command_string.as_ref().to_string()
         })
     }
 }
@@ -108,14 +111,27 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
 impl WireCommandChip for LocalChildChip {
     type ExitStatus = ExitStatus;
 
-    async fn get_status(mut self) -> Result<Self::ExitStatus, HiveLibError> {
+    async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
         let status = self.child.wait().await.unwrap();
         let _ = self
             .joinset
             .join_all()
-            .await
-            .into_iter()
-            .collect::<Result<Vec<()>, HiveLibError>>()?;
+            .await;
+
+        let mut collection = self.error_collection.lock().await;
+
+        if !status.success() {
+            let logs = collection.make_contiguous().join("\n");
+
+            return Err(DetachedError::CommandFailed {
+                command_ran: self.command_string,
+                logs,
+                code: match status.code() {
+                    Some(code) => format!("code {code}"),
+                    None => "no exit code".to_string()
+                }
+            });
+        }
 
         Ok(status)
     }
@@ -130,7 +146,7 @@ pub async fn handle_io<R>(
     reader: R,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
-) -> Result<(), HiveLibError>
+)
 where
     R: tokio::io::AsyncRead + Unpin,
 {
@@ -146,10 +162,10 @@ where
                 queue.push_front(message);
                 queue.truncate(10);
             }
-        };
+        }
     }
 
-    Ok(())
+    debug!("io_handler: goodbye!");
 }
 
 fn create_sync_ssh_command(target: &Target) -> Result<Command, HiveLibError> {

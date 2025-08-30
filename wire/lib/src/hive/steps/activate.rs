@@ -1,15 +1,11 @@
 use std::{fmt::Display, process::Output};
 
 use async_trait::async_trait;
-use tokio::process::Command;
-use tracing::{Instrument, error, info, instrument, warn};
+use tracing::{error, info, instrument, warn};
 use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::{
-    HiveLibError, create_ssh_command,
-    errors::{ActivationError, NetworkError},
-    hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
-    nix::StreamTracing,
+    commands::{elevated::ElevatedCommand, ChildOutputMode, WireCommand, WireCommandChip}, create_ssh_command, errors::{ActivationError, NetworkError}, hive::node::{should_apply_locally, Context, ExecuteStep, Goal, SwitchToConfigurationGoal}, HiveLibError
 };
 
 pub struct SwitchToConfigurationStep;
@@ -72,145 +68,125 @@ impl ExecuteStep for SwitchToConfigurationStep {
         ) {
             info!("Setting profiles in anticipation for switch-to-configuration {goal}");
 
-            let mut env_command =
-                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                    // Refresh sudo timeout
-                    warn!("Running nix-env ON THIS MACHINE for node {0}", ctx.name);
-                    get_elevation("nix-env").map_err(HiveLibError::ActivationError)?;
-                    let mut command = Command::new("sudo");
-                    command.arg("nix-env");
-                    command
-                } else {
-                    let mut command = create_ssh_command(&ctx.node.target, true)?;
-                    command.arg("nix-env");
-                    command
-                };
+            let mut command =
+                ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
+            let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
-            env_command.args(["-p", "/nix/var/nix/profiles/system/", "--set", built_path]);
+            let child = suspend_tracing_indicatif(|| {
+                command.run_command(
+                    command_string,
+                    false,
+                    should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+                )
+            })?;
 
-            let (status, _, stderr_vec) = env_command.execute(true).in_current_span().await?;
-
-            if !status.success() {
-                let stderr: Vec<String> = stderr_vec
-                    .into_iter()
-                    .map(|l| l.to_string())
-                    .filter(|s| !s.is_empty())
-                    .collect();
-
-                return Err(HiveLibError::ActivationError(ActivationError::NixEnvError(
-                    ctx.name.clone(),
-                    stderr,
-                )));
-            }
+            let _ = child.wait_till_success().await.map_err(HiveLibError::DetachedError)?;
 
             info!("Set system profile");
         }
 
         info!("Running switch-to-configuration {goal}");
 
-        let cmd = format!("{built_path}/bin/switch-to-configuration");
-
         let mut command =
-            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                // Refresh sudo timeout
-                warn!(
-                    "Running switch-to-configuration {goal:?} ON THIS MACHINE for node {0}",
-                    ctx.name
+            ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
+
+        let command_string = format!("{built_path}/bin/switch-to-configuration {}",
+            match goal {
+                SwitchToConfigurationGoal::Switch => "switch",
+                SwitchToConfigurationGoal::Boot => "boot",
+                SwitchToConfigurationGoal::Test => "test",
+                SwitchToConfigurationGoal::DryActivate => "dry-activate",
+            }
+        );
+
+        let child = suspend_tracing_indicatif(|| {
+            command.run_command(
+                command_string,
+                false,
+                should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+            )
+        })?;
+
+        let result = child.wait_till_success().await;
+
+        match result {
+            Ok(_) => {
+                if !ctx.reboot {
+                    return Ok(());
+                }
+
+                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                    error!("Refusing to reboot local machine!");
+
+                    return Ok(());
+                }
+
+                let mut command =
+                    ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
+
+                warn!("Rebooting {name}!", name = ctx.name);
+
+                let command_string = format!("reboot now");
+
+                let reboot = suspend_tracing_indicatif(|| {
+                    command.run_command(command_string, false, false)
+                })?;
+
+                // consume result, impossible to know if the machine failed to reboot or we
+                // simply disconnected
+                let _ = reboot.wait_till_success().await.map_err(HiveLibError::DetachedError)?;
+
+                info!("Rebooted {name}, waiting to reconnect...", name = ctx.name);
+
+                if wait_for_ping(ctx).await.is_ok() {
+                    return Ok(());
+                }
+
+                error!(
+                    "Failed to get regain connection to {name} via {host} after reboot.",
+                    name = ctx.name,
+                    host = ctx.node.target.get_preffered_host()?
                 );
-                get_elevation("switch-to-configuration").map_err(HiveLibError::ActivationError)?;
-                let mut command = Command::new("sudo");
-                command.arg(cmd);
-                command
-            } else {
-                let mut command = create_ssh_command(&ctx.node.target, true)?;
-                command.arg(cmd);
-                command
-            };
 
-        command.arg(match goal {
-            SwitchToConfigurationGoal::Switch => "switch",
-            SwitchToConfigurationGoal::Boot => "boot",
-            SwitchToConfigurationGoal::Test => "test",
-            SwitchToConfigurationGoal::DryActivate => "dry-activate",
-        });
+                return Err(HiveLibError::NetworkError(
+                    NetworkError::HostUnreachableAfterReboot(
+                        ctx.node.target.get_preffered_host()?.to_string(),
+                    ),
+                ));
+            },
+            Err(error) => {
+                warn!(
+                    "Activation command for {name} exited unsuccessfully.",
+                    name = ctx.name
+                );
 
-        let (status, _, stderr_vec) = command.execute(true).in_current_span().await?;
+                // Bail if the command couldn't of broken the system
+                // and don't try to regain connection to localhost
+                if matches!(goal, SwitchToConfigurationGoal::DryActivate)
+                    || should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+                {
+                    return Err(HiveLibError::ActivationError(
+                        ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), error),
+                    ));
+                }
 
-        if status.success() {
-            if !ctx.reboot {
-                return Ok(());
+                if wait_for_ping(ctx).await.is_ok() {
+                    return Ok(());
+                }
+
+                error!(
+                    "Failed to get regain connection to {name} via {host} after {goal} activation.",
+                    name = ctx.name,
+                    host = ctx.node.target.get_preffered_host()?
+                );
+
+                return Err(HiveLibError::NetworkError(
+                    NetworkError::HostUnreachableAfterReboot(
+                        ctx.node.target.get_preffered_host()?.to_string(),
+                    ),
+                ));
             }
-
-            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                error!("Refusing to reboot local machine!");
-
-                return Ok(());
-            }
-
-            warn!("Rebooting {name}!", name = ctx.name);
-
-            let mut reboot = {
-                let mut command = create_ssh_command(&ctx.node.target, true)?;
-                command.args(["reboot", "now"]);
-                command
-            };
-
-            // consume result, impossible to know if the machine failed to reboot or we
-            // simply disconnected
-            let _ = reboot.output().await;
-
-            info!("Rebooted {name}, waiting to reconnect...", name = ctx.name);
-
-            if wait_for_ping(ctx).await.is_ok() {
-                return Ok(());
-            }
-
-            error!(
-                "Failed to get regain connection to {name} via {host} after reboot.",
-                name = ctx.name,
-                host = ctx.node.target.get_preffered_host()?
-            );
-
-            return Err(HiveLibError::NetworkError(
-                NetworkError::HostUnreachableAfterReboot(
-                    ctx.node.target.get_preffered_host()?.to_string(),
-                ),
-            ));
         }
 
-        let stderr: Vec<String> = stderr_vec
-            .into_iter()
-            .map(|l| l.to_string())
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        warn!(
-            "Activation command for {name} exited unsuccessfully.",
-            name = ctx.name
-        );
-
-        // Bail if the command couldn't of broken the system
-        // and don't try to regain connection to localhost
-        if matches!(goal, SwitchToConfigurationGoal::DryActivate)
-            || should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
-        {
-            return Err(HiveLibError::ActivationError(
-                ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), stderr),
-            ));
-        }
-
-        if wait_for_ping(ctx).await.is_ok() {
-            return Ok(());
-        }
-
-        error!(
-            "Failed to get regain connection to {name} via {host} after {goal} activation.",
-            name = ctx.name,
-            host = ctx.node.target.get_preffered_host()?
-        );
-
-        return Err(HiveLibError::ActivationError(
-            ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), stderr),
-        ));
     }
 }

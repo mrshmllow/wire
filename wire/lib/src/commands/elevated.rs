@@ -205,29 +205,30 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
 impl WireCommandChip for ElevatedChildChip {
     type ExitStatus = portable_pty::ExitStatus;
 
-    async fn get_status(mut self) -> Result<Self::ExitStatus, HiveLibError> {
+    async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
         info!("trying to grab status...");
 
         drop(self.write_stdin_pipe_w);
 
         let exit_status = tokio::task::spawn_blocking(move || self.child.wait())
             .await
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::JoinError(x)))?
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::WaitForStatus(x)))?;
+            .map_err(DetachedError::JoinError)?
+            .map_err(DetachedError::WaitForStatus)?;
 
         let mut collection = self.error_collection.lock().unwrap();
 
-        if exit_status.success() {
+        if !exit_status.success() {
             let logs = collection.make_contiguous().join("\n");
 
-            return Err(HiveLibError::DetachedError(DetachedError::CommandFailed {
+            return Err(DetachedError::CommandFailed {
                 command_ran: self.command_string,
                 logs,
-            }));
+                code: format!("code {}", exit_status.exit_code())
+            });
         }
 
         posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+            .map_err(DetachedError::PosixPipe)?;
 
         Ok(exit_status)
     }
@@ -312,7 +313,7 @@ fn dynamic_watch_sudo_stdout(
     }
 
     let _ = began_tx.send(());
-    info!("stdout: goodbye");
+    debug!("stdout: goodbye");
 
     Ok(())
 }

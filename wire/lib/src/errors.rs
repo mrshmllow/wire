@@ -113,8 +113,8 @@ pub enum ActivationError {
         code(wire::Activation::SwitchToConfiguration),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("failed to run switch-to-configuration {0} on node {1} (last 20 lines):\n{lines}", lines = format_error_lines(.2))]
-    SwitchToConfigurationError(SwitchToConfigurationGoal, Name, Vec<String>),
+    #[error("failed to run switch-to-configuration {0} on node {1}")]
+    SwitchToConfigurationError(SwitchToConfigurationGoal, Name, #[source] DetachedError),
 
     #[diagnostic(
         code(wire::Activation::Elevate),
@@ -147,8 +147,15 @@ pub enum NetworkError {
         code(wire::Network::HostUnreachableAfterReboot),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("Cannot reach host {0} after reboot")]
+    #[error("Failed to get regain connection to {0} after activation.")]
     HostUnreachableAfterReboot(String),
+
+    #[diagnostic(
+        code(wire::Network::HostUnreachableAfterActivation),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("Cannot reach host {0} after activation")]
+    HostUnreachableAfterActivation(String),
 
     #[diagnostic(
         code(wire::Network::HostsExhausted),
@@ -256,7 +263,7 @@ pub enum DetachedError {
     PortablePty(#[source] anyhow::Error),
 
     #[diagnostic(
-        code(wire::Detached::SpawningReader),
+        code(wire::Detached::Joining),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to join on some tokio task")]
@@ -292,7 +299,7 @@ pub enum DetachedError {
     WritingMasterStdout(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::Detached::WritingClientStdout),
+        code(wire::Detached::Recv),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("please create an issue!"),
     )]
@@ -304,8 +311,8 @@ pub enum DetachedError {
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("`nix` commands are filtered, run with -vvv to view all"),
     )]
-    #[error("{} failed: (last 20 lines)", .command_ran)]
-    CommandFailed { command_ran: String, logs: String },
+    #[error("{} failed with {} (last 20 lines):", .command_ran, .code)]
+    CommandFailed { command_ran: String, logs: String, code: String },
 }
 
 #[derive(Debug, Diagnostic, Error)]

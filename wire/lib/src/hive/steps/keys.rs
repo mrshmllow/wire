@@ -214,22 +214,11 @@ impl ExecuteStep for KeysStep {
 
         let buf = msg.encode_to_vec();
 
-        // let mut command =
-        //     if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-        //         warn!("Placing keys locally for node {0}", ctx.name);
-        //         get_elevation("wire key agent").map_err(HiveLibError::ActivationError)?;
-        //         Command::new("sudo")
-        //     } else {
-        //         create_ssh_command(&ctx.node.target, true)?
-        //     };
-
         let mut command =
             ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
         let child = suspend_tracing_indicatif(|| {
-            // command.run_command("echo 'hello' && head -n 1 && echo 'hi'")
-            // command.run_command("echo 'hello' && sleep 1 && echo 'hi'")
             command.run_command(
                 command_string,
                 true,
@@ -244,30 +233,11 @@ impl ExecuteStep for KeysStep {
             child.write_stdin(buf).await?;
         }
 
-        // copy_buffers(&mut child.master_writer, bufs)?;
+        let status = child.wait_till_success().await.map_err(HiveLibError::DetachedError)?;
 
-        let status = child.get_status().await.unwrap();
+        debug!("status: {status:?}");
 
-        info!("status: {status:?}");
-
-        // if status.success() {
-        //     info!("Successfully pushed keys to {}", ctx.name);
-        //     // trace!("Agent stdout: {}", String::from_utf8_lossy(&output.stdout));
-        //
-        // return Ok(());
-        // }
-
-        panic!("Failed...");
-
-        // let stderr = String::from_utf8_lossy(&output.stderr);
-
-        // Err(HiveLibError::KeyAgentError(KeyAgentError::AgentFailed(
-        //     ctx.name.clone(),
-        //     stderr
-        //         .split('\n')
-        //         .map(std::string::ToString::to_string)
-        //         .collect(),
-        // )))
+        Ok(())
     }
 }
 
