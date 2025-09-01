@@ -5,7 +5,11 @@ use tracing::{error, info, instrument, warn};
 use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::{
-    commands::{elevated::ElevatedCommand, ChildOutputMode, WireCommand, WireCommandChip}, create_ssh_command, errors::{ActivationError, NetworkError}, hive::node::{should_apply_locally, Context, ExecuteStep, Goal, SwitchToConfigurationGoal}, HiveLibError
+    HiveLibError,
+    commands::{ChildOutputMode, WireCommand, WireCommandChip, elevated::ElevatedCommand},
+    create_ssh_command,
+    errors::{ActivationError, NetworkError},
+    hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
 
 pub struct SwitchToConfigurationStep;
@@ -69,8 +73,9 @@ impl ExecuteStep for SwitchToConfigurationStep {
             info!("Setting profiles in anticipation for switch-to-configuration {goal}");
 
             let mut command =
-                ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
-            let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
+                ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
+            let command_string =
+                format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
             let child = suspend_tracing_indicatif(|| {
                 command.run_command(
@@ -80,7 +85,10 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 )
             })?;
 
-            let _ = child.wait_till_success().await.map_err(HiveLibError::DetachedError)?;
+            let _ = child
+                .wait_till_success()
+                .await
+                .map_err(HiveLibError::DetachedError)?;
 
             info!("Set system profile");
         }
@@ -90,7 +98,8 @@ impl ExecuteStep for SwitchToConfigurationStep {
         let mut command =
             ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
 
-        let command_string = format!("{built_path}/bin/switch-to-configuration {}",
+        let command_string = format!(
+            "{built_path}/bin/switch-to-configuration {}",
             match goal {
                 SwitchToConfigurationGoal::Switch => "switch",
                 SwitchToConfigurationGoal::Boot => "boot",
@@ -134,7 +143,10 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected
-                let _ = reboot.wait_till_success().await.map_err(HiveLibError::DetachedError)?;
+                let _ = reboot
+                    .wait_till_success()
+                    .await
+                    .map_err(HiveLibError::DetachedError)?;
 
                 info!("Rebooted {name}, waiting to reconnect...", name = ctx.name);
 
@@ -153,7 +165,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                         ctx.node.target.get_preffered_host()?.to_string(),
                     ),
                 ));
-            },
+            }
             Err(error) => {
                 warn!(
                     "Activation command for {name} exited unsuccessfully.",
@@ -187,6 +199,5 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 ));
             }
         }
-
     }
 }

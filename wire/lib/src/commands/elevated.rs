@@ -30,7 +30,8 @@ type Child = Box<dyn portable_pty::Child + Send + Sync>;
 pub(crate) struct ElevatedCommand<'t> {
     target: &'t Target,
     output_mode: Arc<ChildOutputMode>,
-    quit_needle: Arc<String>,
+    succeed_needle: Arc<String>,
+    failed_needle: Arc<String>,
     start_needle: Arc<String>,
 }
 
@@ -42,7 +43,9 @@ pub(crate) struct ElevatedChildChip {
 
     error_collection: Arc<Mutex<VecDeque<String>>>,
 
-    command_string: String
+    command_string: String,
+
+    child_failed: Arc<Mutex<bool>>,
 }
 
 /// the underlying command began
@@ -58,17 +61,20 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
     ) -> Result<ElevatedCommand<'t>, HiveLibError> {
         let output_mode = Arc::new(output_mode);
         let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
-        let quit_needle = Arc::new(format!("{tmp_prefix}_WIRE_QUIT"));
+        let succeed_needle = Arc::new(format!("{tmp_prefix}_WIRE_QUIT"));
+        let failed_needle = Arc::new(format!("{tmp_prefix}_WIRE_FAIL"));
         let start_needle = Arc::new(format!("{tmp_prefix}_WIRE_START"));
 
         Ok(Self {
             target,
             output_mode,
-            quit_needle,
+            succeed_needle,
+            failed_needle,
             start_needle,
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn run_command<S: AsRef<str>>(
         &mut self,
         command_string: S,
@@ -101,10 +107,15 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         }
 
         let command_string = &format!(
-            "echo '{}' && {command} && echo '{}'",
-            self.start_needle,
-            self.quit_needle,
-            command = command_string.as_ref()
+            "echo '{start}' && {command} {flags} && echo '{succeed}' || echo '{failed}'",
+            start = self.start_needle,
+            succeed = self.succeed_needle,
+            failed = self.failed_needle,
+            command = command_string.as_ref(),
+            flags = match *self.output_mode {
+                ChildOutputMode::Nix => "--log-format internal-jsona",
+                ChildOutputMode::Raw => "",
+            }
         );
 
         debug!("{command_string}");
@@ -124,7 +135,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             command
         };
 
-        command.args([&format!("sudo -u root sh -c \"{command_string}\"")]);
+        command.args([&format!("sudo -u root -- sh -c \"{command_string}\"")]);
 
         let child = pty_pair
             .slave
@@ -147,20 +158,26 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let (began_tx, began_rx) = mpsc::channel::<()>();
 
+        let child_failed = Arc::new(Mutex::new(true));
+
         {
-            let quit_needle = self.quit_needle.clone();
+            let succeed_needle = self.succeed_needle.clone();
+            let failed_needle = self.failed_needle.clone();
             let start_needle = self.start_needle.clone();
             let output_mode = self.output_mode.clone();
             let error_collection = error_collection.clone();
+            let child_failed = child_failed.clone();
 
             std::thread::spawn(move || {
                 dynamic_watch_sudo_stdout(
                     &began_tx,
                     reader,
-                    &quit_needle,
+                    &succeed_needle,
+                    &failed_needle,
                     &start_needle,
                     &output_mode,
                     &error_collection,
+                    child_failed,
                 )
             });
         }
@@ -197,7 +214,8 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             cancel_stdin_pipe_w,
             write_stdin_pipe_w,
             error_collection,
-            command_string: command_string.to_string()
+            command_string: command_string.to_string(),
+            child_failed,
         })
     }
 }
@@ -215,20 +233,24 @@ impl WireCommandChip for ElevatedChildChip {
             .map_err(DetachedError::JoinError)?
             .map_err(DetachedError::WaitForStatus)?;
 
-        let mut collection = self.error_collection.lock().unwrap();
+        info!("{exit_status:?}");
 
-        if !exit_status.success() {
+        let mut collection = self.error_collection.lock().unwrap();
+        let child_failed = self.child_failed.lock().unwrap();
+
+        info!("child failed: {child_failed}");
+
+        if *child_failed {
             let logs = collection.make_contiguous().join("\n");
 
             return Err(DetachedError::CommandFailed {
                 command_ran: self.command_string,
                 logs,
-                code: format!("code {}", exit_status.exit_code())
+                code: format!("code {}", exit_status.exit_code()),
             });
         }
 
-        posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
-            .map_err(DetachedError::PosixPipe)?;
+        let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         Ok(exit_status)
     }
@@ -257,10 +279,12 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
 fn dynamic_watch_sudo_stdout(
     began_tx: &Sender<()>,
     mut reader: MasterReader,
-    quit_needle: &Arc<String>,
+    succeed_needle: &Arc<String>,
+    failed_needle: &Arc<String>,
     start_needle: &Arc<String>,
     output_mode: &Arc<ChildOutputMode>,
     collection: &Arc<Mutex<VecDeque<String>>>,
+    child_failed: Arc<Mutex<bool>>,
 ) -> Result<(), DetachedError> {
     let mut buffer = [0u8; 1024];
     let mut stdout = std::io::stdout();
@@ -281,8 +305,18 @@ fn dynamic_watch_sudo_stdout(
                         began = true;
                     }
 
-                    if line.contains(quit_needle.as_ref()) {
-                        info!("{quit_needle} was found, breaking...");
+                    if line.contains(succeed_needle.as_ref()) {
+                        info!("{succeed_needle} was found, breaking...");
+                        info!("{failed_needle} was found, marking child as succeeding.");
+
+                        let mut failed = child_failed.lock().unwrap();
+                        *failed = false;
+
+                        break 'outer;
+                    }
+
+                    if line.contains(failed_needle.as_ref()) {
+                        info!("{failed_needle} was found, breaking...");
                         break 'outer;
                     }
 

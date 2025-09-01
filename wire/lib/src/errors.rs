@@ -311,8 +311,12 @@ pub enum DetachedError {
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("`nix` commands are filtered, run with -vvv to view all"),
     )]
-    #[error("{} failed with {} (last 20 lines):", .command_ran, .code)]
-    CommandFailed { command_ran: String, logs: String, code: String },
+    #[error("{} failed with {} (last 20 lines): {}", .command_ran, .code, .logs)]
+    CommandFailed {
+        command_ran: String,
+        logs: String,
+        code: String,
+    },
 }
 
 #[derive(Debug, Diagnostic, Error)]
