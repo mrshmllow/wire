@@ -28,7 +28,7 @@ pub(crate) struct LocalChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
     child: Child,
     joinset: JoinSet<()>,
-    command_string: String
+    command_string: String,
 }
 
 impl<'t> WireCommand<'t> for LocalCommand<'t> {
@@ -103,7 +103,7 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
             error_collection,
             child,
             joinset,
-            command_string: command_string.as_ref().to_string()
+            command_string: command_string.as_ref().to_string(),
         })
     }
 }
@@ -113,10 +113,7 @@ impl WireCommandChip for LocalChildChip {
 
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
         let status = self.child.wait().await.unwrap();
-        let _ = self
-            .joinset
-            .join_all()
-            .await;
+        let _ = self.joinset.join_all().await;
 
         let mut collection = self.error_collection.lock().await;
 
@@ -128,8 +125,8 @@ impl WireCommandChip for LocalChildChip {
                 logs,
                 code: match status.code() {
                     Some(code) => format!("code {code}"),
-                    None => "no exit code".to_string()
-                }
+                    None => "no exit code".to_string(),
+                },
             });
         }
 
@@ -146,8 +143,7 @@ pub async fn handle_io<R>(
     reader: R,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
-)
-where
+) where
     R: tokio::io::AsyncRead + Unpin,
 {
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
@@ -156,7 +152,7 @@ where
         let log = output_mode.trace(line.to_string());
 
         if let Some(NixLog::Internal(log)) = log {
-            if let Some(message) = log.is_error_ish() {
+            if let Some(message) = log.get_errorish_message() {
                 let mut queue = collection.lock().await;
                 // add at most 10 message to the front, drop the rest.
                 queue.push_front(message);

@@ -1,6 +1,6 @@
 use crate::{
-    errors::HiveLibError,
     errors::DetachedError,
+    errors::HiveLibError,
     hive::node::Target,
     nix_log::{Action, Internal, NixLog, Trace},
 };

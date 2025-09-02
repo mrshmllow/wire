@@ -1,4 +1,4 @@
-use nix::sys::termios::{LocalFlags, SetArg, tcgetattr, tcsetattr};
+use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
 use nix::{
     poll::{PollFd, PollFlags, PollTimeout, poll},
     unistd::{pipe as posix_pipe, read as posix_read, write as posix_write},
@@ -48,6 +48,21 @@ pub(crate) struct ElevatedChildChip {
     child_failed: Arc<Mutex<bool>>,
 }
 
+struct StdinTermiosAttrGuard {
+    original_termios: Termios,
+}
+
+struct WatchStdinArguments {
+    began_tx: Sender<()>,
+    reader: MasterReader,
+    succeed_needle: Arc<String>,
+    failed_needle: Arc<String>,
+    start_needle: Arc<String>,
+    output_mode: Arc<ChildOutputMode>,
+    collection: Arc<Mutex<VecDeque<String>>>,
+    child_failed: Arc<Mutex<bool>>,
+}
+
 /// the underlying command began
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
@@ -81,6 +96,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         keep_stdin_open: bool,
         local: bool,
     ) -> Result<Self::ChildChip, crate::errors::HiveLibError> {
+        info!("Hello from within run command");
         warn!(
             "Please authenticate for \"sudo {}\"",
             command_string.as_ref()
@@ -113,7 +129,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             failed = self.failed_needle,
             command = command_string.as_ref(),
             flags = match *self.output_mode {
-                ChildOutputMode::Nix => "--log-format internal-jsona",
+                ChildOutputMode::Nix => "--log-format internal-json",
                 ChildOutputMode::Raw => "",
             }
         );
@@ -137,6 +153,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
 
         command.args([&format!("sudo -u root -- sh -c \"{command_string}\"")]);
 
+        let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::DetachedError)?;
         let child = pty_pair
             .slave
             .spawn_command(command)
@@ -161,25 +178,18 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         let child_failed = Arc::new(Mutex::new(true));
 
         {
-            let succeed_needle = self.succeed_needle.clone();
-            let failed_needle = self.failed_needle.clone();
-            let start_needle = self.start_needle.clone();
-            let output_mode = self.output_mode.clone();
-            let error_collection = error_collection.clone();
-            let child_failed = child_failed.clone();
+            let arguments = WatchStdinArguments {
+                began_tx,
+                reader,
+                succeed_needle: self.succeed_needle.clone(),
+                failed_needle: self.failed_needle.clone(),
+                start_needle: self.start_needle.clone(),
+                output_mode: self.output_mode.clone(),
+                collection: error_collection.clone(),
+                child_failed: child_failed.clone(),
+            };
 
-            std::thread::spawn(move || {
-                dynamic_watch_sudo_stdout(
-                    &began_tx,
-                    reader,
-                    &succeed_needle,
-                    &failed_needle,
-                    &start_needle,
-                    &output_mode,
-                    &error_collection,
-                    child_failed,
-                )
-            });
+            std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments));
         }
 
         let (write_stdin_pipe_r, write_stdin_pipe_w) =
@@ -265,6 +275,30 @@ impl WireCommandChip for ElevatedChildChip {
     }
 }
 
+impl StdinTermiosAttrGuard {
+    fn new() -> Result<Self, DetachedError> {
+        let stdin = std::io::stdin();
+        let stdin_fd = stdin.as_fd();
+
+        let mut termios = tcgetattr(stdin_fd).map_err(DetachedError::TermAttrs)?;
+        let original_termios = termios.clone();
+
+        termios.local_flags &= !(LocalFlags::ECHO | LocalFlags::ICANON);
+        tcsetattr(stdin_fd, SetArg::TCSANOW, &termios).map_err(DetachedError::TermAttrs)?;
+
+        Ok(StdinTermiosAttrGuard { original_termios })
+    }
+}
+
+impl Drop for StdinTermiosAttrGuard {
+    fn drop(&mut self) {
+        let stdin = std::io::stdin();
+        let stdin_fd = stdin.as_fd();
+
+        let _ = tcsetattr(stdin_fd, SetArg::TCSANOW, &self.original_termios);
+    }
+}
+
 fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuilder, HiveLibError> {
     let mut command = portable_pty::CommandBuilder::new("ssh");
 
@@ -276,16 +310,18 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
 }
 
 /// Cancels on `"WIRE_BEGIN"` written to `reader`
-fn dynamic_watch_sudo_stdout(
-    began_tx: &Sender<()>,
-    mut reader: MasterReader,
-    succeed_needle: &Arc<String>,
-    failed_needle: &Arc<String>,
-    start_needle: &Arc<String>,
-    output_mode: &Arc<ChildOutputMode>,
-    collection: &Arc<Mutex<VecDeque<String>>>,
-    child_failed: Arc<Mutex<bool>>,
-) -> Result<(), DetachedError> {
+fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), DetachedError> {
+    let WatchStdinArguments {
+        began_tx,
+        mut reader,
+        succeed_needle,
+        failed_needle,
+        start_needle,
+        output_mode,
+        collection,
+        child_failed,
+    } = arguments;
+
     let mut buffer = [0u8; 1024];
     let mut stdout = std::io::stdout();
     let mut began = false;
@@ -324,7 +360,7 @@ fn dynamic_watch_sudo_stdout(
                         let log = output_mode.trace(line.to_string());
 
                         if let Some(NixLog::Internal(log)) = log {
-                            if let Some(message) = log.is_error_ish() {
+                            if let Some(message) = log.get_errorish_message() {
                                 let mut queue = collection.lock().unwrap();
                                 // add at most 10 message to the front, drop the rest.
                                 queue.push_front(message);

@@ -219,6 +219,7 @@ impl ExecuteStep for KeysStep {
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
         let child = suspend_tracing_indicatif(|| {
+            info!("Hello from within suspend");
             command.run_command(
                 command_string,
                 true,
@@ -233,7 +234,10 @@ impl ExecuteStep for KeysStep {
             child.write_stdin(buf).await?;
         }
 
-        let status = child.wait_till_success().await.map_err(HiveLibError::DetachedError)?;
+        let status = child
+            .wait_till_success()
+            .await
+            .map_err(HiveLibError::DetachedError)?;
 
         debug!("status: {status:?}");
 

@@ -7,7 +7,6 @@ use tracing_indicatif::suspend_tracing_indicatif;
 use crate::{
     HiveLibError,
     commands::{ChildOutputMode, WireCommand, WireCommandChip, elevated::ElevatedCommand},
-    create_ssh_command,
     errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
@@ -18,15 +17,6 @@ impl Display for SwitchToConfigurationStep {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Switch to configuration")
     }
-}
-
-pub(crate) fn get_elevation(reason: &str) -> Result<Output, ActivationError> {
-    info!("Attempting to elevate for {reason}.");
-    suspend_tracing_indicatif(|| {
-        let mut command = std::process::Command::new("sudo");
-        command.arg("-v").output()
-    })
-    .map_err(ActivationError::FailedToElevate)
 }
 
 pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {

@@ -53,7 +53,7 @@ pub(crate) trait Trace {
 }
 
 impl Internal {
-    pub fn is_error_ish(self) -> Option<String> {
+    pub fn get_errorish_message(self) -> Option<String> {
         if let Action::Message {
             level: Level::Error | Level::Warn | Level::Notice,
             message,
