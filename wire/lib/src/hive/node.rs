@@ -13,7 +13,6 @@ use crate::SubCommandModifiers;
 use crate::errors::NetworkError;
 use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
 use crate::hive::steps::ping::PingStep;
-use crate::nix::StreamTracing;
 
 use super::HiveLibError;
 use super::steps::activate::SwitchToConfigurationStep;
@@ -249,39 +248,6 @@ impl<'a> GoalExecutor<'a> {
 
         Ok(())
     }
-}
-
-pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLibError> {
-    let mut command = Command::new("nix");
-
-    command
-        .args(["--extra-experimental-features", "nix-command"])
-        .arg("copy")
-        .arg("--substitute-on-destination")
-        .arg("--to")
-        .arg(format!(
-            "ssh://{}@{}",
-            node.target.user,
-            node.target.get_preffered_host()?
-        ))
-        .env("NIX_SSHOPTS", format!("-p {}", node.target.port));
-
-    match push {
-        Push::Derivation(drv) => command.args([drv.to_string(), "--derivation".to_string()]),
-        Push::Path(path) => command.arg(path),
-    };
-
-    let (status, _stdout, stderr_vec) = command.execute(true).in_current_span().await?;
-
-    if !status.success() {
-        return Err(HiveLibError::NixCopyError {
-            name: name.clone(),
-            logs: stderr_vec,
-            path: push.to_string(),
-        });
-    }
-
-    Ok(())
 }
 
 #[cfg(test)]

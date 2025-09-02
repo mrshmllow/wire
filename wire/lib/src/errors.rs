@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque, num::ParseIntError, path::PathBuf, process::ExitStatus,
-    sync::mpsc::RecvError,
-};
+use std::{num::ParseIntError, path::PathBuf, process::ExitStatus, sync::mpsc::RecvError};
 
 use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
@@ -377,14 +374,12 @@ pub enum HiveLibError {
         code(wire::CopyPath),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error(
-        "failed to copy path {path} to node {name} (filtered logs, run with -vvv to see all):\n{log}", 
-        log = logs.iter().filter(|l| l.is_error()).map(std::string::ToString::to_string).collect::<Vec<String>>().join("\n"))
-    ]
+    #[error("failed to copy path {path} to node {name}")]
     NixCopyError {
         name: Name,
         path: String,
-        logs: Vec<NixLog>,
+        #[source]
+        error: DetachedError,
     },
 
     #[diagnostic(

@@ -4,24 +4,25 @@ use prost::Message;
 use serde::{Deserialize, Serialize};
 use std::env;
 use std::fmt::Display;
-use std::io::{Cursor, Write};
+use std::io::Cursor;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::process::Stdio;
 use std::str::from_utf8;
-use tokio::io::{AsyncReadExt as _, AsyncWriteExt};
+use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{debug, info, trace};
+use tracing::{debug, trace};
 use tracing_indicatif::suspend_tracing_indicatif;
 
+use crate::HiveLibError;
+use crate::commands::common::push;
 use crate::commands::elevated::ElevatedCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::KeyError;
 use crate::hive::node::{
-    Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, push, should_apply_locally,
+    Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, should_apply_locally,
 };
-use crate::{HiveLibError, create_ssh_command};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(tag = "t", content = "c")]
@@ -111,22 +112,6 @@ async fn create_reader(
             ))
         }
     }
-}
-
-fn copy_buffer<T: Write + Unpin>(reader: &mut T, buf: &[u8]) -> Result<(), HiveLibError> {
-    reader
-        .write_all(buf)
-        .map_err(HiveLibError::BufferOperationError)?;
-    reader.flush().map_err(HiveLibError::BufferOperationError)
-}
-
-fn copy_buffers<T: Write + Unpin>(reader: &mut T, bufs: Vec<Vec<u8>>) -> Result<(), HiveLibError> {
-    for (index, buf) in bufs.iter().enumerate() {
-        trace!("Pushing buf {}", index);
-        copy_buffer(reader, buf)?;
-    }
-
-    Ok(())
 }
 
 async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyError> {
@@ -219,7 +204,6 @@ impl ExecuteStep for KeysStep {
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
         let child = suspend_tracing_indicatif(|| {
-            info!("Hello from within suspend");
             command.run_command(
                 command_string,
                 true,

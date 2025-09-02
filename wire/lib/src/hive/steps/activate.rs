@@ -1,4 +1,4 @@
-use std::{fmt::Display, process::Output};
+use std::fmt::Display;
 
 use async_trait::async_trait;
 use tracing::{error, info, instrument, warn};
@@ -125,11 +125,8 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let command_string = format!("reboot now");
-
-                let reboot = suspend_tracing_indicatif(|| {
-                    command.run_command(command_string, false, false)
-                })?;
+                let reboot =
+                    suspend_tracing_indicatif(|| command.run_command("reboot now", false, false))?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected

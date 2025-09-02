@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     errors::DetachedError,
     errors::HiveLibError,
@@ -5,6 +7,7 @@ use crate::{
     nix_log::{Action, Internal, NixLog, Trace},
 };
 
+pub(crate) mod common;
 pub(crate) mod elevated;
 pub(crate) mod nonelevated;
 
@@ -27,6 +30,21 @@ pub(crate) trait WireCommand<'target>: Sized {
         command_string: S,
         keep_stdin_open: bool,
         local: bool,
+    ) -> Result<Self::ChildChip, HiveLibError> {
+        self.run_command_with_env(
+            command_string,
+            keep_stdin_open,
+            local,
+            std::collections::HashMap::new(),
+        )
+    }
+
+    fn run_command_with_env<S: AsRef<str>>(
+        &mut self,
+        command_string: S,
+        keep_stdin_open: bool,
+        local: bool,
+        args: HashMap<String, String>,
     ) -> Result<Self::ChildChip, HiveLibError>;
 }
 

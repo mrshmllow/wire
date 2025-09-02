@@ -1,5 +1,5 @@
 use std::{
-    collections::VecDeque,
+    collections::{HashMap, VecDeque},
     process::{ExitStatus, Stdio},
     sync::Arc,
 };
@@ -19,20 +19,20 @@ use crate::{
     nix_log::NixLog,
 };
 
-pub(crate) struct LocalCommand<'t> {
+pub(crate) struct NonElevatedCommand<'t> {
     target: &'t Target,
     output_mode: Arc<ChildOutputMode>,
 }
 
-pub(crate) struct LocalChildChip {
+pub(crate) struct NonElevatedChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
     child: Child,
     joinset: JoinSet<()>,
     command_string: String,
 }
 
-impl<'t> WireCommand<'t> for LocalCommand<'t> {
-    type ChildChip = LocalChildChip;
+impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
+    type ChildChip = NonElevatedChildChip;
 
     async fn spawn_new(
         target: &'t Target,
@@ -46,13 +46,13 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
         })
     }
 
-    /// `_keep_stdin_open` has no effect, unimplemented
-    fn run_command<S: AsRef<str>>(
+    fn run_command_with_env<S: AsRef<str>>(
         &mut self,
         command_string: S,
         _keep_stdin_open: bool,
         local: bool,
-    ) -> Result<Self::ChildChip, crate::errors::HiveLibError> {
+        envs: HashMap<String, String>,
+    ) -> Result<Self::ChildChip, HiveLibError> {
         let mut command = if local {
             let mut command = Command::new("sh");
 
@@ -73,6 +73,8 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
         command.kill_on_drop(true);
+
+        command.envs(envs);
 
         let mut child = command.spawn().unwrap();
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
@@ -99,7 +101,7 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
             error_collection.clone(),
         ));
 
-        Ok(LocalChildChip {
+        Ok(NonElevatedChildChip {
             error_collection,
             child,
             joinset,
@@ -108,7 +110,7 @@ impl<'t> WireCommand<'t> for LocalCommand<'t> {
     }
 }
 
-impl WireCommandChip for LocalChildChip {
+impl WireCommandChip for NonElevatedChildChip {
     type ExitStatus = ExitStatus;
 
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {

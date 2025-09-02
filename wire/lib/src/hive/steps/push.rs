@@ -5,7 +5,8 @@ use tracing::{instrument, warn};
 
 use crate::{
     HiveLibError,
-    hive::node::{Context, ExecuteStep, Goal, push, should_apply_locally},
+    commands::common::push,
+    hive::node::{Context, ExecuteStep, Goal, should_apply_locally},
 };
 
 pub struct EvaluatedOutputStep;

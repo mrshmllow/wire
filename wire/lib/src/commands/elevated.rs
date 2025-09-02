@@ -90,12 +90,13 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn run_command<S: AsRef<str>>(
+    fn run_command_with_env<S: AsRef<str>>(
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
         local: bool,
-    ) -> Result<Self::ChildChip, crate::errors::HiveLibError> {
+        envs: std::collections::HashMap<String, String>,
+    ) -> Result<Self::ChildChip, HiveLibError> {
         info!("Hello from within run command");
         warn!(
             "Please authenticate for \"sudo {}\"",
@@ -152,6 +153,11 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         };
 
         command.args([&format!("sudo -u root -- sh -c \"{command_string}\"")]);
+
+        // give command all env vars
+        for (key, value) in envs {
+            command.env(key, value);
+        }
 
         let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::DetachedError)?;
         let child = pty_pair
