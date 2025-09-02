@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use async_trait::async_trait;
 use tracing::{error, info, instrument, warn};
-use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::{
     HiveLibError,
@@ -67,13 +66,11 @@ impl ExecuteStep for SwitchToConfigurationStep {
             let command_string =
                 format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
-            let child = suspend_tracing_indicatif(|| {
-                command.run_command(
-                    command_string,
-                    false,
-                    should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
-                )
-            })?;
+            let child = command.run_command(
+                command_string,
+                false,
+                should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+            )?;
 
             let _ = child
                 .wait_till_success()
@@ -98,13 +95,11 @@ impl ExecuteStep for SwitchToConfigurationStep {
             }
         );
 
-        let child = suspend_tracing_indicatif(|| {
-            command.run_command(
-                command_string,
-                false,
-                should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
-            )
-        })?;
+        let child = command.run_command(
+            command_string,
+            false,
+            should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+        )?;
 
         let result = child.wait_till_success().await;
 
@@ -125,8 +120,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot =
-                    suspend_tracing_indicatif(|| command.run_command("reboot now", false, false))?;
+                let reboot = command.run_command("reboot now", false, false)?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected

@@ -13,7 +13,6 @@ use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
 use tracing::{debug, trace};
-use tracing_indicatif::suspend_tracing_indicatif;
 
 use crate::HiveLibError;
 use crate::commands::common::push;
@@ -203,13 +202,11 @@ impl ExecuteStep for KeysStep {
             ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
-        let child = suspend_tracing_indicatif(|| {
-            command.run_command(
-                command_string,
-                true,
-                should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
-            )
-        })?;
+        let child = command.run_command(
+            command_string,
+            true,
+            should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+        )?;
 
         child.write_stdin(buf).await?;
 

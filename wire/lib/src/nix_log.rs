@@ -1,13 +1,9 @@
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use std::{
-    fmt::{Debug, Display},
-    sync::LazyLock,
-};
-use tracing::{Level as tracing_level, Span, event, info};
+use std::fmt::{Debug, Display};
+use tracing::{Level as tracing_level, event, info};
 
-static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
+// static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action")]
@@ -101,10 +97,10 @@ impl Trace for NixLog {
             NixLog::Internal(line) => {
                 line.trace();
 
-                tracing_indicatif::span_ext::IndicatifSpanExt::pb_set_message(
-                    &Span::current(),
-                    &DIGEST_RE.replace_all(&line.to_string(), "…"),
-                );
+                // tracing_indicatif::span_ext::IndicatifSpanExt::pb_set_message(
+                //     &Span::current(),
+                //     &DIGEST_RE.replace_all(&line.to_string(), "…"),
+                // );
             }
             NixLog::Raw(line) => info!("{line}"),
         }

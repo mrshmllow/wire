@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after rebooting!
 - Most errors now have error codes and documentation links.
 - Wire now creates its own PTY to interface with openssh's PTY to allow for
-  sudo interactive sudo authentication on both remote and local targets.
+  interactive sudo authentication on both remote and local targets.
 
   Using a wheel user as `deployment.target.user` is no longer necessary
   (if you like entering your password a lot).

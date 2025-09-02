@@ -6,8 +6,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::process::Command;
-use tracing::{Instrument, Span, error, info, instrument, trace};
-use tracing_indicatif::span_ext::IndicatifSpanExt;
+use tracing::{Instrument, error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
 use crate::errors::NetworkError;
@@ -226,7 +225,7 @@ impl<'a> GoalExecutor<'a> {
     }
 
     #[instrument(skip_all, name = "goal", fields(node = %self.context.name))]
-    pub async fn execute(mut self, span: Span) -> Result<(), HiveLibError> {
+    pub async fn execute(mut self) -> Result<(), HiveLibError> {
         let steps = self
             .steps
             .iter()
@@ -234,16 +233,12 @@ impl<'a> GoalExecutor<'a> {
             .inspect(|step| trace!("Will execute step `{step}` for {}", self.context.name))
             .collect::<Vec<_>>();
 
-        span.pb_inc_length(steps.len().try_into().unwrap());
-
         for step in steps {
             info!("Executing step `{step}`");
 
             step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");
             })?;
-
-            span.pb_inc(1);
         }
 
         Ok(())

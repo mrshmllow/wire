@@ -1,5 +1,4 @@
 use futures::{FutureExt, StreamExt};
-use indicatif::ProgressStyle;
 use itertools::{Either, Itertools};
 use lib::hive::Hive;
 use lib::hive::node::{Context, GoalExecutor, Name, StepState};
@@ -9,7 +8,6 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use thiserror::Error;
 use tracing::{Span, error, info, instrument};
-use tracing_indicatif::span_ext::IndicatifSpanExt;
 
 use crate::cli::{ApplyArgs, ApplyTarget};
 
@@ -34,8 +32,6 @@ pub async fn apply(
     modifiers: SubCommandModifiers,
 ) -> Result<()> {
     let header_span = Span::current();
-    header_span.pb_set_style(&ProgressStyle::default_bar());
-    header_span.pb_set_length(1);
 
     // Respect user's --always-build-local arg
     hive.force_always_local(args.always_build_local)?;
@@ -63,7 +59,6 @@ pub async fn apply(
         })
         .map(|node| {
             let path = path.clone();
-            let span = header_span.clone();
 
             info!("Resolved {:?} to include {}", args.on, node.0);
 
@@ -79,7 +74,7 @@ pub async fn apply(
             };
 
             GoalExecutor::new(context)
-                .execute(span)
+                .execute()
                 .map(move |result| (node.0, result))
         })
         .peekable();

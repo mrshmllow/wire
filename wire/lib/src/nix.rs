@@ -1,19 +1,14 @@
-use regex::Regex;
 use std::path::Path;
 use std::process::{Command, ExitStatus};
-use std::sync::LazyLock;
 use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
-use tracing::{Instrument, Span, error, info, trace};
-use tracing_indicatif::span_ext::IndicatifSpanExt;
+use tracing::{Instrument, error, info, trace};
 
 use crate::errors::{HiveInitializationError, NixChildError};
 use crate::hive::find_hive;
 use crate::hive::node::Name;
 use crate::nix_log::{Action, Internal, NixLog, Trace};
 use crate::{HiveLibError, SubCommandModifiers};
-
-static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
 
 pub enum EvalGoal<'a> {
     Inspect,
@@ -119,7 +114,7 @@ where
                 NixLog::Internal(ref internal) => internal.trace(),
             }
 
-            Span::current().pb_set_message(&DIGEST_RE.replace_all(&log.to_string(), "…"));
+            // Span::current().pb_set_message(&DIGEST_RE.replace_all(&log.to_string(), "…"));
         }
 
         collect.push(log);
