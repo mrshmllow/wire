@@ -38,6 +38,7 @@ impl ExecuteStep for EvaluatedOutputStep {
             ctx.node,
             ctx.name,
             crate::hive::node::Push::Derivation(top_level),
+            ctx.clobber_lock.clone()
         ).await.inspect_err(|_| {
                 if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                     warn!("Remote push failed, but this node matches our local hostname ({0}). Perhaps you want to apply this node locally? Use `--always-build-local {0}` to override deployment.buildOnTarget", ctx.name.to_string());
@@ -77,6 +78,7 @@ impl ExecuteStep for BuildOutputStep {
             ctx.node,
             ctx.name,
             crate::hive::node::Push::Path(built_path),
+            ctx.clobber_lock.clone(),
         )
         .await
     }

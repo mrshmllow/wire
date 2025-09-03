@@ -1,4 +1,7 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
     commands::{ChildOutputMode, WireCommand, WireCommandChip, nonelevated::NonElevatedCommand},
@@ -6,7 +9,12 @@ use crate::{
     hive::node::{Name, Node, Push},
 };
 
-pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLibError> {
+pub async fn push(
+    node: &Node,
+    name: &Name,
+    push: Push<'_>,
+    clobber_lock: Arc<Mutex<()>>,
+) -> Result<(), HiveLibError> {
     let mut command = NonElevatedCommand::spawn_new(&node.target, ChildOutputMode::Nix).await?;
 
     let command_string = format!(
@@ -25,6 +33,7 @@ pub async fn push(node: &Node, name: &Name, push: Push<'_>) -> Result<(), HiveLi
         false,
         false,
         HashMap::from([("NIX_SSHOPTS".into(), format!("-p {}", node.target.port))]),
+        clobber_lock,
     )?;
 
     child

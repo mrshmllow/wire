@@ -206,6 +206,7 @@ impl ExecuteStep for KeysStep {
             command_string,
             true,
             should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+            ctx.clobber_lock.clone(),
         )?;
 
         child.write_stdin(buf).await?;
@@ -248,7 +249,13 @@ impl ExecuteStep for PushKeyAgentStep {
         };
 
         if !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-            push(ctx.node, ctx.name, Push::Path(&agent_directory)).await?;
+            push(
+                ctx.node,
+                ctx.name,
+                Push::Path(&agent_directory),
+                ctx.clobber_lock.clone(),
+            )
+            .await?;
         }
 
         ctx.state.key_agent_directory = Some(agent_directory);

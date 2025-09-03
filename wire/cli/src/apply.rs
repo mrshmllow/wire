@@ -6,6 +6,7 @@ use lib::{SubCommandModifiers, errors::HiveLibError};
 use miette::{Diagnostic, Result};
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tracing::{Span, error, info, instrument};
 
@@ -32,6 +33,7 @@ pub async fn apply(
     modifiers: SubCommandModifiers,
 ) -> Result<()> {
     let header_span = Span::current();
+    let clobber_lock = Arc::new(Mutex::new(()));
 
     // Respect user's --always-build-local arg
     hive.force_always_local(args.always_build_local)?;
@@ -71,6 +73,7 @@ pub async fn apply(
                 hivepath: path,
                 modifiers,
                 reboot: args.reboot,
+                clobber_lock: clobber_lock.clone(),
             };
 
             GoalExecutor::new(context)

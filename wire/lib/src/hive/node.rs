@@ -4,7 +4,7 @@ use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tokio::process::Command;
 use tracing::{Instrument, error, info, instrument, trace};
 
@@ -192,6 +192,7 @@ pub struct Context<'a> {
     pub state: StepState,
     pub goal: Goal,
     pub reboot: bool,
+    pub clobber_lock: Arc<Mutex<()>>,
 }
 
 pub struct GoalExecutor<'a> {

@@ -96,8 +96,8 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         keep_stdin_open: bool,
         local: bool,
         envs: std::collections::HashMap<String, String>,
+        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        info!("Hello from within run command");
         warn!(
             "Please authenticate for \"sudo {}\"",
             command_string.as_ref()
@@ -159,6 +159,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             command.env(key, value);
         }
 
+        let clobber_guard = clobber_lock.lock().unwrap();
         let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::DetachedError)?;
         let child = pty_pair
             .slave
@@ -212,6 +213,8 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         let () = began_rx
             .recv()
             .map_err(|x| HiveLibError::DetachedError(DetachedError::RecvError(x)))?;
+
+        drop(clobber_guard);
 
         if keep_stdin_open {
             trace!("Sending THREAD_BEGAN_SIGNAL");

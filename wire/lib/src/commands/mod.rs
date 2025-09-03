@@ -1,8 +1,10 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use crate::{
-    errors::DetachedError,
-    errors::HiveLibError,
+    errors::{DetachedError, HiveLibError},
     hive::node::Target,
     nix_log::{Action, Internal, NixLog, Trace},
 };
@@ -30,12 +32,14 @@ pub(crate) trait WireCommand<'target>: Sized {
         command_string: S,
         keep_stdin_open: bool,
         local: bool,
+        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         self.run_command_with_env(
             command_string,
             keep_stdin_open,
             local,
             std::collections::HashMap::new(),
+            clobber_lock,
         )
     }
 
@@ -45,6 +49,7 @@ pub(crate) trait WireCommand<'target>: Sized {
         keep_stdin_open: bool,
         local: bool,
         args: HashMap<String, String>,
+        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError>;
 }
 

@@ -70,6 +70,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 command_string,
                 false,
                 should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+                ctx.clobber_lock.clone(),
             )?;
 
             let _ = child
@@ -99,6 +100,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
             command_string,
             false,
             should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+            ctx.clobber_lock.clone(),
         )?;
 
         let result = child.wait_till_success().await;
@@ -120,7 +122,8 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot = command.run_command("reboot now", false, false)?;
+                let reboot =
+                    command.run_command("reboot now", false, false, ctx.clobber_lock.clone())?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected

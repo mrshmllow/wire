@@ -52,6 +52,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
         _keep_stdin_open: bool,
         local: bool,
         envs: HashMap<String, String>,
+        _clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         let mut command = if local {
             let mut command = Command::new("sh");
