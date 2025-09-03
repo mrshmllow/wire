@@ -3,19 +3,24 @@
     {
       craneLib,
       commonArgs,
+      self',
       ...
     }:
     {
-      checks.wire-nextest = craneLib.cargoNextest (
-        {
-          partitions = 2;
-          cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-          cargoNextestPartitionsExtraArgs = builtins.concatStringsSep " " [
-            "--no-tests pass"
-          ];
+      checks = {
+        inherit (self'.packages) wire wire-small docs;
 
-        }
-        // commonArgs
-      );
+        wire-nextest = craneLib.cargoNextest (
+          {
+            partitions = 2;
+            cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+            cargoNextestPartitionsExtraArgs = builtins.concatStringsSep " " [
+              "--no-tests pass"
+            ];
+
+          }
+          // commonArgs
+        );
+      };
     };
 }
