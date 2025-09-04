@@ -64,17 +64,21 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
             create_sync_ssh_command(self.target)?
         };
 
-        command.arg(command_string.as_ref());
+        let command_string = format!(
+            "{command_string}{extra}",
+            command_string = command_string.as_ref(),
+            extra = match *self.output_mode {
+                ChildOutputMode::Raw => "",
+                ChildOutputMode::Nix => " --log-format internal-json",
+            }
+        );
 
-        if matches!(*self.output_mode, ChildOutputMode::Nix) {
-            command.args(["--log-format", "internal-json"]);
-        }
-
+        command.arg(&command_string);
         command.stdin(Stdio::null());
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
         command.kill_on_drop(true);
-
+        // command.env_clear();
         command.envs(envs);
 
         let mut child = command.spawn().unwrap();
@@ -106,7 +110,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
             error_collection,
             child,
             joinset,
-            command_string: command_string.as_ref().to_string(),
+            command_string,
         })
     }
 }
