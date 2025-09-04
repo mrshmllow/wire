@@ -31,9 +31,9 @@ pub async fn apply(
     args: ApplyArgs,
     path: PathBuf,
     modifiers: SubCommandModifiers,
+    clobber_lock: Arc<Mutex<()>>,
 ) -> Result<()> {
     let header_span = Span::current();
-    let clobber_lock = Arc::new(Mutex::new(()));
 
     // Respect user's --always-build-local arg
     hive.force_always_local(args.always_build_local)?;

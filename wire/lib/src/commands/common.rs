@@ -31,7 +31,7 @@ pub async fn push(
     let child = command.run_command_with_env(
         command_string,
         false,
-        false,
+        true,
         HashMap::from([("NIX_SSHOPTS".into(), format!("-p {}", node.target.port))]),
         clobber_lock,
     )?;
@@ -39,10 +39,10 @@ pub async fn push(
     child
         .wait_till_success()
         .await
-        .map_err(|x| HiveLibError::NixCopyError {
+        .map_err(|error| HiveLibError::NixCopyError {
             name: name.clone(),
             path: push.to_string(),
-            error: x,
+            error,
         })?;
 
     Ok(())

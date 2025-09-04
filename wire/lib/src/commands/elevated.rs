@@ -98,10 +98,12 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         envs: std::collections::HashMap<String, String>,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        warn!(
-            "Please authenticate for \"sudo {}\"",
-            command_string.as_ref()
-        );
+        if self.target.user != "root".into() {
+            eprintln!(
+                "Non-root user: Please authenticate for \"sudo {}\"",
+                command_string.as_ref(),
+            );
+        }
 
         let pty_system = NativePtySystem::default();
         let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();

@@ -1,25 +1,25 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::missing_panics_doc)]
+use std::sync::Arc;
+use std::sync::Mutex;
+
 use crate::cli::Cli;
 use crate::cli::ToSubCommandModifiers;
+use crate::tracing_setup::setup_logging;
 use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
-use clap_verbosity_flag::{Verbosity, WarnLevel};
 use lib::hive::Hive;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tracing::warn;
-use tracing_log::AsTrace;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{Layer, Registry};
 
 #[macro_use]
 extern crate enum_display_derive;
 
 mod apply;
 mod cli;
+mod tracing_setup;
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
@@ -29,11 +29,12 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 async fn main() -> Result<()> {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
+    let clobber_lock = Arc::new(Mutex::new(()));
 
     let args = Cli::parse();
 
     let modifiers = args.to_subcommand_modifiers();
-    setup_logging(&args.verbose);
+    setup_logging(args.verbose, clobber_lock.clone());
 
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();
@@ -43,7 +44,7 @@ async fn main() -> Result<()> {
     match args.command {
         cli::Commands::Apply(apply_args) => {
             let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
-            apply::apply(&mut hive, apply_args, args.path, modifiers).await?;
+            apply::apply(&mut hive, apply_args, args.path, modifiers, clobber_lock).await?;
         }
         cli::Commands::Inspect { online: _, json } => println!("{}", {
             let hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
@@ -62,15 +63,4 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
-}
-
-pub fn setup_logging(verbosity: &Verbosity<WarnLevel>) {
-    let filter = verbosity.log_level_filter().as_trace();
-    let registry = tracing_subscriber::registry();
-
-    let layer = tracing_subscriber::fmt::layer::<Registry>()
-        .without_time()
-        .with_filter(filter);
-
-    registry.with(layer).init();
 }
