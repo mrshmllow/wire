@@ -21,17 +21,6 @@ mod test_support;
 
 pub mod errors;
 
-fn format_error_lines(lines: &[String]) -> String {
-    lines
-        .iter()
-        .rev()
-        .take(20)
-        .rev()
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SubCommandModifiers {
     pub show_trace: bool,

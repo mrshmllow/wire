@@ -33,6 +33,7 @@ itertools = "0.14.0"
 
 [dev-dependencies]
 tempdir = "0.3"
+visibility = "0.1.1"
 
 [build-dependencies]
 miette = { workspace = true }

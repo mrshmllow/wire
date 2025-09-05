@@ -45,7 +45,6 @@ pub enum NixLog {
 
 pub(crate) trait Trace {
     fn trace(&self);
-    fn is_error(&self) -> bool;
 }
 
 impl Internal {
@@ -85,10 +84,6 @@ impl Trace for Internal {
             Action::Stop => {}
         }
     }
-
-    fn is_error(&self) -> bool {
-        matches!(&self.action, Action::Message { level, message: _ } if matches!(level, Level::Error))
-    }
 }
 
 impl Trace for NixLog {
@@ -103,13 +98,6 @@ impl Trace for NixLog {
                 // );
             }
             NixLog::Raw(line) => info!("{line}"),
-        }
-    }
-
-    fn is_error(&self) -> bool {
-        match self {
-            NixLog::Internal(line) => line.is_error(),
-            NixLog::Raw(..) => false,
         }
     }
 }
