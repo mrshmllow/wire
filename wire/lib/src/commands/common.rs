@@ -5,14 +5,13 @@ use std::{
 };
 
 use crate::{
-    SubCommandModifiers,
+    EvalGoal, SubCommandModifiers,
     commands::{ChildOutputMode, WireCommand, WireCommandChip, nonelevated::NonElevatedCommand},
     errors::{HiveInitializationError, HiveLibError},
     hive::{
         find_hive,
         node::{Name, Node, Push},
     },
-    nix::EvalGoal,
 };
 
 pub async fn push(

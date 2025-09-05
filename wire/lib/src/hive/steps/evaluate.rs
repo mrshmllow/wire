@@ -4,10 +4,9 @@ use async_trait::async_trait;
 use tracing::instrument;
 
 use crate::{
-    HiveLibError,
+    EvalGoal, HiveLibError,
     commands::common::evaluate_hive_attribute,
     hive::node::{Context, ExecuteStep, Goal},
-    nix::EvalGoal,
 };
 
 pub struct Step;

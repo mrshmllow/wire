@@ -9,8 +9,7 @@ use tracing::{error, info, instrument, trace};
 
 use crate::commands::common::evaluate_hive_attribute;
 use crate::errors::HiveInitializationError;
-use crate::nix::EvalGoal;
-use crate::{HiveLibError, SubCommandModifiers};
+use crate::{EvalGoal, HiveLibError, SubCommandModifiers};
 pub mod node;
 pub mod steps;
 
