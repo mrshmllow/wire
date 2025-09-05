@@ -105,7 +105,7 @@ mod tests {
     use crate::{
         get_test_path,
         hive::steps::keys::{Key, Source, UploadKeyAt},
-        test_support::make_flake_sandbox,
+        test_support::{get_clobber_lock, make_flake_sandbox},
     };
 
     use super::*;
@@ -125,7 +125,7 @@ mod tests {
     async fn test_hive_file() {
         let mut path = get_test_path!();
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
+        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 
@@ -153,7 +153,7 @@ mod tests {
     async fn non_trivial_hive() {
         let mut path = get_test_path!();
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
+        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 
@@ -191,7 +191,7 @@ mod tests {
     async fn flake_hive() {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
 
-        let hive = Hive::new_from_path(tmp_dir.path(), SubCommandModifiers::default())
+        let hive = Hive::new_from_path(tmp_dir.path(), SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 

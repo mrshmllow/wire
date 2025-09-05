@@ -250,7 +250,7 @@ impl<'a> GoalExecutor<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{get_test_path, hive::Hive};
+    use crate::{get_test_path, hive::Hive, test_support::get_clobber_lock};
     use std::{collections::HashMap, env};
 
     #[tokio::test]
@@ -258,7 +258,7 @@ mod tests {
     async fn default_values_match() {
         let mut path = get_test_path!();
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default())
+        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 
