@@ -367,8 +367,12 @@ pub enum HiveLibError {
         code(wire::BuildNode),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("failed to build node {0} (last 20 lines):\n{lines}", lines = format_error_lines(.1))]
-    NixBuildError(Name, Vec<String>),
+    #[error("failed to build node {name}")]
+    NixBuildError {
+        name: Name,
+        #[source]
+        source: DetachedError,
+    },
 
     #[diagnostic(
         code(wire::CopyPath),
