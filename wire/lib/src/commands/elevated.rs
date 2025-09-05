@@ -7,7 +7,7 @@ use portable_pty::{NativePtySystem, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use std::sync::mpsc::{self, Sender};
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::{
     io::{Read, Write},
     os::fd::{AsFd, OwnedFd},
@@ -45,7 +45,7 @@ pub(crate) struct ElevatedChildChip {
 
     command_string: String,
 
-    child_failed: Arc<Mutex<bool>>,
+    ended_rx: Arc<Mutex<Receiver<bool>>>,
 }
 
 struct StdinTermiosAttrGuard {
@@ -54,13 +54,13 @@ struct StdinTermiosAttrGuard {
 
 struct WatchStdinArguments {
     began_tx: Sender<()>,
+    ended_tx: Sender<bool>,
     reader: MasterReader,
     succeed_needle: Arc<String>,
     failed_needle: Arc<String>,
     start_needle: Arc<String>,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
-    child_failed: Arc<Mutex<bool>>,
 }
 
 /// the underlying command began
@@ -184,19 +184,18 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
 
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let (began_tx, began_rx) = mpsc::channel::<()>();
-
-        let child_failed = Arc::new(Mutex::new(true));
+        let (ended_tx, ended_rx) = mpsc::channel::<bool>();
 
         {
             let arguments = WatchStdinArguments {
                 began_tx,
+                ended_tx,
                 reader,
                 succeed_needle: self.succeed_needle.clone(),
                 failed_needle: self.failed_needle.clone(),
                 start_needle: self.start_needle.clone(),
                 output_mode: self.output_mode.clone(),
                 collection: error_collection.clone(),
-                child_failed: child_failed.clone(),
             };
 
             std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments));
@@ -237,7 +236,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             write_stdin_pipe_w,
             error_collection,
             command_string: command_string.clone(),
-            child_failed,
+            ended_rx: Arc::new(Mutex::new(ended_rx)),
         })
     }
 }
@@ -255,14 +254,14 @@ impl WireCommandChip for ElevatedChildChip {
             .map_err(DetachedError::JoinError)?
             .map_err(DetachedError::WaitForStatus)?;
 
-        info!("{exit_status:?}");
+        debug!("exit_status: {exit_status:?}");
 
         let mut collection = self.error_collection.lock().unwrap();
-        let child_failed = self.child_failed.lock().unwrap();
+        let child_succeeded = self.ended_rx.lock().unwrap().recv().unwrap();
 
-        info!("child failed: {child_failed}");
+        debug!("child succeed: {child_succeeded}");
 
-        if *child_failed {
+        if !child_succeeded {
             let logs = collection.make_contiguous().join("\n");
 
             return Err(DetachedError::CommandFailed {
@@ -325,13 +324,13 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
 fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), DetachedError> {
     let WatchStdinArguments {
         began_tx,
+        ended_tx,
         mut reader,
         succeed_needle,
         failed_needle,
         start_needle,
         output_mode,
         collection,
-        child_failed,
     } = arguments;
 
     let mut buffer = [0u8; 1024];
@@ -355,15 +354,13 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Detac
 
                     if line.contains(succeed_needle.as_ref()) {
                         debug!("{succeed_needle} was found, marking child as succeeding.");
-
-                        let mut failed = child_failed.lock().unwrap();
-                        *failed = false;
-
+                        ended_tx.send(true).unwrap();
                         break 'outer;
                     }
 
                     if line.contains(failed_needle.as_ref()) {
                         info!("{failed_needle} was found, elevated child did not succeed.");
+                        ended_tx.send(false).unwrap();
                         break 'outer;
                     }
 
