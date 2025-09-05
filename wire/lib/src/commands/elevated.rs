@@ -13,7 +13,7 @@ use std::{
     os::fd::{AsFd, OwnedFd},
     sync::Arc,
 };
-use tracing::{debug, error, info, trace, warn};
+use tracing::{debug, error, info, trace};
 
 use crate::errors::DetachedError;
 use crate::nix_log::NixLog;
@@ -28,7 +28,7 @@ type MasterReader = Box<dyn Read + Send>;
 type Child = Box<dyn portable_pty::Child + Send + Sync>;
 
 pub(crate) struct ElevatedCommand<'t> {
-    target: &'t Target,
+    target: Option<&'t Target>,
     output_mode: Arc<ChildOutputMode>,
     succeed_needle: Arc<String>,
     failed_needle: Arc<String>,
@@ -71,7 +71,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
     type ChildChip = ElevatedChildChip;
 
     async fn spawn_new(
-        target: &'t Target,
+        target: Option<&'t Target>,
         output_mode: ChildOutputMode,
     ) -> Result<ElevatedCommand<'t>, HiveLibError> {
         let output_mode = Arc::new(output_mode);
@@ -94,15 +94,16 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
-        local: bool,
         envs: std::collections::HashMap<String, String>,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        if self.target.user != "root".into() {
-            eprintln!(
-                "Non-root user: Please authenticate for \"sudo {}\"",
-                command_string.as_ref(),
-            );
+        if let Some(target) = self.target {
+            if target.user != "root".into() {
+                eprintln!(
+                    "Non-root user: Please authenticate for \"sudo {}\"",
+                    command_string.as_ref(),
+                );
+            }
         }
 
         let pty_system = NativePtySystem::default();
@@ -139,17 +140,17 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
 
         debug!("{command_string}");
 
-        let mut command = if local {
-            let mut command = portable_pty::CommandBuilder::new("sh");
-
-            command.arg("-c");
-
-            command
-        } else {
-            let mut command = create_sync_ssh_command(self.target)?;
+        let mut command = if let Some(target) = self.target {
+            let mut command = create_sync_ssh_command(target)?;
 
             // force ssh to use our pesudo terminal
             command.arg("-tt");
+
+            command
+        } else {
+            let mut command = portable_pty::CommandBuilder::new("sh");
+
+            command.arg("-c");
 
             command
         };

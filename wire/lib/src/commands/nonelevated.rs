@@ -4,6 +4,7 @@ use std::{
     sync::Arc,
 };
 
+use itertools::Itertools;
 use tokio::{
     io::BufReader,
     process::{Child, Command},
@@ -20,12 +21,13 @@ use crate::{
 };
 
 pub(crate) struct NonElevatedCommand<'t> {
-    target: &'t Target,
+    target: Option<&'t Target>,
     output_mode: Arc<ChildOutputMode>,
 }
 
 pub(crate) struct NonElevatedChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
+    stdout_collection: Arc<Mutex<VecDeque<String>>>,
     child: Child,
     joinset: JoinSet<()>,
     command_string: String,
@@ -34,8 +36,10 @@ pub(crate) struct NonElevatedChildChip {
 impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
     type ChildChip = NonElevatedChildChip;
 
+    /// If target is Some, then the command will be ran remotely.
+    /// Otherwise, the command is ran locally.
     async fn spawn_new(
-        target: &'t Target,
+        target: Option<&'t Target>,
         output_mode: ChildOutputMode,
     ) -> Result<Self, crate::errors::HiveLibError> {
         let output_mode = Arc::new(output_mode);
@@ -50,18 +54,17 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
         &mut self,
         command_string: S,
         _keep_stdin_open: bool,
-        local: bool,
         envs: HashMap<String, String>,
         _clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        let mut command = if local {
+        let mut command = if let Some(target) = self.target {
+            create_sync_ssh_command(target)?
+        } else {
             let mut command = Command::new("sh");
 
             command.arg("-c");
 
             command
-        } else {
-            create_sync_ssh_command(self.target)?
         };
 
         let command_string = format!(
@@ -83,6 +86,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
 
         let mut child = command.spawn().unwrap();
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+        let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
 
         let stdout_handle = child
             .stdout
@@ -99,15 +103,18 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
             stderr_handle,
             self.output_mode.clone(),
             error_collection.clone(),
+            false,
         ));
         joinset.spawn(handle_io(
             stdout_handle,
             self.output_mode.clone(),
-            error_collection.clone(),
+            stdout_collection.clone(),
+            true,
         ));
 
         Ok(NonElevatedChildChip {
             error_collection,
+            stdout_collection,
             child,
             joinset,
             command_string,
@@ -116,16 +123,19 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
 }
 
 impl WireCommandChip for NonElevatedChildChip {
-    type ExitStatus = ExitStatus;
+    type ExitStatus = (ExitStatus, String);
 
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
         let status = self.child.wait().await.unwrap();
         let _ = self.joinset.join_all().await;
 
-        let mut collection = self.error_collection.lock().await;
-
         if !status.success() {
-            let logs = collection.make_contiguous().join("\n");
+            let logs = self
+                .error_collection
+                .lock()
+                .await
+                .make_contiguous()
+                .join("\n");
 
             return Err(DetachedError::CommandFailed {
                 command_ran: self.command_string,
@@ -137,7 +147,9 @@ impl WireCommandChip for NonElevatedChildChip {
             });
         }
 
-        Ok(status)
+        let stdout = self.stdout_collection.lock().await.iter().join("\n");
+
+        Ok((status, stdout))
     }
 
     /// Unimplemented until needed.
@@ -150,19 +162,26 @@ pub async fn handle_io<R>(
     reader: R,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
+    always_collect: bool,
 ) where
     R: tokio::io::AsyncRead + Unpin,
 {
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
+        if always_collect {
+            let mut queue = collection.lock().await;
+            queue.push_front(line);
+            continue;
+        }
+
         let log = output_mode.trace(line.to_string());
 
         if let Some(NixLog::Internal(log)) = log {
             if let Some(message) = log.get_errorish_message() {
                 let mut queue = collection.lock().await;
-                // add at most 10 message to the front, drop the rest.
                 queue.push_front(message);
+                // add at most 10 message to the front, drop the rest.
                 queue.truncate(10);
             }
         }

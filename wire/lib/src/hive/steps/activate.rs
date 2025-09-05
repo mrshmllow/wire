@@ -61,17 +61,19 @@ impl ExecuteStep for SwitchToConfigurationStep {
         ) {
             info!("Setting profiles in anticipation for switch-to-configuration {goal}");
 
-            let mut command =
-                ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
+            let mut command = ElevatedCommand::spawn_new(
+                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                    None
+                } else {
+                    Some(&ctx.node.target)
+                },
+                ChildOutputMode::Nix,
+            )
+            .await?;
             let command_string =
                 format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
-            let child = command.run_command(
-                command_string,
-                false,
-                should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
-                ctx.clobber_lock.clone(),
-            )?;
+            let child = command.run_command(command_string, false, ctx.clobber_lock.clone())?;
 
             let _ = child
                 .wait_till_success()
@@ -83,8 +85,17 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
         info!("Running switch-to-configuration {goal}");
 
-        let mut command =
-            ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
+        // should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
+
+        let mut command = ElevatedCommand::spawn_new(
+            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                None
+            } else {
+                Some(&ctx.node.target)
+            },
+            ChildOutputMode::Nix,
+        )
+        .await?;
 
         let command_string = format!(
             "{built_path}/bin/switch-to-configuration {}",
@@ -96,12 +107,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
             }
         );
 
-        let child = command.run_command(
-            command_string,
-            false,
-            should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
-            ctx.clobber_lock.clone(),
-        )?;
+        let child = command.run_command(command_string, false, ctx.clobber_lock.clone())?;
 
         let result = child.wait_till_success().await;
 
@@ -118,12 +124,12 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 }
 
                 let mut command =
-                    ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Nix).await?;
+                    ElevatedCommand::spawn_new(Some(&ctx.node.target), ChildOutputMode::Nix)
+                        .await?;
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot =
-                    command.run_command("reboot now", false, false, ctx.clobber_lock.clone())?;
+                let reboot = command.run_command("reboot now", false, ctx.clobber_lock.clone())?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected

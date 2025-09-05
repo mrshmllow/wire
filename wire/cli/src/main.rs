@@ -43,11 +43,12 @@ async fn main() -> Result<()> {
 
     match args.command {
         cli::Commands::Apply(apply_args) => {
-            let mut hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
+            let mut hive =
+                Hive::new_from_path(args.path.as_path(), modifiers, clobber_lock.clone()).await?;
             apply::apply(&mut hive, apply_args, args.path, modifiers, clobber_lock).await?;
         }
         cli::Commands::Inspect { online: _, json } => println!("{}", {
-            let hive = Hive::new_from_path(args.path.as_path(), modifiers).await?;
+            let hive = Hive::new_from_path(args.path.as_path(), modifiers, clobber_lock).await?;
             if json {
                 serde_json::to_string(&hive).into_diagnostic()?
             } else {

@@ -23,7 +23,7 @@ pub(crate) trait WireCommand<'target>: Sized {
     type ChildChip;
 
     async fn spawn_new(
-        target: &'target Target,
+        target: Option<&'target Target>,
         output_mode: ChildOutputMode,
     ) -> Result<Self, HiveLibError>;
 
@@ -31,13 +31,11 @@ pub(crate) trait WireCommand<'target>: Sized {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
-        local: bool,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         self.run_command_with_env(
             command_string,
             keep_stdin_open,
-            local,
             std::collections::HashMap::new(),
             clobber_lock,
         )
@@ -47,7 +45,6 @@ pub(crate) trait WireCommand<'target>: Sized {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
-        local: bool,
         args: HashMap<String, String>,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError>;

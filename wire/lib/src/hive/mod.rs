@@ -4,11 +4,12 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
-use tracing::{debug, error, info, instrument, trace};
+use std::sync::{Arc, Mutex};
+use tracing::{error, info, instrument, trace};
 
-use crate::errors::{HiveInitializationError, NixChildError};
-use crate::nix::{EvalGoal, get_eval_command};
+use crate::commands::common::evaluate_hive_attribute;
+use crate::errors::HiveInitializationError;
+use crate::nix::EvalGoal;
 use crate::{HiveLibError, SubCommandModifiers};
 pub mod node;
 pub mod steps;
@@ -44,37 +45,18 @@ impl Hive {
     pub async fn new_from_path(
         path: &Path,
         modifiers: SubCommandModifiers,
+        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Hive, HiveLibError> {
         info!("Searching upwards for hive in {}", path.display());
 
-        let command = get_eval_command(path, &EvalGoal::Inspect, modifiers)?
-            .output()
-            .await
-            .map_err(|err| HiveLibError::NixChildError(NixChildError::ResolveError(err)))?;
+        let output =
+            evaluate_hive_attribute(path, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
 
-        let stdout = String::from_utf8_lossy(&command.stdout);
-        let stderr = String::from_utf8_lossy(&command.stderr);
+        let hive: Hive = serde_json::from_str(&output).map_err(|err| {
+            HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
+        })?;
 
-        debug!("Output of nix eval: {stdout}");
-
-        if command.status.success() {
-            let hive: Hive = serde_json::from_str(&stdout).map_err(|err| {
-                HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(
-                    err,
-                ))
-            })?;
-
-            return Ok(hive);
-        }
-
-        Err(HiveLibError::HiveInitializationError(
-            HiveInitializationError::NixEvalError(
-                stderr
-                    .split('\n')
-                    .map(std::string::ToString::to_string)
-                    .collect(),
-            ),
-        ))
+        Ok(hive)
     }
 
     /// # Errors

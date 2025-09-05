@@ -179,8 +179,8 @@ pub enum HiveInitializationError {
         help("Check your hive is syntactically valid."),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("failed to evaluate your hive! last 20 lines:\n{}", format_error_lines(.0))]
-    NixEvalError(Vec<String>),
+    #[error("failed to evaluate your hive!")]
+    NixEvalError(#[source] DetachedError),
 
     #[diagnostic(
         code(wire::HiveInit::Parse),
@@ -388,4 +388,13 @@ pub enum HiveLibError {
     )]
     #[error("an operation failed in regards to buffers")]
     BufferOperationError(#[source] tokio::io::Error),
+
+    #[diagnostic(code(wire::Evaluate))]
+    #[error("failed to evaluate `{attribute}` from the context of a hive.")]
+    NixEvalError {
+        attribute: String,
+
+        #[source]
+        source: DetachedError,
+    },
 }

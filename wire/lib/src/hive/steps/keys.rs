@@ -198,16 +198,18 @@ impl ExecuteStep for KeysStep {
 
         let buf = msg.encode_to_vec();
 
-        let mut command =
-            ElevatedCommand::spawn_new(&ctx.node.target, ChildOutputMode::Raw).await?;
+        let mut command = ElevatedCommand::spawn_new(
+            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                None
+            } else {
+                Some(&ctx.node.target)
+            },
+            ChildOutputMode::Raw,
+        )
+        .await?;
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
-        let child = command.run_command(
-            command_string,
-            true,
-            should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
-            ctx.clobber_lock.clone(),
-        )?;
+        let child = command.run_command(command_string, true, ctx.clobber_lock.clone())?;
 
         child.write_stdin(buf).await?;
 
