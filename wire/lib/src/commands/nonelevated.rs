@@ -175,7 +175,7 @@ pub async fn handle_io<R>(
             continue;
         }
 
-        let log = output_mode.trace(line.to_string());
+        let log = output_mode.trace(line.clone());
 
         if let Some(NixLog::Internal(log)) = log {
             if let Some(message) = log.get_errorish_message() {

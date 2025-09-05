@@ -30,7 +30,7 @@ pub async fn push(
         host = node.target.get_preffered_host()?,
         path = match push {
             Push::Derivation(drv) => format!("{drv} --derivation"),
-            Push::Path(path) => path.to_string(),
+            Push::Path(path) => path.clone(),
         }
     );
 

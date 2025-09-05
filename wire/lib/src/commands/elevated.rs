@@ -236,7 +236,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             cancel_stdin_pipe_w,
             write_stdin_pipe_w,
             error_collection,
-            command_string: command_string.to_string(),
+            command_string: command_string.clone(),
             child_failed,
         })
     }
