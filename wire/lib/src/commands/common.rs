@@ -46,7 +46,7 @@ pub async fn push(
         .map_err(|error| HiveLibError::NixCopyError {
             name: name.clone(),
             path: push.to_string(),
-            error,
+            error: Box::new(error),
         })?;
 
     Ok(())

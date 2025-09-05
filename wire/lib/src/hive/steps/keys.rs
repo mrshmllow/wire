@@ -192,6 +192,11 @@ impl ExecuteStep for KeysStep {
             .into_iter()
             .unzip();
 
+        if keys.is_empty() {
+            debug!("Had no keys to push, ending KeyStep early.");
+            return Ok(());
+        }
+
         let msg = key_agent::keys::Keys { keys };
 
         trace!("Will send message {msg:?}");

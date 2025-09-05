@@ -213,15 +213,24 @@ pub enum DetachedError {
     RecvError(#[source] RecvError),
 
     #[diagnostic(
+        code(wire::Detached::ThreadPanic),
+        url("{DOCS_URL}#{}", self.code().unwrap()),
+        help("please create an issue!"),
+    )]
+    #[error("Thread paniced")]
+    ThreadPanic,
+
+    #[diagnostic(
         code(wire::Detached::CommandFailed),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("`nix` commands are filtered, run with -vvv to view all"),
     )]
-    #[error("{} failed with {} (last 20 lines):\n{}", .command_ran, .code, .logs)]
+    #[error("{command_ran} failed (reason: {reason}) with {code} (last 20 lines):\n{logs}")]
     CommandFailed {
         command_ran: String,
         logs: String,
         code: String,
+        reason: &'static str,
     },
 }
 
@@ -271,7 +280,7 @@ pub enum HiveLibError {
         name: Name,
         path: String,
         #[source]
-        error: DetachedError,
+        error: Box<DetachedError>,
     },
 
     #[diagnostic(code(wire::Evaluate))]

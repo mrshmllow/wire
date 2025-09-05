@@ -6,8 +6,9 @@ use nix::{
 use portable_pty::{NativePtySystem, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
-use std::sync::Mutex;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Condvar, Mutex};
+use std::thread::JoinHandle;
 use std::{
     io::{Read, Write},
     os::fd::{AsFd, OwnedFd},
@@ -45,22 +46,27 @@ pub(crate) struct ElevatedChildChip {
 
     command_string: String,
 
-    ended_rx: Arc<Mutex<Receiver<bool>>>,
+    completion_status: Arc<CompletionStatus>,
+    stdout_handle: JoinHandle<Result<(), DetachedError>>,
 }
 
-struct StdinTermiosAttrGuard {
-    original_termios: Termios,
+struct StdinTermiosAttrGuard(Termios);
+
+struct CompletionStatus {
+    completed: Mutex<bool>,
+    success: Mutex<Option<bool>>,
+    condvar: Condvar,
 }
 
 struct WatchStdinArguments {
     began_tx: Sender<()>,
-    ended_tx: Sender<bool>,
     reader: MasterReader,
     succeed_needle: Arc<String>,
     failed_needle: Arc<String>,
     start_needle: Arc<String>,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
+    completion_status: Arc<CompletionStatus>,
 }
 
 /// the underlying command began
@@ -184,22 +190,22 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
 
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let (began_tx, began_rx) = mpsc::channel::<()>();
-        let (ended_tx, ended_rx) = mpsc::channel::<bool>();
+        let completion_status = Arc::new(CompletionStatus::new());
 
-        {
+        let stdout_handle = {
             let arguments = WatchStdinArguments {
                 began_tx,
-                ended_tx,
                 reader,
                 succeed_needle: self.succeed_needle.clone(),
                 failed_needle: self.failed_needle.clone(),
                 start_needle: self.start_needle.clone(),
                 output_mode: self.output_mode.clone(),
                 collection: error_collection.clone(),
+                completion_status: completion_status.clone(),
             };
 
-            std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments));
-        }
+            std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
+        };
 
         let (write_stdin_pipe_r, write_stdin_pipe_w) =
             posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
@@ -236,8 +242,39 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             write_stdin_pipe_w,
             error_collection,
             command_string: command_string.clone(),
-            ended_rx: Arc::new(Mutex::new(ended_rx)),
+            completion_status,
+            stdout_handle,
         })
+    }
+}
+
+impl CompletionStatus {
+    fn new() -> Self {
+        CompletionStatus {
+            completed: Mutex::new(false),
+            success: Mutex::new(None),
+            condvar: Condvar::new(),
+        }
+    }
+
+    fn mark_completed(&self, was_successful: bool) {
+        let mut completed = self.completed.lock().unwrap();
+        let mut success = self.success.lock().unwrap();
+
+        *completed = true;
+        *success = Some(was_successful);
+
+        self.condvar.notify_all();
+    }
+
+    fn wait(&self) -> Option<bool> {
+        let mut completed = self.completed.lock().unwrap();
+
+        while !*completed {
+            completed = self.condvar.wait(completed).unwrap();
+        }
+
+        *self.success.lock().unwrap()
     }
 }
 
@@ -256,24 +293,30 @@ impl WireCommandChip for ElevatedChildChip {
 
         debug!("exit_status: {exit_status:?}");
 
-        let mut collection = self.error_collection.lock().unwrap();
-        let child_succeeded = self.ended_rx.lock().unwrap().recv().unwrap();
-
-        debug!("child succeed: {child_succeeded}");
-
-        if !child_succeeded {
-            let logs = collection.make_contiguous().join("\n");
-
-            return Err(DetachedError::CommandFailed {
-                command_ran: self.command_string,
-                logs,
-                code: format!("code {}", exit_status.exit_code()),
-            });
-        }
-
+        self.stdout_handle
+            .join()
+            .map_err(|_| DetachedError::ThreadPanic)??;
+        let success = self.completion_status.wait();
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
-        Ok(exit_status)
+        if let Some(true) = success {
+            return Ok(exit_status);
+        }
+
+        debug!("child did not succeed");
+
+        let mut collection = self.error_collection.lock().unwrap();
+        let logs = collection.make_contiguous().join("\n");
+
+        Err(DetachedError::CommandFailed {
+            command_ran: self.command_string,
+            logs,
+            code: format!("code {}", exit_status.exit_code()),
+            reason: match success {
+                Some(_) => "marked-unsuccessful",
+                None => "child-crashed-before-succeeding",
+            },
+        })
     }
 
     async fn write_stdin(&self, data: Vec<u8>) -> Result<(), HiveLibError> {
@@ -297,7 +340,7 @@ impl StdinTermiosAttrGuard {
         termios.local_flags &= !(LocalFlags::ECHO | LocalFlags::ICANON);
         tcsetattr(stdin_fd, SetArg::TCSANOW, &termios).map_err(DetachedError::TermAttrs)?;
 
-        Ok(StdinTermiosAttrGuard { original_termios })
+        Ok(StdinTermiosAttrGuard(original_termios))
     }
 }
 
@@ -306,7 +349,7 @@ impl Drop for StdinTermiosAttrGuard {
         let stdin = std::io::stdin();
         let stdin_fd = stdin.as_fd();
 
-        let _ = tcsetattr(stdin_fd, SetArg::TCSANOW, &self.original_termios);
+        let _ = tcsetattr(stdin_fd, SetArg::TCSANOW, &self.0);
     }
 }
 
@@ -320,17 +363,16 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
     Ok(command)
 }
 
-/// Cancels on `"WIRE_BEGIN"` written to `reader`
 fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), DetachedError> {
     let WatchStdinArguments {
         began_tx,
-        ended_tx,
         mut reader,
         succeed_needle,
         failed_needle,
         start_needle,
         output_mode,
         collection,
+        completion_status,
     } = arguments;
 
     let mut buffer = [0u8; 1024];
@@ -350,17 +392,18 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Detac
                         debug!("{start_needle} was found, switching mode...");
                         let _ = began_tx.send(());
                         began = true;
+                        continue;
                     }
 
                     if line.contains(succeed_needle.as_ref()) {
                         debug!("{succeed_needle} was found, marking child as succeeding.");
-                        ended_tx.send(true).unwrap();
+                        completion_status.mark_completed(true);
                         break 'outer;
                     }
 
                     if line.contains(failed_needle.as_ref()) {
-                        info!("{failed_needle} was found, elevated child did not succeed.");
-                        ended_tx.send(false).unwrap();
+                        debug!("{failed_needle} was found, elevated child did not succeed.");
+                        completion_status.mark_completed(false);
                         break 'outer;
                     }
 
@@ -391,6 +434,12 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Detac
     }
 
     let _ = began_tx.send(());
+
+    // failsafe if there were errors or the reader stopped
+    if !*completion_status.completed.lock().unwrap() {
+        completion_status.mark_completed(false);
+    }
+
     debug!("stdout: goodbye");
 
     Ok(())
@@ -453,6 +502,7 @@ fn watch_stdin_from_user(
                             .map_err(DetachedError::WritingMasterStdout)?;
                     }
                 }
+
                 if let Some(events) = all_fds[SIGNAL_POSITION].revents() {
                     if events.contains(PollFlags::POLLIN) {
                         let n = posix_read(cancel_pipe_r_fd, &mut cancel_pipe_buf)

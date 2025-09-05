@@ -144,6 +144,7 @@ impl WireCommandChip for NonElevatedChildChip {
                     Some(code) => format!("code {code}"),
                     None => "no exit code".to_string(),
                 },
+                reason: "known-status",
             });
         }
 
