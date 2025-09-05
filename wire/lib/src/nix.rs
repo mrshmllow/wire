@@ -36,50 +36,6 @@ fn check_nix_available() -> bool {
     }
 }
 
-pub fn get_eval_command(
-    path: &Path,
-    goal: &EvalGoal,
-    modifiers: SubCommandModifiers,
-) -> Result<tokio::process::Command, HiveLibError> {
-    assert!(check_nix_available(), "nix is not available on this system");
-
-    let canon_path =
-        find_hive(&path.canonicalize().unwrap()).ok_or(HiveLibError::HiveInitializationError(
-            HiveInitializationError::NoHiveFound(path.to_path_buf()),
-        ))?;
-
-    let mut command = tokio::process::Command::new("nix");
-    command.args(["--extra-experimental-features", "nix-command"]);
-    command.args(["--extra-experimental-features", "flakes"]);
-    command.args(["eval", "--json"]);
-
-    if modifiers.show_trace {
-        command.arg("--show-trace");
-    }
-
-    if canon_path.ends_with("flake.nix") {
-        command.arg(format!("{}#wire", canon_path.to_str().unwrap()));
-        command.arg("--apply");
-
-        command.arg(format!(
-            "hive: {goal}",
-            goal = match goal {
-                EvalGoal::Inspect => "hive.inspect".to_string(),
-                EvalGoal::GetTopLevel(node) => format!("hive.topLevels.{node}"),
-            }
-        ));
-    } else {
-        command.args(["--file", &canon_path.to_string_lossy()]);
-
-        command.arg(match goal {
-            EvalGoal::Inspect => "inspect".to_string(),
-            EvalGoal::GetTopLevel(node) => format!("topLevels.{node}"),
-        });
-    }
-
-    Ok(command)
-}
-
 pub async fn handle_io<R>(reader: R, should_trace: bool) -> Result<Vec<NixLog>, HiveLibError>
 where
     R: AsyncRead + Unpin,
