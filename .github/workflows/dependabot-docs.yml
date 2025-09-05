@@ -1,9 +1,8 @@
 ---
 name: "Update package.nix Hash"
 on:
-  on:
-    push:
-      paths: ["doc/pnpm-lock.yaml"]
+  push:
+    paths: ["doc/pnpm-lock.yaml"]
 
 jobs:
   upgrade-hash:
