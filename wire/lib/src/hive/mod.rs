@@ -128,7 +128,7 @@ mod tests {
     };
 
     use super::*;
-    use std::env;
+    use std::{assert_matches::assert_matches, env};
 
     #[test]
     fn test_hive_dot_nix_priority() {
@@ -240,23 +240,23 @@ mod tests {
     async fn no_nixpkgs() {
         let path = get_test_path!();
 
-        assert!(matches!(
+        assert_matches!(
             Hive::new_from_path(&path, SubCommandModifiers::default()).await,
             Err(HiveLibError::HiveInitializationError(
                 HiveInitializationError::NixEvalError(..)
             ))
-        ));
+        );
     }
 
     #[tokio::test]
     async fn _keys_should_fail() {
         let path = get_test_path!();
 
-        assert!(matches!(
+        assert_matches!(
             Hive::new_from_path(&path, SubCommandModifiers::default()).await,
             Err(HiveLibError::HiveInitializationError(
                 HiveInitializationError::NixEvalError(..)
             ))
-        ));
+        );
     }
 }
