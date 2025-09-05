@@ -1,39 +1,16 @@
-use std::path::Path;
-use std::process::{Command, ExitStatus};
+use std::process::ExitStatus;
 use tokio::io::BufReader;
 use tokio::io::{AsyncBufReadExt, AsyncRead};
-use tracing::{Instrument, error, info, trace};
+use tracing::{Instrument, info, trace};
 
-use crate::errors::{HiveInitializationError, NixChildError};
-use crate::hive::find_hive;
+use crate::HiveLibError;
+use crate::errors::NixChildError;
 use crate::hive::node::Name;
 use crate::nix_log::{Action, Internal, NixLog, Trace};
-use crate::{HiveLibError, SubCommandModifiers};
 
 pub enum EvalGoal<'a> {
     Inspect,
     GetTopLevel(&'a Name),
-}
-
-fn check_nix_available() -> bool {
-    match Command::new("nix")
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .spawn()
-    {
-        Ok(_) => true,
-        Err(e) => {
-            if let std::io::ErrorKind::NotFound = e.kind() {
-                false
-            } else {
-                error!(
-                    "Something weird happened checking for nix availability, {}",
-                    e
-                );
-                false
-            }
-        }
-    }
 }
 
 pub async fn handle_io<R>(reader: R, should_trace: bool) -> Result<Vec<NixLog>, HiveLibError>

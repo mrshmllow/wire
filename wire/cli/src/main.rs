@@ -1,5 +1,6 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::missing_panics_doc)]
+use std::process::Command;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -12,6 +13,7 @@ use clap_complete::generate;
 use lib::hive::Hive;
 use miette::IntoDiagnostic;
 use miette::Result;
+use tracing::error;
 use tracing::warn;
 
 #[macro_use]
@@ -41,6 +43,10 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    if !matches!(args.command, cli::Commands::Completions { .. }) && !check_nix_available() {
+        miette::bail!("Nix is not availabile on this system.");
+    }
+
     match args.command {
         cli::Commands::Apply(apply_args) => {
             let mut hive =
@@ -64,4 +70,25 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+fn check_nix_available() -> bool {
+    match Command::new("nix")
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+    {
+        Ok(_) => true,
+        Err(e) => {
+            if let std::io::ErrorKind::NotFound = e.kind() {
+                false
+            } else {
+                error!(
+                    "Something weird happened checking for nix availability, {}",
+                    e
+                );
+                false
+            }
+        }
+    }
 }

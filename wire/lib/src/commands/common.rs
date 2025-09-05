@@ -61,8 +61,6 @@ pub async fn evaluate_hive_attribute(
     modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<String, HiveLibError> {
-    // assert!(check_nix_available(), "nix is not available on this system");
-
     let canon_path =
         find_hive(&path.canonicalize().unwrap()).ok_or(HiveLibError::HiveInitializationError(
             HiveInitializationError::NoHiveFound(path.to_path_buf()),
