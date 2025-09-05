@@ -137,8 +137,12 @@ pub enum NetworkError {
         ),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("Cannot reach host {0}")]
-    HostUnreachable(String),
+    #[error("Cannot reach host {host}")]
+    HostUnreachable {
+        host: String,
+        #[source]
+        source: DetachedError,
+    },
 
     #[diagnostic(
         code(wire::Network::HostUnreachableAfterReboot),

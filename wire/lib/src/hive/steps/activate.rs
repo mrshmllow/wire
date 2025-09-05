@@ -19,26 +19,22 @@ impl Display for SwitchToConfigurationStep {
 }
 
 pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
-    for num in 0..3 {
-        warn!(
-            "Trying to ping {host} (attempt {num}/3)",
-            host = ctx.node.target.get_preffered_host()?
-        );
+    let host = ctx.node.target.get_preffered_host()?;
+    let mut result = ctx.node.ping(ctx.clobber_lock.clone()).await;
 
-        if ctx.node.ping().await.is_ok() {
-            info!(
-                "Regained connection to {name} via {host}",
-                name = ctx.name,
-                host = ctx.node.target.get_preffered_host()?
-            );
+    for num in 0..2 {
+        warn!("Trying to ping {host} (attempt {}/3)", num + 1);
 
-            return Ok(());
+        result = ctx.node.ping(ctx.clobber_lock.clone()).await;
+
+        if result.is_ok() {
+            info!("Regained connection to {} via {host}", ctx.name);
+
+            break;
         }
     }
 
-    Err(HiveLibError::NetworkError(NetworkError::HostUnreachable(
-        ctx.node.target.get_preffered_host()?.to_string(),
-    )))
+    result
 }
 
 #[async_trait]

@@ -2,13 +2,15 @@
 use async_trait::async_trait;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tokio::process::Command;
-use tracing::{Instrument, error, info, instrument, trace};
+use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
+use crate::commands::nonelevated::NonElevatedCommand;
+use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::NetworkError;
 use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
 use crate::hive::steps::ping::PingStep;
@@ -105,32 +107,31 @@ impl Node {
         }
     }
 
-    pub async fn ping(&self) -> Result<(), HiveLibError> {
-        let mut command = Command::new("nix");
+    pub async fn ping(&self, clobber_lock: Arc<Mutex<()>>) -> Result<(), HiveLibError> {
+        let host = self.target.get_preffered_host()?;
 
-        command
-            .args(["--extra-experimental-features", "nix-command"])
-            .arg("store")
-            .arg("ping")
-            .arg("--store")
-            .arg(format!(
-                "ssh://{}@{}",
-                self.target.user,
-                self.target.get_preffered_host()?
-            ))
-            .env("NIX_SSHOPTS", format!("-p {}", self.target.port));
+        let command_string = format!(
+            "nix --extra-experimental-features nix-command \
+            store ping --store ssh://{}@{}",
+            self.target.user, host
+        );
 
-        let (status, _stdout, _) = crate::nix::StreamTracing::execute(&mut command, true)
-            .in_current_span()
-            .await?;
+        let mut command = NonElevatedCommand::spawn_new(None, ChildOutputMode::Nix).await?;
+        let output = command.run_command_with_env(
+            command_string,
+            false,
+            HashMap::from([("NIX_SSHOPTS".into(), format!("-p {}", self.target.port))]),
+            clobber_lock,
+        )?;
 
-        if status.success() {
-            return Ok(());
-        }
+        output.wait_till_success().await.map_err(|source| {
+            HiveLibError::NetworkError(NetworkError::HostUnreachable {
+                host: host.to_string(),
+                source,
+            })
+        })?;
 
-        Err(HiveLibError::NetworkError(NetworkError::HostUnreachable(
-            self.target.get_preffered_host()?.to_string(),
-        )))
+        Ok(())
     }
 }
 
