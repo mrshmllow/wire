@@ -29,6 +29,15 @@ jobs:
       - uses: ./.github/actions/setup-nix
         with:
           cachixToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Cache Cargo
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Upgrade Hash
         if: ${{ needs.check-changes.outputs.docs-pnpm == 'true' }}
         run: bash ./doc/upgrade.sh
