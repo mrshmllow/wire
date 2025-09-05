@@ -1,4 +1,9 @@
-use std::{fs, io, path::Path, process::Command, sync::{Arc, Mutex}};
+use std::{
+    fs, io,
+    path::Path,
+    process::Command,
+    sync::{Arc, Mutex},
+};
 
 use tempdir::TempDir;
 

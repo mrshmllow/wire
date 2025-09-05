@@ -103,6 +103,7 @@ mod tests {
     use im::vector;
 
     use crate::{
+        errors::DetachedError,
         get_test_path,
         hive::steps::keys::{Key, Source, UploadKeyAt},
         test_support::{get_clobber_lock, make_flake_sandbox},
@@ -191,9 +192,13 @@ mod tests {
     async fn flake_hive() {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
 
-        let hive = Hive::new_from_path(tmp_dir.path(), SubCommandModifiers::default(), get_clobber_lock())
-            .await
-            .unwrap();
+        let hive = Hive::new_from_path(
+            tmp_dir.path(),
+            SubCommandModifiers::default(),
+            get_clobber_lock(),
+        )
+        .await
+        .unwrap();
 
         let mut nodes = HashMap::new();
 
@@ -222,10 +227,15 @@ mod tests {
         let path = get_test_path!();
 
         assert_matches!(
-            Hive::new_from_path(&path, SubCommandModifiers::default()).await,
-            Err(HiveLibError::HiveInitializationError(
-                HiveInitializationError::NixEvalError(..)
-            ))
+            Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Err(HiveLibError::NixEvalError {
+                source: DetachedError::CommandFailed {
+                    logs,
+                    ..
+                },
+                ..
+            })
+            if logs.contains("makeHive called without meta.nixpkgs specified")
         );
     }
 
@@ -234,10 +244,15 @@ mod tests {
         let path = get_test_path!();
 
         assert_matches!(
-            Hive::new_from_path(&path, SubCommandModifiers::default()).await,
-            Err(HiveLibError::HiveInitializationError(
-                HiveInitializationError::NixEvalError(..)
-            ))
+            Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Err(HiveLibError::NixEvalError {
+                source: DetachedError::CommandFailed {
+                    logs,
+                    ..
+                },
+                ..
+            })
+            if logs.contains("The option `deployment._keys' is read-only, but it's set multiple times.")
         );
     }
 }
