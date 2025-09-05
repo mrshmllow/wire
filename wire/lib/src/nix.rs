@@ -99,7 +99,7 @@ where
     {
         let log = serde_json::from_str::<Internal>(line.strip_prefix("@nix ").unwrap_or(&line))
             .map(NixLog::Internal)
-            .unwrap_or(NixLog::Raw(line.to_string()));
+            .unwrap_or(NixLog::Raw(line.clone()));
 
         // Throw out stop logs
         if let NixLog::Internal(Internal {
