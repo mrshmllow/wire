@@ -20,7 +20,6 @@
               packageOverrides = {
                 inherit (toolchain) cargo clippy;
               };
-              settings.extraArgs = "--fix";
             };
             cargo-check = {
               enable = true;
