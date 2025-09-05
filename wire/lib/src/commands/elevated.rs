@@ -354,8 +354,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Detac
                     }
 
                     if line.contains(succeed_needle.as_ref()) {
-                        info!("{succeed_needle} was found, breaking...");
-                        info!("{failed_needle} was found, marking child as succeeding.");
+                        info!("{succeed_needle} was found, marking child as succeeding.");
 
                         let mut failed = child_failed.lock().unwrap();
                         *failed = false;
