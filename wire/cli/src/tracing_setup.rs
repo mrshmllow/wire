@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    io::{self, Stdout, Write, stdout},
+    io::{self, Stderr, Write, stderr},
     sync::{Arc, Mutex, TryLockError},
 };
 
@@ -11,7 +11,7 @@ use tracing_subscriber::{Layer, Registry, layer::SubscriberExt, util::Subscriber
 struct NonClobberingWriter {
     clobber_lock: Arc<Mutex<()>>,
     queue: VecDeque<Vec<u8>>,
-    stdout: Stdout,
+    stderr: Stderr,
 }
 
 impl NonClobberingWriter {
@@ -19,16 +19,16 @@ impl NonClobberingWriter {
         NonClobberingWriter {
             clobber_lock,
             queue: VecDeque::with_capacity(100),
-            stdout: stdout(),
+            stderr: stderr(),
         }
     }
 
     fn dump_previous(&mut self) -> Result<(), io::Error> {
         for buf in self.queue.iter().rev() {
-            self.stdout.write(buf).map(|_| ())?;
+            self.stderr.write(buf).map(|_| ())?;
         }
 
-        self.stdout.flush()?;
+        self.stderr.flush()?;
 
         Ok(())
     }
@@ -40,7 +40,7 @@ impl Write for NonClobberingWriter {
             Ok(_) => {
                 self.dump_previous().map(|()| 0)?;
 
-                self.stdout.write(buf)
+                self.stderr.write(buf)
             }
             Err(e) => match e {
                 TryLockError::Poisoned(_) => {
@@ -56,7 +56,7 @@ impl Write for NonClobberingWriter {
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        self.stdout.flush()
+        self.stderr.flush()
     }
 }
 
