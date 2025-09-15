@@ -54,23 +54,6 @@ pub struct Key {
     pub upload_at: UploadKeyAt,
 }
 
-fn should_execute(filter: &UploadKeyAt, ctx: &crate::hive::node::Context) -> bool {
-    if ctx.no_keys {
-        return false;
-    }
-
-    // should execute if no filter, and the goal is keys.
-    // otherwise, only execute if the goal is switch
-    matches!(
-        (filter, &ctx.goal),
-        (UploadKeyAt::NoFilter, Goal::Keys)
-            | (
-                UploadKeyAt::PreActivation | UploadKeyAt::PostActivation,
-                Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch)
-            )
-    )
-}
-
 fn get_u32_permission(key: &Key) -> Result<u32, KeyError> {
     u32::from_str_radix(&key.permissions, 8).map_err(KeyError::ParseKeyPermissions)
 }
@@ -166,7 +149,20 @@ impl Display for PushKeyAgentStep {
 #[async_trait]
 impl ExecuteStep for KeysStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        should_execute(&self.filter, ctx)
+        if ctx.no_keys {
+            return false;
+        }
+
+        // should execute if no filter, and the goal is keys.
+        // otherwise, only execute if the goal is switch and non-nofilter
+        matches!(
+            (&self.filter, &ctx.goal),
+            (UploadKeyAt::NoFilter, Goal::Keys)
+                | (
+                    UploadKeyAt::PreActivation | UploadKeyAt::PostActivation,
+                    Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch)
+                )
+        )
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
@@ -239,7 +235,14 @@ impl ExecuteStep for KeysStep {
 #[async_trait]
 impl ExecuteStep for PushKeyAgentStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        should_execute(&UploadKeyAt::PreActivation, ctx)
+        if ctx.no_keys {
+            return false;
+        }
+
+        matches!(
+            &ctx.goal,
+            Goal::Keys | Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch)
+        )
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

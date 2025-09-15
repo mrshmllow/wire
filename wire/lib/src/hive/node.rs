@@ -436,17 +436,16 @@ mod tests {
             vec![
                 Step::Ping(PingStep),
                 Step::Evaluate(crate::hive::steps::evaluate::Step),
-                Step::SwitchToConfiguration(SwitchToConfigurationStep),
                 Step::PushEvaluatedOutput(crate::hive::steps::push::EvaluatedOutputStep),
             ]
         );
     }
 
     #[tokio::test]
-    async fn order_remove_build() {
+    async fn order_remote_build() {
         let path = get_test_path!();
         let mut node = Node {
-            build_remotely: false,
+            build_remotely: true,
             ..Default::default()
         };
 
@@ -463,9 +462,8 @@ mod tests {
                     filter: UploadKeyAt::PreActivation
                 }),
                 Step::Evaluate(crate::hive::steps::evaluate::Step),
-                Step::Build(crate::hive::steps::build::Step),
-                Step::PushBuildOutput(crate::hive::steps::push::BuildOutputStep),
                 Step::PushEvaluatedOutput(crate::hive::steps::push::EvaluatedOutputStep),
+                Step::Build(crate::hive::steps::build::Step),
                 Step::SwitchToConfiguration(SwitchToConfigurationStep),
                 Step::Keys(KeysStep {
                     filter: UploadKeyAt::PostActivation

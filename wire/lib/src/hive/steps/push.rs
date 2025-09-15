@@ -29,7 +29,8 @@ impl Display for BuildOutputStep {
 #[async_trait]
 impl ExecuteStep for EvaluatedOutputStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        !matches!(ctx.goal, Goal::Keys) && ctx.node.build_remotely
+        !matches!(ctx.goal, Goal::Keys)
+            && (ctx.node.build_remotely | matches!(ctx.goal, Goal::Push))
     }
 
     #[instrument(skip_all, name = "push_eval")]
