@@ -14,18 +14,18 @@ use tokio::{
 use tracing::{debug, trace};
 
 use crate::{
-    Target,
     commands::{ChildOutputMode, WireCommand, WireCommandChip},
     errors::{DetachedError, HiveLibError},
+    hive::node::Target,
     nix_log::NixLog,
 };
 
-pub(crate) struct NonElevatedCommand<'t> {
+pub(crate) struct NonInteractiveCommand<'t> {
     target: Option<&'t Target>,
     output_mode: Arc<ChildOutputMode>,
 }
 
-pub(crate) struct NonElevatedChildChip {
+pub(crate) struct NonInteractiveChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     child: Child,
@@ -34,8 +34,8 @@ pub(crate) struct NonElevatedChildChip {
     stdin: ChildStdin,
 }
 
-impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
-    type ChildChip = NonElevatedChildChip;
+impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
+    type ChildChip = NonInteractiveChildChip;
 
     /// If target is Some, then the command will be ran remotely.
     /// Otherwise, the command is ran locally.
@@ -114,7 +114,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
             true,
         ));
 
-        Ok(NonElevatedChildChip {
+        Ok(NonInteractiveChildChip {
             error_collection,
             stdout_collection,
             child,
@@ -125,7 +125,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
     }
 }
 
-impl WireCommandChip for NonElevatedChildChip {
+impl WireCommandChip for NonInteractiveChildChip {
     type ExitStatus = (ExitStatus, String);
 
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {

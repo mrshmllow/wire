@@ -5,7 +5,6 @@
     clippy::missing_panics_doc
 )]
 #![feature(assert_matches)]
-use hive::node::Target;
 
 use crate::{errors::HiveLibError, hive::node::Name};
 

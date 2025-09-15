@@ -6,7 +6,9 @@ use std::{
 
 use crate::{
     EvalGoal, SubCommandModifiers,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip, nonelevated::NonElevatedCommand},
+    commands::{
+        ChildOutputMode, WireCommand, WireCommandChip, noninteractive::NonInteractiveCommand,
+    },
     errors::{HiveInitializationError, HiveLibError},
     hive::{
         find_hive,
@@ -20,7 +22,7 @@ pub async fn push(
     push: Push<'_>,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<(), HiveLibError> {
-    let mut command = NonElevatedCommand::spawn_new(None, ChildOutputMode::Nix).await?;
+    let mut command = NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix).await?;
 
     let command_string = format!(
         "nix --extra-experimental-features nix-command \
@@ -65,7 +67,7 @@ pub async fn evaluate_hive_attribute(
             HiveInitializationError::NoHiveFound(path.to_path_buf()),
         ))?;
 
-    let mut command = NonElevatedCommand::spawn_new(None, ChildOutputMode::Nix).await?;
+    let mut command = NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix).await?;
     let attribute = if canon_path.ends_with("flake.nix") {
         format!(
             "{}#wire --apply \"hive: {}\"",

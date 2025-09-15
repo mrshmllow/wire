@@ -28,7 +28,7 @@ type MasterWriter = Box<dyn Write + Send>;
 type MasterReader = Box<dyn Read + Send>;
 type Child = Box<dyn portable_pty::Child + Send + Sync>;
 
-pub(crate) struct ElevatedCommand<'t> {
+pub(crate) struct InteractiveCommand<'t> {
     target: Option<&'t Target>,
     output_mode: Arc<ChildOutputMode>,
     succeed_needle: Arc<String>,
@@ -36,7 +36,7 @@ pub(crate) struct ElevatedCommand<'t> {
     start_needle: Arc<String>,
 }
 
-pub(crate) struct ElevatedChildChip {
+pub(crate) struct InteractiveChildChip {
     child: Child,
 
     cancel_stdin_pipe_w: OwnedFd,
@@ -73,13 +73,13 @@ struct WatchStdinArguments {
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 
-impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
-    type ChildChip = ElevatedChildChip;
+impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
+    type ChildChip = InteractiveChildChip;
 
     async fn spawn_new(
         target: Option<&'t Target>,
         output_mode: ChildOutputMode,
-    ) -> Result<ElevatedCommand<'t>, HiveLibError> {
+    ) -> Result<InteractiveCommand<'t>, HiveLibError> {
         let output_mode = Arc::new(output_mode);
         let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
         let succeed_needle = Arc::new(format!("{tmp_prefix}_WIRE_QUIT"));
@@ -236,7 +236,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
                 .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
         }
 
-        Ok(ElevatedChildChip {
+        Ok(InteractiveChildChip {
             child,
             cancel_stdin_pipe_w,
             write_stdin_pipe_w,
@@ -278,7 +278,7 @@ impl CompletionStatus {
     }
 }
 
-impl WireCommandChip for ElevatedChildChip {
+impl WireCommandChip for InteractiveChildChip {
     type ExitStatus = portable_pty::ExitStatus;
 
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {

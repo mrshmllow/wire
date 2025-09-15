@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
-use crate::commands::nonelevated::NonElevatedCommand;
+use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::NetworkError;
 use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
@@ -116,7 +116,7 @@ impl Node {
             self.target.user, host
         );
 
-        let mut command = NonElevatedCommand::spawn_new(None, ChildOutputMode::Nix).await?;
+        let mut command = NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix).await?;
         let output = command.run_command_with_env(
             command_string,
             false,

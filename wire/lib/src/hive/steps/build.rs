@@ -5,7 +5,9 @@ use tracing::{info, instrument};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip, nonelevated::NonElevatedCommand},
+    commands::{
+        ChildOutputMode, WireCommand, WireCommandChip, noninteractive::NonInteractiveCommand,
+    },
     hive::node::{Context, ExecuteStep, Goal},
 };
 
@@ -32,7 +34,7 @@ impl ExecuteStep for Step {
             build --print-build-logs --print-out-paths {top_level}"
         );
 
-        let mut command = NonElevatedCommand::spawn_new(
+        let mut command = NonInteractiveCommand::spawn_new(
             if ctx.node.build_remotely {
                 Some(&ctx.node.target)
             } else {

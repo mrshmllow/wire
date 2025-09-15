@@ -8,8 +8,8 @@ use itertools::Either;
 use crate::{
     SubCommandModifiers,
     commands::{
-        elevated::{ElevatedChildChip, ElevatedCommand},
-        nonelevated::{NonElevatedChildChip, NonElevatedCommand},
+        interactive::{InteractiveChildChip, InteractiveCommand},
+        noninteractive::{NonInteractiveChildChip, NonInteractiveCommand},
     },
     errors::{DetachedError, HiveLibError},
     hive::node::Target,
@@ -17,8 +17,8 @@ use crate::{
 };
 
 pub(crate) mod common;
-pub(crate) mod elevated;
-pub(crate) mod nonelevated;
+pub(crate) mod interactive;
+pub(crate) mod noninteractive;
 
 #[derive(Copy, Clone)]
 pub(crate) enum ChildOutputMode {
@@ -30,15 +30,15 @@ pub(crate) async fn get_elevated_command(
     target: Option<&'_ Target>,
     output_mode: ChildOutputMode,
     modifiers: SubCommandModifiers,
-) -> Result<Either<ElevatedCommand<'_>, NonElevatedCommand<'_>>, HiveLibError> {
+) -> Result<Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>>, HiveLibError> {
     if modifiers.non_interactive {
         return Ok(Either::Left(
-            ElevatedCommand::spawn_new(target, output_mode).await?,
+            InteractiveCommand::spawn_new(target, output_mode).await?,
         ));
     }
 
     return Ok(Either::Right(
-        NonElevatedCommand::spawn_new(target, output_mode).await?,
+        NonInteractiveCommand::spawn_new(target, output_mode).await?,
     ));
 }
 
@@ -80,8 +80,8 @@ pub(crate) trait WireCommandChip {
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError>;
 }
 
-impl WireCommand<'_> for Either<ElevatedCommand<'_>, NonElevatedCommand<'_>> {
-    type ChildChip = Either<ElevatedChildChip, NonElevatedChildChip>;
+impl WireCommand<'_> for Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>> {
+    type ChildChip = Either<InteractiveChildChip, NonInteractiveChildChip>;
 
     /// How'd you get here?
     async fn spawn_new(
@@ -109,7 +109,7 @@ impl WireCommand<'_> for Either<ElevatedCommand<'_>, NonElevatedCommand<'_>> {
     }
 }
 
-impl WireCommandChip for Either<ElevatedChildChip, NonElevatedChildChip> {
+impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
     type ExitStatus = Either<portable_pty::ExitStatus, (std::process::ExitStatus, String)>;
 
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError> {
