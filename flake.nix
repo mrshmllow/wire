@@ -39,6 +39,7 @@
         ./wire/key_agent
         ./doc
         ./tests/nix
+        ./repro/default.nix
       ];
       systems = import systems;
 
@@ -67,6 +68,7 @@
           inputs',
           config,
           lib,
+          self',
           ...
         }:
         {
@@ -94,6 +96,52 @@
               };
             };
           };
+
+          checks.repro =
+            let
+              snakeOil = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
+            in
+            pkgs.testers.runNixOSTest {
+              name = "repro";
+              defaults = {
+                systemd.tmpfiles.rules = [
+                  "C+ /root/.ssh/id_ed25519 600 - - - ${snakeOil.snakeOilEd25519PrivateKey}"
+                  "C+ /home/owner/.ssh/id_ed25519 600 - - - ${snakeOil.snakeOilEd25519PrivateKey}"
+                ];
+                programs.ssh.extraConfig = ''
+                  Host *
+                    StrictHostKeyChecking no
+                    UserKnownHostsFile /dev/null
+                '';
+
+                services.openssh.enable = true;
+                users.users.root.openssh.authorizedKeys.keys = [ snakeOil.snakeOilEd25519PublicKey ];
+                users.users.owner.openssh.authorizedKeys.keys = [ snakeOil.snakeOilEd25519PublicKey ];
+
+                users.groups."owner" = { };
+                users.users."owner" = {
+                  group = "owner";
+                  isNormalUser = true;
+                  extraGroups = [ "wheel" ];
+                };
+                security.sudo.wheelNeedsPassword = false;
+              };
+              nodes.two = {
+                environment.systemPackages = [
+                  (self'.packages.agent)
+                ];
+              };
+              nodes.one = {
+                environment.systemPackages = [
+                  (self'.packages.repro)
+                ];
+              };
+              testScript = ''
+                start_all()
+                two.wait_for_unit("sshd.service")
+                one.succeed("repro >&2")
+              '';
+            };
         };
     };
 }

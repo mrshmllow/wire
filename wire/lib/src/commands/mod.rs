@@ -54,7 +54,7 @@ pub(crate) trait WireCommandChip {
     type ExitStatus;
 
     async fn wait_till_success(self) -> Result<Self::ExitStatus, DetachedError>;
-    async fn write_stdin(&self, data: Vec<u8>) -> Result<(), HiveLibError>;
+    async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError>;
 }
 
 impl ChildOutputMode {

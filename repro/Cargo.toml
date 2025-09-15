@@ -1,0 +1,8 @@
+[package]
+name = "repro"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+portable-pty = "0.9.0"
+nix = { workspace = true }

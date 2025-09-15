@@ -1,4 +1,8 @@
-use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
+use nix::libc::{FIONREAD, ioctl};
+use nix::sys::termios::{
+    BaudRate, ControlFlags, LocalFlags, SetArg, Termios, cfsetispeed, cfsetospeed, tcgetattr,
+    tcsetattr,
+};
 use nix::{
     poll::{PollFd, PollFlags, PollTimeout, poll},
     unistd::{pipe as posix_pipe, read as posix_read, write as posix_write},
@@ -8,7 +12,8 @@ use rand::distr::Alphabetic;
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Condvar, Mutex};
-use std::thread::JoinHandle;
+use std::thread::{JoinHandle, sleep};
+use std::time::Duration;
 use std::{
     io::{Read, Write},
     os::fd::{AsFd, OwnedFd},
@@ -40,7 +45,6 @@ pub(crate) struct ElevatedChildChip {
     child: Child,
 
     cancel_stdin_pipe_w: OwnedFd,
-    write_stdin_pipe_w: OwnedFd,
 
     error_collection: Arc<Mutex<VecDeque<String>>>,
 
@@ -48,6 +52,8 @@ pub(crate) struct ElevatedChildChip {
 
     completion_status: Arc<CompletionStatus>,
     stdout_handle: JoinHandle<Result<(), DetachedError>>,
+    // master_writer: Arc<Mutex<MasterWriter>>
+    stdin_tx: Sender<Vec<u8>>,
 }
 
 struct StdinTermiosAttrGuard(Termios);
@@ -122,11 +128,27 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             let mut termios = tcgetattr(fd)
                 .map_err(|x| HiveLibError::DetachedError(DetachedError::TermAttrs(x)))?;
 
+            error!("{termios:#?}");
+
             termios.local_flags &= !LocalFlags::ECHO;
             // Key agent does not work well without canonical mode
-            termios.local_flags &= !LocalFlags::ICANON;
+            // termios.local_flags &= !LocalFlags::ICANON;
             // Actually quit
             termios.local_flags &= !LocalFlags::ISIG;
+
+            termios.control_chars[nix::libc::VMIN] = 1;
+            termios.control_chars[nix::libc::VTIME] = 0;
+
+            // cfsetispeed(&mut termios, BaudRate::B115200).unwrap();
+            // cfsetospeed(&mut termios, BaudRate::B115200).unwrap();
+
+            // termios.control_flags &= !ControlFlags::CRTSCTS;
+            // termios.control_flags &= !ControlFlags::IXON;
+            // termios.control_flags &= !ControlFlags::IXOFF;
+            // termios.control_flags &= !ControlFlags::IXANY;
+
+            // termios.input_speed = nix::libc::B115200;
+            // termios.output_speed = nix::libc::B115200;
 
             tcsetattr(fd, SetArg::TCSANOW, &termios)
                 .map_err(|x| HiveLibError::DetachedError(DetachedError::TermAttrs(x)))?;
@@ -183,7 +205,7 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             .master
             .try_clone_reader()
             .map_err(|x| HiveLibError::DetachedError(DetachedError::PortablePty(x)))?;
-        let master_writer = pty_pair
+        let mut master_writer = pty_pair
             .master
             .take_writer()
             .map_err(|x| HiveLibError::DetachedError(DetachedError::PortablePty(x)))?;
@@ -207,13 +229,82 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
             std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
         };
 
-        let (write_stdin_pipe_r, write_stdin_pipe_w) =
-            posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
         let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
             posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
 
+        // {
+        //     let master_writer = master_writer.clone();
+        //
+        //     std::thread::spawn(move || {
+        //         watch_stdin_from_user(&cancel_stdin_pipe_r, &master_writer)
+        //     });
+        // }
+
+        let (stdin_tx, stdin_rx) = mpsc::channel::<Vec<u8>>();
+
+        // master_writer.lock().unwrap()
+        //     .write_all(b"aaaaaaaaaaaaaa")
+        //     .unwrap();
+
+        // Spawn a dedicated thread for writing to the master
         std::thread::spawn(move || {
-            watch_stdin_from_user(&cancel_stdin_pipe_r, master_writer, &write_stdin_pipe_r)
+            let mut writer = master_writer;
+            let mut pending_data: Vec<u8> = Vec::new();
+
+            loop {
+                match stdin_rx.recv_timeout(Duration::from_millis(100)) {
+                    Ok(data) => {
+                        info!("extended from slice");
+                        pending_data.extend_from_slice(&data);
+                    }
+                    Err(mpsc::RecvTimeoutError::Timeout) => {
+                        // info!("Channel timed out");
+                        // Timeout is normal, just continue
+                    }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => {
+                        info!("Channel diconnected!!!!!!!!!");
+                        break;
+                    }
+                }
+
+                sleep(Duration::from_millis(100));
+
+                if !pending_data.is_empty() {
+                    if let Some(chunk) = pending_data.chunks(100).next() {
+                        match writer.write(chunk) {
+                            Ok(n) => {
+                                info!("wrote {n} bytes");
+                                if n == pending_data.len() {
+                                    pending_data.clear();
+                                } else {
+                                    pending_data.drain(0..n);
+                                }
+                                let _ = writer.flush();
+                            }
+                            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                                // Would block, try again later
+                                info!("would block, second");
+                            }
+                            Err(e) => {
+                                info!("Failed to write to master: {}", e);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // while let Ok(data) = stdin_rx.recv() {
+            //     info!("data recieved to write: {data:?}");
+            //     if let Err(e) = writer.write_all(&data) {
+            //         eprintln!("Failed to write to master: {e}");
+            //         break;
+            //     }
+            //     if let Err(e) = writer.flush() {
+            //         eprintln!("Failed to flush master: {e}");
+            //         break;
+            //     }
+            // }
         });
 
         info!("Setup threads");
@@ -224,26 +315,36 @@ impl<'t> WireCommand<'t> for ElevatedCommand<'t> {
 
         drop(clobber_guard);
 
-        if keep_stdin_open {
-            trace!("Sending THREAD_BEGAN_SIGNAL");
+        // master_writer.lock().unwrap().as_mut()
+        //     .write_all(b"aaaaaaaaaaaaaa")
+        //     .unwrap();
 
-            posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
-                .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
-        } else {
-            trace!("Sending THREAD_QUIT_SIGNAL");
+        stdin_tx.send(b"a".to_vec()).unwrap();
+        // stdin_tx.send(b"a".to_vec()).unwrap();
 
-            posix_write(&cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
-                .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
-        }
+        // posix_write(&write_stdin_pipe_w, b"aaaaaaaaaaa")
+        //     .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+
+        // if keep_stdin_open {
+        //     trace!("Sending THREAD_BEGAN_SIGNAL");
+        //
+        //     posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
+        //         .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+        // } else {
+        //     trace!("Sending THREAD_QUIT_SIGNAL");
+        //
+        //     posix_write(&cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
+        //         .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+        // }
 
         Ok(ElevatedChildChip {
             child,
             cancel_stdin_pipe_w,
-            write_stdin_pipe_w,
             error_collection,
             command_string: command_string.clone(),
             completion_status,
             stdout_handle,
+            stdin_tx,
         })
     }
 }
@@ -284,7 +385,8 @@ impl WireCommandChip for ElevatedChildChip {
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
         info!("trying to grab status...");
 
-        drop(self.write_stdin_pipe_w);
+        let success = self.completion_status.wait();
+        let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         let exit_status = tokio::task::spawn_blocking(move || self.child.wait())
             .await
@@ -296,7 +398,6 @@ impl WireCommandChip for ElevatedChildChip {
         self.stdout_handle
             .join()
             .map_err(|_| DetachedError::ThreadPanic)??;
-        let success = self.completion_status.wait();
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         if let Some(true) = success {
@@ -319,11 +420,13 @@ impl WireCommandChip for ElevatedChildChip {
         })
     }
 
-    async fn write_stdin(&self, data: Vec<u8>) -> Result<(), HiveLibError> {
+    async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError> {
         trace!("Writing {} bytes to stdin", data.len());
 
-        posix_write(&self.write_stdin_pipe_w, &data)
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+        // self.master_writer.lock().unwrap().write_all(&data).map_err(DetachedError::WritingMasterStdout).map_err(HiveLibError::DetachedError)?;
+        // self.master_writer.lock().unwrap().flush().map_err(DetachedError::WritingMasterStdout).map_err(HiveLibError::DetachedError)?;
+
+        self.stdin_tx.send(data).unwrap();
 
         Ok(())
     }
@@ -337,8 +440,8 @@ impl StdinTermiosAttrGuard {
         let mut termios = tcgetattr(stdin_fd).map_err(DetachedError::TermAttrs)?;
         let original_termios = termios.clone();
 
-        termios.local_flags &= !(LocalFlags::ECHO | LocalFlags::ICANON);
-        tcsetattr(stdin_fd, SetArg::TCSANOW, &termios).map_err(DetachedError::TermAttrs)?;
+        // termios.local_flags &= !(LocalFlags::ECHO | LocalFlags::ICANON);
+        // tcsetattr(stdin_fd, SetArg::TCSANOW, &termios).map_err(DetachedError::TermAttrs)?;
 
         Ok(StdinTermiosAttrGuard(original_termios))
     }
@@ -448,66 +551,62 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Detac
 /// Exits on any data written to `cancel_pipe_r`
 fn watch_stdin_from_user(
     cancel_pipe_r: &OwnedFd,
-    mut master_writer: MasterWriter,
-    write_pipe_r: &OwnedFd,
+    master_writer: &Arc<Mutex<MasterWriter>>,
 ) -> Result<(), DetachedError> {
-    const WRITER_POSITION: usize = 0;
-    const SIGNAL_POSITION: usize = 1;
-    const USER_POSITION: usize = 2;
+    const SIGNAL_POSITION: usize = 0;
+    const USER_POSITION: usize = 1;
 
     let mut buffer = [0u8; 1024];
     let stdin = std::io::stdin();
-    let mut cancel_pipe_buf = [0u8; 1];
 
     let user_stdin_fd = std::os::fd::AsFd::as_fd(&stdin);
     let cancel_pipe_r_fd = cancel_pipe_r.as_fd();
 
-    let mut all_fds = vec![
-        PollFd::new(write_pipe_r.as_fd(), PollFlags::POLLIN),
+    let mut all_fds = [
         PollFd::new(cancel_pipe_r.as_fd(), PollFlags::POLLIN),
         PollFd::new(user_stdin_fd, PollFlags::POLLIN),
     ];
 
+    let mut pending_data = Vec::new();
+
+    let mut watch_user_stdin = true;
+
     loop {
-        match poll(&mut all_fds, PollTimeout::NONE) {
+        if !pending_data.is_empty() {
+            trace!("Currently pending data: {:?}", pending_data);
+            match master_writer.lock().unwrap().write(&pending_data) {
+                Ok(n) => {
+                    if n == pending_data.len() {
+                        pending_data.clear();
+                    } else {
+                        pending_data.drain(0..n);
+                    }
+
+                    info!("wrote {n:?}, pending data: {pending_data:?}");
+
+                    master_writer
+                        .lock()
+                        .unwrap()
+                        .flush()
+                        .map_err(DetachedError::WritingMasterStdout)?;
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                    info!("would of blocked");
+                    // Would block, try again later
+                }
+                Err(e) => return Err(DetachedError::WritingMasterStdout(e)),
+            }
+        }
+
+        match poll(&mut all_fds, PollTimeout::from(100u8)) {
             Ok(0) => {} // timeout, impossible
             Ok(_) => {
-                // The user stdin pipe can be removed
-                if all_fds.get(USER_POSITION).is_some() {
-                    if let Some(events) = all_fds[USER_POSITION].revents() {
-                        if events.contains(PollFlags::POLLIN) {
-                            trace!("Got stdin from user...");
-                            let n = posix_read(user_stdin_fd, &mut buffer)
-                                .map_err(DetachedError::PosixPipe)?;
-                            master_writer
-                                .write_all(&buffer[..n])
-                                .map_err(DetachedError::WritingMasterStdout)?;
-                            master_writer
-                                .flush()
-                                .map_err(DetachedError::WritingMasterStdout)?;
-                        }
-                    }
-                }
-
-                if let Some(events) = all_fds[WRITER_POSITION].revents() {
-                    if events.contains(PollFlags::POLLIN) {
-                        trace!("Got stdin from writer...");
-                        let n = posix_read(write_pipe_r, &mut buffer)
-                            .map_err(DetachedError::PosixPipe)?;
-                        master_writer
-                            .write_all(&buffer[..n])
-                            .map_err(DetachedError::WritingMasterStdout)?;
-                        master_writer
-                            .flush()
-                            .map_err(DetachedError::WritingMasterStdout)?;
-                    }
-                }
-
                 if let Some(events) = all_fds[SIGNAL_POSITION].revents() {
                     if events.contains(PollFlags::POLLIN) {
-                        let n = posix_read(cancel_pipe_r_fd, &mut cancel_pipe_buf)
+                        let mut signal_buf = [0u8; 1];
+                        let n = posix_read(cancel_pipe_r_fd, &mut signal_buf)
                             .map_err(DetachedError::PosixPipe)?;
-                        let message = &cancel_pipe_buf[..n];
+                        let message = &signal_buf[..n];
 
                         trace!("Got byte from signal pipe: {message:?}");
 
@@ -516,7 +615,24 @@ fn watch_stdin_from_user(
                         }
 
                         if message == THREAD_BEGAN_SIGNAL {
-                            all_fds.remove(USER_POSITION);
+                            watch_user_stdin = false;
+                        }
+                    }
+                }
+
+                if !watch_user_stdin {
+                    continue;
+                }
+
+                if let Some(events) = all_fds[USER_POSITION].revents() {
+                    if events.contains(PollFlags::POLLIN) {
+                        match posix_read(stdin.as_fd(), &mut buffer) {
+                            Ok(n) if n > 0 => {
+                                pending_data.extend_from_slice(&buffer[..n]);
+                            }
+                            Err(nix::errno::Errno::EAGAIN) => {}
+                            Err(e) => return Err(DetachedError::PosixPipe(e)),
+                            _ => {}
                         }
                     }
                 }

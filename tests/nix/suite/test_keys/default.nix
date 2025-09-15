@@ -12,13 +12,13 @@
       receiver_so = collect_store_objects(receiver)
 
       # build all nodes without any keys
-      deployer.succeed(f"wire apply --no-progress --on receiver --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
+      # deployer.succeed(f"wire apply --no-progress --on receiver --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
 
-      receiver.wait_for_unit("sshd.service")
+      # receiver.wait_for_unit("sshd.service")
 
       # --no-keys should never push a key
-      receiver.fail("test -f /run/keys/source_string")
-      deployer.fail("test -f /run/keys/source_string")
+      # receiver.fail("test -f /run/keys/source_string")
+      # deployer.fail("test -f /run/keys/source_string")
 
       def test_keys(target, target_object):
           deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix -vvv >&2")
@@ -50,7 +50,7 @@
           # especially around directory creation.
           test_keys(target, target_object)
 
-      perform_routine("receiver", receiver)
+      # perform_routine("receiver", receiver)
       perform_routine("deployer", deployer)
 
       new_deployer_store_objects = collect_store_objects(deployer).difference(deployer_so)

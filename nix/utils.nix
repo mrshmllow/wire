@@ -19,6 +19,7 @@
               root = ../.;
               fileset = unions [
                 ../wire
+                ../repro
                 ../Cargo.toml
                 ../Cargo.lock
               ];
