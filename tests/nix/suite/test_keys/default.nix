@@ -27,6 +27,7 @@
             ("/run/keys/source_string", "hello_world_source", "root root 600"),
             ("/etc/keys/file", "hello_world_file", "root root 644"),
             ("/home/owner/some/deep/path/command", "hello_world_command", "owner owner 644"),
+            ("/run/keys/environment", "string_from_environment", "root root 600"),
           ]
 
           for path, value, permissions in keys:
@@ -64,6 +65,7 @@
         assert_store_not_posioned(node, "hello_world_source", objects)
         assert_store_not_posioned(node, "hello_world_file", objects)
         assert_store_not_posioned(node, "hello_world_command", objects)
+        assert_store_not_posioned(node, "string_from_environment", objects)
     '';
   };
 }

@@ -52,6 +52,8 @@ pub struct Key {
     pub source: Source,
     #[serde(rename = "uploadAt")]
     pub upload_at: UploadKeyAt,
+    #[serde(default)]
+    pub environment: im::HashMap<String, String>,
 }
 
 fn should_execute(filter: &UploadKeyAt, ctx: &crate::hive::node::Context) -> bool {
@@ -75,10 +77,8 @@ fn get_u32_permission(key: &Key) -> Result<u32, KeyError> {
     u32::from_str_radix(&key.permissions, 8).map_err(KeyError::ParseKeyPermissions)
 }
 
-async fn create_reader(
-    source: &'_ Source,
-) -> Result<Pin<Box<dyn AsyncRead + Send + '_>>, KeyError> {
-    match source {
+async fn create_reader(key: &'_ Key) -> Result<Pin<Box<dyn AsyncRead + Send + '_>>, KeyError> {
+    match &key.source {
         Source::Path(path) => Ok(Box::pin(File::open(path).await.map_err(KeyError::File)?)),
         Source::String(string) => Ok(Box::pin(Cursor::new(string))),
         Source::Command(args) => {
@@ -87,6 +87,8 @@ async fn create_reader(
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
+                .env_clear()
+                .envs(key.environment.clone())
                 .spawn()
                 .map_err(|err| KeyError::CommandSpawnError {
                     error: err,
@@ -113,7 +115,7 @@ async fn create_reader(
 }
 
 async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyError> {
-    let mut reader = create_reader(&key.source).await?;
+    let mut reader = create_reader(&key).await?;
 
     let mut buf = Vec::new();
 
