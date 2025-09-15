@@ -169,6 +169,7 @@ mod tests {
                 permissions: "0600".into(),
                 source: Source::String("hi".into()),
                 upload_at: UploadKeyAt::PreActivation,
+                environment: im::HashMap::new()
             }],
             ..Default::default()
         };
