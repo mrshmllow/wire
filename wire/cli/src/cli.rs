@@ -6,13 +6,14 @@ use clap_verbosity_flag::WarnLevel;
 use lib::SubCommandModifiers;
 use lib::hive::Hive;
 use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
-use std::io::IsTerminal;
 
+use std::io::IsTerminal;
 use std::{
     fmt::{self, Display, Formatter},
     sync::Arc,
 };
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Parser)]
 #[command(
     name = "wire",
@@ -31,9 +32,15 @@ pub struct Cli {
     #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]
     pub path: std::path::PathBuf,
 
+    // Unused until a solution to tracing-indicatif log deadlocking is found...
     /// Hide progress bars. Defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
     #[arg(long, global = true, default_value_t = !std::io::stdin().is_terminal())]
     pub no_progress: bool,
+
+    /// Never accept user input.
+    /// Defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
+    #[arg(long, global = true, default_value_t = !std::io::stdin().is_terminal())]
+    pub non_interactive: bool,
 
     /// Show trace logs
     #[arg(long, global = true, default_value_t = false)]
@@ -172,6 +179,7 @@ impl ToSubCommandModifiers for Cli {
     fn to_subcommand_modifiers(&self) -> SubCommandModifiers {
         SubCommandModifiers {
             show_trace: self.show_trace,
+            non_interactive: self.non_interactive,
         }
     }
 }
