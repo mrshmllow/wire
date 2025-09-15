@@ -11,7 +11,7 @@ use tokio::{
     sync::Mutex,
     task::JoinSet,
 };
-use tracing::{debug, info, trace};
+use tracing::{debug, trace};
 
 use crate::{
     Target,
