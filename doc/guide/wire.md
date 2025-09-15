@@ -10,7 +10,7 @@ comment: true
   </a>
 
   <a href="https://hydra.althaea.zone/jobset/wire/main">
-    <img alt="Hydra Build & VM Test Status" src="https://img.shields.io/github/checks-status/wires-org/wire/main?style=flat-square&label=Hydra%20Build%20%26%20VM%20Tests">
+    <img alt="BuildBot Build & VM Test Status" src="https://img.shields.io/github/checks-status/wires-org/wire/main?style=flat-square&label=BuildBot%20Build%20%26%20VM%20Tests">
   </a>
 
   <a href="https://github.com/wires-org/wire/actions/workflows/pages.yml?query=branch%3Amain">
