@@ -346,9 +346,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn default_order() {
+    async fn order_build_locally() {
         let path = get_test_path!();
-        let mut node = Node::default();
+        let mut node = Node {
+            build_remotely: false,
+            ..Default::default()
+        };
         let name = &Name(function_name!().into());
         let executor = GoalExecutor::new(Context::create_test_context(path, name, &mut node));
         let steps = get_steps(executor);
