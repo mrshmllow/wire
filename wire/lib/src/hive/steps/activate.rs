@@ -5,7 +5,7 @@ use tracing::{error, info, instrument, warn};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip, elevated::ElevatedCommand},
+    commands::{ChildOutputMode, WireCommand, WireCommandChip, get_elevated_command},
     errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
@@ -57,13 +57,14 @@ impl ExecuteStep for SwitchToConfigurationStep {
         ) {
             info!("Setting profiles in anticipation for switch-to-configuration {goal}");
 
-            let mut command = ElevatedCommand::spawn_new(
+            let mut command = get_elevated_command(
                 if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                     None
                 } else {
                     Some(&ctx.node.target)
                 },
                 ChildOutputMode::Nix,
+                ctx.modifiers,
             )
             .await?;
             let command_string =
@@ -83,13 +84,14 @@ impl ExecuteStep for SwitchToConfigurationStep {
 
         // should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
 
-        let mut command = ElevatedCommand::spawn_new(
+        let mut command = get_elevated_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                 None
             } else {
                 Some(&ctx.node.target)
             },
             ChildOutputMode::Nix,
+            ctx.modifiers,
         )
         .await?;
 
@@ -119,9 +121,12 @@ impl ExecuteStep for SwitchToConfigurationStep {
                     return Ok(());
                 }
 
-                let mut command =
-                    ElevatedCommand::spawn_new(Some(&ctx.node.target), ChildOutputMode::Nix)
-                        .await?;
+                let mut command = get_elevated_command(
+                    Some(&ctx.node.target),
+                    ChildOutputMode::Nix,
+                    ctx.modifiers,
+                )
+                .await?;
 
                 warn!("Rebooting {name}!", name = ctx.name);
 

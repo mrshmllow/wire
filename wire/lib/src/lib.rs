@@ -24,6 +24,7 @@ pub mod errors;
 #[derive(Debug, Default, Clone, Copy)]
 pub struct SubCommandModifiers {
     pub show_trace: bool,
+    pub non_interactive: bool,
 }
 
 pub enum EvalGoal<'a> {

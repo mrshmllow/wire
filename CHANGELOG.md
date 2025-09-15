@@ -13,11 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Wire will refuse to reboot localhost. Keys post-activation will be applied
   after rebooting!
 - Most errors now have error codes and documentation links.
+- Added the global flag `--non-interactive`.
 - Wire now creates its own PTY to interface with openssh's PTY to allow for
   interactive sudo authentication on both remote and local targets.
 
   Using a wheel user as `deployment.target.user` is no longer necessary
   (if you like entering your password a lot).
+
+  A non-wheel user combined with `--non-interactive` will likely fail.
 
 ### Changed
 

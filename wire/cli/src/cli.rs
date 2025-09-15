@@ -13,6 +13,7 @@ use std::{
     sync::Arc,
 };
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Parser)]
 #[command(
     name = "wire",
@@ -35,6 +36,11 @@ pub struct Cli {
     /// Hide progress bars. Defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
     #[arg(long, global = true, default_value_t = !std::io::stdin().is_terminal())]
     pub no_progress: bool,
+
+    /// Never accept user input.
+    /// Defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
+    #[arg(long, global = true, default_value_t = !std::io::stdin().is_terminal())]
+    pub non_interactive: bool,
 
     /// Show trace logs
     #[arg(long, global = true, default_value_t = false)]
@@ -173,6 +179,7 @@ impl ToSubCommandModifiers for Cli {
     fn to_subcommand_modifiers(&self) -> SubCommandModifiers {
         SubCommandModifiers {
             show_trace: self.show_trace,
+            non_interactive: self.non_interactive,
         }
     }
 }

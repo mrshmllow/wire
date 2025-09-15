@@ -16,8 +16,7 @@ use tracing::{debug, trace};
 
 use crate::HiveLibError;
 use crate::commands::common::push;
-use crate::commands::elevated::ElevatedCommand;
-use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
+use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip, get_elevated_command};
 use crate::errors::KeyError;
 use crate::hive::node::{
     Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, should_apply_locally,
@@ -203,18 +202,19 @@ impl ExecuteStep for KeysStep {
 
         let buf = msg.encode_to_vec();
 
-        let mut command = ElevatedCommand::spawn_new(
+        let mut command = get_elevated_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                 None
             } else {
                 Some(&ctx.node.target)
             },
             ChildOutputMode::Raw,
+            ctx.modifiers,
         )
         .await?;
         let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
-        let child = command.run_command(command_string, true, ctx.clobber_lock.clone())?;
+        let mut child = command.run_command(command_string, true, ctx.clobber_lock.clone())?;
 
         child.write_stdin(buf).await?;
 

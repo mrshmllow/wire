@@ -1,17 +1,17 @@
 use std::{
     collections::{HashMap, VecDeque},
-    process::{ExitStatus, Stdio},
+    process::ExitStatus,
     sync::Arc,
 };
 
 use itertools::Itertools;
 use tokio::{
-    io::BufReader,
-    process::{Child, Command},
+    io::{AsyncWriteExt, BufReader},
+    process::{Child, ChildStdin, Command},
     sync::Mutex,
     task::JoinSet,
 };
-use tracing::debug;
+use tracing::{debug, info, trace};
 
 use crate::{
     Target,
@@ -31,6 +31,7 @@ pub(crate) struct NonElevatedChildChip {
     child: Child,
     joinset: JoinSet<()>,
     command_string: String,
+    stdin: ChildStdin,
 }
 
 impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
@@ -77,7 +78,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
         );
 
         command.arg(&command_string);
-        command.stdin(Stdio::null());
+        command.stdin(std::process::Stdio::piped());
         command.stderr(std::process::Stdio::piped());
         command.stdout(std::process::Stdio::piped());
         command.kill_on_drop(true);
@@ -87,6 +88,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
         let mut child = command.spawn().unwrap();
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+        let stdin = child.stdin.take().unwrap();
 
         let stdout_handle = child
             .stdout
@@ -118,6 +120,7 @@ impl<'t> WireCommand<'t> for NonElevatedCommand<'t> {
             child,
             joinset,
             command_string,
+            stdin,
         })
     }
 }
@@ -153,8 +156,9 @@ impl WireCommandChip for NonElevatedChildChip {
         Ok((status, stdout))
     }
 
-    /// Unimplemented until needed.
-    async fn write_stdin(&self, _data: Vec<u8>) -> Result<(), HiveLibError> {
+    async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError> {
+        trace!("Writing {} bytes", data.len());
+        self.stdin.write_all(&data).await.unwrap();
         Ok(())
     }
 }
@@ -170,15 +174,13 @@ pub async fn handle_io<R>(
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
+        info!("Got line: {line:?}");
+        let log = output_mode.trace(line.clone());
+
         if always_collect {
             let mut queue = collection.lock().await;
             queue.push_front(line);
-            continue;
-        }
-
-        let log = output_mode.trace(line.clone());
-
-        if let Some(NixLog::Internal(log)) = log {
+        } else if let Some(NixLog::Internal(log)) = log {
             if let Some(message) = log.get_errorish_message() {
                 let mut queue = collection.lock().await;
                 queue.push_front(message);

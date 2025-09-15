@@ -319,7 +319,7 @@ impl WireCommandChip for ElevatedChildChip {
         })
     }
 
-    async fn write_stdin(&self, data: Vec<u8>) -> Result<(), HiveLibError> {
+    async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError> {
         trace!("Writing {} bytes to stdin", data.len());
 
         posix_write(&self.write_stdin_pipe_w, &data)
