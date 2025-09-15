@@ -174,7 +174,7 @@ pub async fn handle_io<R>(
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
-        info!("Got line: {line:?}");
+        trace!("Got line: {line:?}");
         let log = output_mode.trace(line.clone());
 
         if always_collect {
