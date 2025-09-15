@@ -115,7 +115,7 @@ async fn create_reader(key: &'_ Key) -> Result<Pin<Box<dyn AsyncRead + Send + '_
 }
 
 async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyError> {
-    let mut reader = create_reader(&key).await?;
+    let mut reader = create_reader(key).await?;
 
     let mut buf = Vec::new();
 
