@@ -65,7 +65,7 @@ fn should_execute(filter: &UploadKeyAt, ctx: &crate::hive::node::Context) -> boo
         (filter, &ctx.goal),
         (UploadKeyAt::NoFilter, Goal::Keys)
             | (
-                _,
+                UploadKeyAt::PreActivation | UploadKeyAt::PostActivation,
                 Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch)
             )
     )
@@ -144,9 +144,11 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyEr
     ))
 }
 
+#[derive(Debug, PartialEq)]
 pub struct KeysStep {
     pub filter: UploadKeyAt,
 }
+#[derive(Debug, PartialEq)]
 pub struct PushKeyAgentStep;
 
 impl Display for KeysStep {
@@ -237,7 +239,7 @@ impl ExecuteStep for KeysStep {
 #[async_trait]
 impl ExecuteStep for PushKeyAgentStep {
     fn should_execute(&self, ctx: &Context) -> bool {
-        should_execute(&UploadKeyAt::NoFilter, ctx)
+        should_execute(&UploadKeyAt::PreActivation, ctx)
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

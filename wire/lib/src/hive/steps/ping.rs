@@ -8,6 +8,7 @@ use crate::{
     hive::node::{Context, ExecuteStep, should_apply_locally},
 };
 
+#[derive(Debug, PartialEq)]
 pub struct PingStep;
 
 impl Display for PingStep {

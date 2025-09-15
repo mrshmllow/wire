@@ -54,5 +54,5 @@ pub fn make_flake_sandbox(path: &Path) -> Result<TempDir, io::Error> {
 }
 
 pub fn get_clobber_lock() -> Arc<Mutex<()>> {
-    return Arc::new(Mutex::new(()));
+    Arc::new(Mutex::new(()))
 }

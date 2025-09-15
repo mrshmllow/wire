@@ -11,6 +11,7 @@ use crate::{
     hive::node::{Context, ExecuteStep, Goal},
 };
 
+#[derive(Debug, PartialEq)]
 pub struct Step;
 
 impl Display for Step {

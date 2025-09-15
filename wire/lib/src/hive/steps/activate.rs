@@ -10,6 +10,7 @@ use crate::{
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
 
+#[derive(Debug, PartialEq)]
 pub struct SwitchToConfigurationStep;
 
 impl Display for SwitchToConfigurationStep {

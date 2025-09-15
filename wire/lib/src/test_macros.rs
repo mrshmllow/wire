@@ -7,7 +7,7 @@ macro_rules! function_name {
         }
         let name = type_name_of(f);
         // closure for async functions
-        &name[..name.len() - 3].trim_end_matches("::{{closure}}")
+        &name[..name.len() - 3]
     }};
 }
 
@@ -16,7 +16,11 @@ macro_rules! get_test_path {
     () => {{
         let mut path: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
         let full_name = $crate::function_name!();
-        let function_name = full_name.split("::").last().unwrap();
+        let function_name = full_name
+            .trim_end_matches("::{{closure}}")
+            .split("::")
+            .last()
+            .unwrap();
         path.push(function_name);
         path
     }};

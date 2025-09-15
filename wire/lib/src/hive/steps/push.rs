@@ -9,7 +9,9 @@ use crate::{
     hive::node::{Context, ExecuteStep, Goal, should_apply_locally},
 };
 
+#[derive(Debug, PartialEq)]
 pub struct EvaluatedOutputStep;
+#[derive(Debug, PartialEq)]
 pub struct BuildOutputStep;
 
 impl Display for EvaluatedOutputStep {
