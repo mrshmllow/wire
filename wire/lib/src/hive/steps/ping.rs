@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use async_trait::async_trait;
 use tracing::{info, instrument, warn};
 
 use crate::{
@@ -8,16 +7,16 @@ use crate::{
     hive::node::{Context, ExecuteStep, should_apply_locally},
 };
 
-pub struct PingStep;
+#[derive(Debug, PartialEq)]
+pub struct Ping;
 
-impl Display for PingStep {
+impl Display for Ping {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Ping node")
     }
 }
 
-#[async_trait]
-impl ExecuteStep for PingStep {
+impl ExecuteStep for Ping {
     fn should_execute(&self, ctx: &Context) -> bool {
         !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
     }

@@ -1,5 +1,5 @@
 #![allow(clippy::missing_errors_doc)]
-use async_trait::async_trait;
+use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,11 +12,14 @@ use crate::SubCommandModifiers;
 use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::NetworkError;
-use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
-use crate::hive::steps::ping::PingStep;
+use crate::hive::steps::build::Build;
+use crate::hive::steps::evaluate::Evaluate;
+use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
+use crate::hive::steps::ping::Ping;
+use crate::hive::steps::push::{PushBuildOutput, PushEvaluatedOutput};
 
 use super::HiveLibError;
-use super::steps::activate::SwitchToConfigurationStep;
+use super::steps::activate::SwitchToConfiguration;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
@@ -39,6 +42,29 @@ impl Default for Target {
             user: "root".into(),
             port: 22,
             current_host: 0,
+        }
+    }
+}
+
+#[cfg(test)]
+impl<'a> Context<'a> {
+    fn create_test_context(
+        hivepath: std::path::PathBuf,
+        name: &'a Name,
+        node: &'a mut Node,
+    ) -> Self {
+        use crate::test_support::get_clobber_lock;
+
+        Context {
+            name,
+            node,
+            hivepath,
+            modifiers: SubCommandModifiers::default(),
+            no_keys: false,
+            state: StepState::default(),
+            goal: Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch),
+            reboot: false,
+            clobber_lock: get_clobber_lock(),
         }
     }
 }
@@ -170,8 +196,8 @@ pub enum Goal {
     Keys,
 }
 
-#[async_trait]
-pub trait ExecuteStep: Send + Sync + Display {
+#[enum_dispatch]
+pub(crate) trait ExecuteStep: Send + Sync + Display + std::fmt::Debug {
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError>;
 
     fn should_execute(&self, context: &Context) -> bool;
@@ -196,8 +222,26 @@ pub struct Context<'a> {
     pub clobber_lock: Arc<Mutex<()>>,
 }
 
+#[enum_dispatch(ExecuteStep)]
+#[derive(Debug, PartialEq)]
+enum Step {
+    Ping,
+    PushKeyAgent,
+    Keys,
+    Evaluate,
+    PushEvaluatedOutput,
+    Build,
+    PushBuildOutput,
+    SwitchToConfiguration,
+}
+
+impl Display for Step {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Hello")
+    }
+}
 pub struct GoalExecutor<'a> {
-    steps: Vec<Box<dyn ExecuteStep>>,
+    steps: Vec<Step>,
     context: Context<'a>,
 }
 
@@ -205,20 +249,20 @@ impl<'a> GoalExecutor<'a> {
     pub fn new(context: Context<'a>) -> Self {
         Self {
             steps: vec![
-                Box::new(PingStep),
-                Box::new(PushKeyAgentStep),
-                Box::new(KeysStep {
+                Step::Ping(Ping),
+                Step::PushKeyAgent(PushKeyAgent),
+                Step::Keys(Keys {
                     filter: UploadKeyAt::NoFilter,
                 }),
-                Box::new(KeysStep {
+                Step::Keys(Keys {
                     filter: UploadKeyAt::PreActivation,
                 }),
-                Box::new(super::steps::evaluate::Step),
-                Box::new(super::steps::push::EvaluatedOutputStep),
-                Box::new(super::steps::build::Step),
-                Box::new(super::steps::push::BuildOutputStep),
-                Box::new(SwitchToConfigurationStep),
-                Box::new(KeysStep {
+                Step::Evaluate(super::steps::evaluate::Evaluate),
+                Step::PushEvaluatedOutput(super::steps::push::PushEvaluatedOutput),
+                Step::Build(super::steps::build::Build),
+                Step::PushBuildOutput(super::steps::push::PushBuildOutput),
+                Step::SwitchToConfiguration(SwitchToConfiguration),
+                Step::Keys(Keys {
                     filter: UploadKeyAt::PostActivation,
                 }),
             ],
@@ -232,7 +276,9 @@ impl<'a> GoalExecutor<'a> {
             .steps
             .iter()
             .filter(|step| step.should_execute(&self.context))
-            .inspect(|step| trace!("Will execute step `{step}` for {}", self.context.name))
+            .inspect(|step| {
+                trace!("Will execute step `{step}` for {}", self.context.name);
+            })
             .collect::<Vec<_>>();
 
         for step in steps {
@@ -250,8 +296,16 @@ impl<'a> GoalExecutor<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{get_test_path, hive::Hive, test_support::get_clobber_lock};
+    use crate::{function_name, get_test_path, hive::Hive, test_support::get_clobber_lock};
     use std::{collections::HashMap, env};
+
+    fn get_steps(goal_executor: GoalExecutor) -> std::vec::Vec<Step> {
+        goal_executor
+            .steps
+            .into_iter()
+            .filter(|step| step.should_execute(&goal_executor.context))
+            .collect::<Vec<_>>()
+    }
 
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
@@ -275,6 +329,141 @@ mod tests {
                 nodes,
                 schema: Hive::SCHEMA_VERSION
             }
+        );
+    }
+
+    #[tokio::test]
+    async fn order_build_locally() {
+        let path = get_test_path!();
+        let mut node = Node {
+            build_remotely: false,
+            ..Default::default()
+        };
+        let name = &Name(function_name!().into());
+        let executor = GoalExecutor::new(Context::create_test_context(path, name, &mut node));
+        let steps = get_steps(executor);
+
+        assert_eq!(
+            steps,
+            vec![
+                Ping.into(),
+                PushKeyAgent.into(),
+                Keys {
+                    filter: UploadKeyAt::PreActivation
+                }
+                .into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::build::Build.into(),
+                crate::hive::steps::push::PushBuildOutput.into(),
+                SwitchToConfiguration.into(),
+                Keys {
+                    filter: UploadKeyAt::PostActivation
+                }
+                .into()
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn order_keys_only() {
+        let path = get_test_path!();
+        let mut node = Node::default();
+        let name = &Name(function_name!().into());
+        let mut context = Context::create_test_context(path, name, &mut node);
+
+        context.goal = Goal::Keys;
+
+        let executor = GoalExecutor::new(context);
+        let steps = get_steps(executor);
+
+        assert_eq!(
+            steps,
+            vec![
+                Ping.into(),
+                PushKeyAgent.into(),
+                Keys {
+                    filter: UploadKeyAt::NoFilter
+                }
+                .into(),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn order_build_only() {
+        let path = get_test_path!();
+        let mut node = Node::default();
+        let name = &Name(function_name!().into());
+        let mut context = Context::create_test_context(path, name, &mut node);
+
+        context.goal = Goal::Build;
+
+        let executor = GoalExecutor::new(context);
+        let steps = get_steps(executor);
+
+        assert_eq!(
+            steps,
+            vec![
+                Ping.into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::build::Build.into(),
+                crate::hive::steps::push::PushBuildOutput.into(),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn order_push_only() {
+        let path = get_test_path!();
+        let mut node = Node::default();
+        let name = &Name(function_name!().into());
+        let mut context = Context::create_test_context(path, name, &mut node);
+
+        context.goal = Goal::Push;
+
+        let executor = GoalExecutor::new(context);
+        let steps = get_steps(executor);
+
+        assert_eq!(
+            steps,
+            vec![
+                Ping.into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::push::PushEvaluatedOutput.into(),
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn order_remote_build() {
+        let path = get_test_path!();
+        let mut node = Node {
+            build_remotely: true,
+            ..Default::default()
+        };
+
+        let name = &Name(function_name!().into());
+        let executor = GoalExecutor::new(Context::create_test_context(path, name, &mut node));
+        let steps = get_steps(executor);
+
+        assert_eq!(
+            steps,
+            vec![
+                Ping.into(),
+                PushKeyAgent.into(),
+                Keys {
+                    filter: UploadKeyAt::PreActivation
+                }
+                .into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::push::PushEvaluatedOutput.into(),
+                crate::hive::steps::build::Build.into(),
+                SwitchToConfiguration.into(),
+                Keys {
+                    filter: UploadKeyAt::PostActivation
+                }
+                .into()
+            ]
         );
     }
 }

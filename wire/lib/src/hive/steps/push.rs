@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use async_trait::async_trait;
 use tracing::{instrument, warn};
 
 use crate::{
@@ -9,25 +8,27 @@ use crate::{
     hive::node::{Context, ExecuteStep, Goal, should_apply_locally},
 };
 
-pub struct EvaluatedOutputStep;
-pub struct BuildOutputStep;
+#[derive(Debug, PartialEq)]
+pub struct PushEvaluatedOutput;
+#[derive(Debug, PartialEq)]
+pub struct PushBuildOutput;
 
-impl Display for EvaluatedOutputStep {
+impl Display for PushEvaluatedOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Push the evaluated output")
     }
 }
 
-impl Display for BuildOutputStep {
+impl Display for PushBuildOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Push the build output")
     }
 }
 
-#[async_trait]
-impl ExecuteStep for EvaluatedOutputStep {
+impl ExecuteStep for PushEvaluatedOutput {
     fn should_execute(&self, ctx: &Context) -> bool {
-        !matches!(ctx.goal, Goal::Keys) && ctx.node.build_remotely
+        !matches!(ctx.goal, Goal::Keys)
+            && (ctx.node.build_remotely | matches!(ctx.goal, Goal::Push))
     }
 
     #[instrument(skip_all, name = "push_eval")]
@@ -49,8 +50,7 @@ impl ExecuteStep for EvaluatedOutputStep {
     }
 }
 
-#[async_trait]
-impl ExecuteStep for BuildOutputStep {
+impl ExecuteStep for PushBuildOutput {
     fn should_execute(&self, ctx: &Context) -> bool {
         if matches!(ctx.goal, Goal::Keys | Goal::Push) {
             // skip if we are not building
