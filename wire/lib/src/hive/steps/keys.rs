@@ -69,7 +69,6 @@ async fn create_reader(key: &'_ Key) -> Result<Pin<Box<dyn AsyncRead + Send + '_
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
-                .env_clear()
                 .envs(key.environment.clone())
                 .spawn()
                 .map_err(|err| KeyError::CommandSpawnError {
