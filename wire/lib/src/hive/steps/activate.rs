@@ -75,7 +75,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
             let _ = child
                 .wait_till_success()
                 .await
-                .map_err(HiveLibError::DetachedError)?;
+                .map_err(HiveLibError::CommandError)?;
 
             info!("Set system profile");
         }
@@ -137,7 +137,7 @@ impl ExecuteStep for SwitchToConfigurationStep {
                 let _ = reboot
                     .wait_till_success()
                     .await
-                    .map_err(HiveLibError::DetachedError)?;
+                    .map_err(HiveLibError::CommandError)?;
 
                 info!("Rebooted {name}, waiting to reconnect...", name = ctx.name);
 

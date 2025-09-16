@@ -16,7 +16,7 @@ use std::{
 };
 use tracing::{debug, error, info, trace};
 
-use crate::errors::DetachedError;
+use crate::errors::CommandError;
 use crate::nix_log::NixLog;
 use crate::{
     commands::{ChildOutputMode, WireCommand, WireCommandChip},
@@ -47,7 +47,7 @@ pub(crate) struct InteractiveChildChip {
     command_string: String,
 
     completion_status: Arc<CompletionStatus>,
-    stdout_handle: JoinHandle<Result<(), DetachedError>>,
+    stdout_handle: JoinHandle<Result<(), CommandError>>,
 }
 
 struct StdinTermiosAttrGuard(Termios);
@@ -120,7 +120,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             // safe as `fd` is dropped well before `pty_pair.master`
             let fd = unsafe { std::os::unix::io::BorrowedFd::borrow_raw(fd) };
             let mut termios = tcgetattr(fd)
-                .map_err(|x| HiveLibError::DetachedError(DetachedError::TermAttrs(x)))?;
+                .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
 
             termios.local_flags &= !LocalFlags::ECHO;
             // Key agent does not work well without canonical mode
@@ -129,7 +129,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             termios.local_flags &= !LocalFlags::ISIG;
 
             tcsetattr(fd, SetArg::TCSANOW, &termios)
-                .map_err(|x| HiveLibError::DetachedError(DetachedError::TermAttrs(x)))?;
+                .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
         }
 
         let command_string = &format!(
@@ -169,11 +169,11 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         }
 
         let clobber_guard = clobber_lock.lock().unwrap();
-        let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::DetachedError)?;
+        let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
         let child = pty_pair
             .slave
             .spawn_command(command)
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::PortablePty(x)))?;
+            .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
 
         // Release any handles owned by the slave: we don't need it now
         // that we've spawned the child.
@@ -182,11 +182,11 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         let reader = pty_pair
             .master
             .try_clone_reader()
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::PortablePty(x)))?;
+            .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
         let master_writer = pty_pair
             .master
             .take_writer()
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::PortablePty(x)))?;
+            .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
 
         let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let (began_tx, began_rx) = mpsc::channel::<()>();
@@ -208,9 +208,9 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         };
 
         let (write_stdin_pipe_r, write_stdin_pipe_w) =
-            posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+            posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
         let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
-            posix_pipe().map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+            posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
         std::thread::spawn(move || {
             watch_stdin_from_user(&cancel_stdin_pipe_r, master_writer, &write_stdin_pipe_r)
@@ -220,7 +220,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
 
         let () = began_rx
             .recv()
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::RecvError(x)))?;
+            .map_err(|x| HiveLibError::CommandError(CommandError::RecvError(x)))?;
 
         drop(clobber_guard);
 
@@ -228,12 +228,12 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             trace!("Sending THREAD_BEGAN_SIGNAL");
 
             posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
-                .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+                .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
         } else {
             trace!("Sending THREAD_QUIT_SIGNAL");
 
             posix_write(&cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
-                .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+                .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
         }
 
         Ok(InteractiveChildChip {
@@ -281,21 +281,21 @@ impl CompletionStatus {
 impl WireCommandChip for InteractiveChildChip {
     type ExitStatus = portable_pty::ExitStatus;
 
-    async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
+    async fn wait_till_success(mut self) -> Result<Self::ExitStatus, CommandError> {
         info!("trying to grab status...");
 
         drop(self.write_stdin_pipe_w);
 
         let exit_status = tokio::task::spawn_blocking(move || self.child.wait())
             .await
-            .map_err(DetachedError::JoinError)?
-            .map_err(DetachedError::WaitForStatus)?;
+            .map_err(CommandError::JoinError)?
+            .map_err(CommandError::WaitForStatus)?;
 
         debug!("exit_status: {exit_status:?}");
 
         self.stdout_handle
             .join()
-            .map_err(|_| DetachedError::ThreadPanic)??;
+            .map_err(|_| CommandError::ThreadPanic)??;
         let success = self.completion_status.wait();
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
@@ -308,7 +308,7 @@ impl WireCommandChip for InteractiveChildChip {
         let mut collection = self.error_collection.lock().unwrap();
         let logs = collection.make_contiguous().join("\n");
 
-        Err(DetachedError::CommandFailed {
+        Err(CommandError::CommandFailed {
             command_ran: self.command_string,
             logs,
             code: format!("code {}", exit_status.exit_code()),
@@ -323,22 +323,22 @@ impl WireCommandChip for InteractiveChildChip {
         trace!("Writing {} bytes to stdin", data.len());
 
         posix_write(&self.write_stdin_pipe_w, &data)
-            .map_err(|x| HiveLibError::DetachedError(DetachedError::PosixPipe(x)))?;
+            .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
         Ok(())
     }
 }
 
 impl StdinTermiosAttrGuard {
-    fn new() -> Result<Self, DetachedError> {
+    fn new() -> Result<Self, CommandError> {
         let stdin = std::io::stdin();
         let stdin_fd = stdin.as_fd();
 
-        let mut termios = tcgetattr(stdin_fd).map_err(DetachedError::TermAttrs)?;
+        let mut termios = tcgetattr(stdin_fd).map_err(CommandError::TermAttrs)?;
         let original_termios = termios.clone();
 
         termios.local_flags &= !(LocalFlags::ECHO | LocalFlags::ICANON);
-        tcsetattr(stdin_fd, SetArg::TCSANOW, &termios).map_err(DetachedError::TermAttrs)?;
+        tcsetattr(stdin_fd, SetArg::TCSANOW, &termios).map_err(CommandError::TermAttrs)?;
 
         Ok(StdinTermiosAttrGuard(original_termios))
     }
@@ -363,7 +363,7 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
     Ok(command)
 }
 
-fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), DetachedError> {
+fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), CommandError> {
     let WatchStdinArguments {
         began_tx,
         mut reader,
@@ -421,8 +421,8 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Detac
                     } else {
                         stdout
                             .write_all(new_data.as_bytes())
-                            .map_err(DetachedError::WritingClientStdout)?;
-                        stdout.flush().map_err(DetachedError::WritingClientStdout)?;
+                            .map_err(CommandError::WritingClientStdout)?;
+                        stdout.flush().map_err(CommandError::WritingClientStdout)?;
                     }
                 }
             }
@@ -450,7 +450,7 @@ fn watch_stdin_from_user(
     cancel_pipe_r: &OwnedFd,
     mut master_writer: MasterWriter,
     write_pipe_r: &OwnedFd,
-) -> Result<(), DetachedError> {
+) -> Result<(), CommandError> {
     const WRITER_POSITION: usize = 0;
     const SIGNAL_POSITION: usize = 1;
     const USER_POSITION: usize = 2;
@@ -478,13 +478,13 @@ fn watch_stdin_from_user(
                         if events.contains(PollFlags::POLLIN) {
                             trace!("Got stdin from user...");
                             let n = posix_read(user_stdin_fd, &mut buffer)
-                                .map_err(DetachedError::PosixPipe)?;
+                                .map_err(CommandError::PosixPipe)?;
                             master_writer
                                 .write_all(&buffer[..n])
-                                .map_err(DetachedError::WritingMasterStdout)?;
+                                .map_err(CommandError::WritingMasterStdout)?;
                             master_writer
                                 .flush()
-                                .map_err(DetachedError::WritingMasterStdout)?;
+                                .map_err(CommandError::WritingMasterStdout)?;
                         }
                     }
                 }
@@ -493,20 +493,20 @@ fn watch_stdin_from_user(
                     if events.contains(PollFlags::POLLIN) {
                         trace!("Got stdin from writer...");
                         let n = posix_read(write_pipe_r, &mut buffer)
-                            .map_err(DetachedError::PosixPipe)?;
+                            .map_err(CommandError::PosixPipe)?;
                         master_writer
                             .write_all(&buffer[..n])
-                            .map_err(DetachedError::WritingMasterStdout)?;
+                            .map_err(CommandError::WritingMasterStdout)?;
                         master_writer
                             .flush()
-                            .map_err(DetachedError::WritingMasterStdout)?;
+                            .map_err(CommandError::WritingMasterStdout)?;
                     }
                 }
 
                 if let Some(events) = all_fds[SIGNAL_POSITION].revents() {
                     if events.contains(PollFlags::POLLIN) {
                         let n = posix_read(cancel_pipe_r_fd, &mut cancel_pipe_buf)
-                            .map_err(DetachedError::PosixPipe)?;
+                            .map_err(CommandError::PosixPipe)?;
                         let message = &cancel_pipe_buf[..n];
 
                         trace!("Got byte from signal pipe: {message:?}");

@@ -80,7 +80,7 @@ pub enum ActivationError {
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("failed to run switch-to-configuration {0} on node {1}")]
-    SwitchToConfigurationError(SwitchToConfigurationGoal, Name, #[source] DetachedError),
+    SwitchToConfigurationError(SwitchToConfigurationGoal, Name, #[source] CommandError),
 }
 
 #[derive(Debug, Diagnostic, Error)]
@@ -96,7 +96,7 @@ pub enum NetworkError {
     HostUnreachable {
         host: String,
         #[source]
-        source: DetachedError,
+        source: CommandError,
     },
 
     #[diagnostic(
@@ -144,16 +144,16 @@ pub enum HiveInitializationError {
 }
 
 #[derive(Debug, Diagnostic, Error)]
-pub enum DetachedError {
+pub enum CommandError {
     #[diagnostic(
-        code(wire::detached::TermAttrs),
+        code(wire::command::TermAttrs),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to set PTY attrs")]
     TermAttrs(#[source] nix::errno::Errno),
 
     #[diagnostic(
-        code(wire::detached::PosixPipe),
+        code(wire::command::PosixPipe),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("There was an error in regards to a pipe")]
@@ -162,21 +162,21 @@ pub enum DetachedError {
     /// Error wrapped around `portable_pty`'s anyhow
     /// errors
     #[diagnostic(
-        code(wire::detached::PortablePty),
+        code(wire::command::PortablePty),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("There was an error from the portable_pty crate")]
     PortablePty(#[source] anyhow::Error),
 
     #[diagnostic(
-        code(wire::detached::Joining),
+        code(wire::command::Joining),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to join on some tokio task")]
     JoinError(#[source] JoinError),
 
     #[diagnostic(
-        code(wire::detached::WaitForStatus),
+        code(wire::command::WaitForStatus),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to wait for the child's status")]
@@ -191,21 +191,21 @@ pub enum DetachedError {
     NoHandle,
 
     #[diagnostic(
-        code(wire::detached::WritingClientStdout),
+        code(wire::command::WritingClientStdout),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to write to client stdout.")]
     WritingClientStdout(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::detached::WritingMasterStdin),
+        code(wire::command::WritingMasterStdin),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to write to PTY master stdout.")]
     WritingMasterStdout(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::detached::Recv),
+        code(wire::command::Recv),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("please create an issue!"),
     )]
@@ -213,7 +213,7 @@ pub enum DetachedError {
     RecvError(#[source] RecvError),
 
     #[diagnostic(
-        code(wire::detached::ThreadPanic),
+        code(wire::command::ThreadPanic),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("please create an issue!"),
     )]
@@ -221,7 +221,7 @@ pub enum DetachedError {
     ThreadPanic,
 
     #[diagnostic(
-        code(wire::detached::CommandFailed),
+        code(wire::command::CommandFailed),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("`nix` commands are filtered, run with -vvv to view all"),
     )]
@@ -250,7 +250,7 @@ pub enum HiveLibError {
 
     #[error(transparent)]
     #[diagnostic(transparent)]
-    DetachedError(DetachedError),
+    CommandError(CommandError),
 
     #[error("Failed to apply key {}", .0)]
     KeyError(
@@ -268,7 +268,7 @@ pub enum HiveLibError {
     NixBuildError {
         name: Name,
         #[source]
-        source: DetachedError,
+        source: CommandError,
     },
 
     #[diagnostic(
@@ -280,7 +280,7 @@ pub enum HiveLibError {
         name: Name,
         path: String,
         #[source]
-        error: Box<DetachedError>,
+        error: Box<CommandError>,
     },
 
     #[diagnostic(code(wire::Evaluate))]
@@ -289,6 +289,6 @@ pub enum HiveLibError {
         attribute: String,
 
         #[source]
-        source: DetachedError,
+        source: CommandError,
     },
 }

@@ -15,7 +15,7 @@ use tracing::{debug, trace};
 
 use crate::{
     commands::{ChildOutputMode, WireCommand, WireCommandChip},
-    errors::{DetachedError, HiveLibError},
+    errors::{CommandError, HiveLibError},
     hive::node::Target,
     nix_log::NixLog,
 };
@@ -93,11 +93,11 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
         let stdout_handle = child
             .stdout
             .take()
-            .ok_or(HiveLibError::DetachedError(DetachedError::NoHandle))?;
+            .ok_or(HiveLibError::CommandError(CommandError::NoHandle))?;
         let stderr_handle = child
             .stderr
             .take()
-            .ok_or(HiveLibError::DetachedError(DetachedError::NoHandle))?;
+            .ok_or(HiveLibError::CommandError(CommandError::NoHandle))?;
 
         let mut joinset = JoinSet::new();
 
@@ -128,7 +128,7 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
 impl WireCommandChip for NonInteractiveChildChip {
     type ExitStatus = (ExitStatus, String);
 
-    async fn wait_till_success(mut self) -> Result<Self::ExitStatus, DetachedError> {
+    async fn wait_till_success(mut self) -> Result<Self::ExitStatus, CommandError> {
         let status = self.child.wait().await.unwrap();
         let _ = self.joinset.join_all().await;
 
@@ -140,7 +140,7 @@ impl WireCommandChip for NonInteractiveChildChip {
                 .make_contiguous()
                 .join("\n");
 
-            return Err(DetachedError::CommandFailed {
+            return Err(CommandError::CommandFailed {
                 command_ran: self.command_string,
                 logs,
                 code: match status.code() {

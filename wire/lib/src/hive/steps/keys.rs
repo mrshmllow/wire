@@ -228,7 +228,7 @@ impl ExecuteStep for KeysStep {
         let status = child
             .wait_till_success()
             .await
-            .map_err(HiveLibError::DetachedError)?;
+            .map_err(HiveLibError::CommandError)?;
 
         debug!("status: {status:?}");
 
