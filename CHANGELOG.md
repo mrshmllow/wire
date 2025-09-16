@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Nix logs with the `Talkative` and `Chatty` level have been moved to
   `tracing_level::TRACE`.
 - Error messages have been greatly improved.
+
+### Fixed
+
 - Some bugs to do with step execution were fixed.
 
 ## [0.4.0] - 2025-07-10
