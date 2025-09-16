@@ -1,5 +1,5 @@
 #![allow(clippy::missing_errors_doc)]
-use async_trait::async_trait;
+use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -12,11 +12,14 @@ use crate::SubCommandModifiers;
 use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::NetworkError;
-use crate::hive::steps::keys::{Key, KeysStep, PushKeyAgentStep, UploadKeyAt};
-use crate::hive::steps::ping::PingStep;
+use crate::hive::steps::build::Build;
+use crate::hive::steps::evaluate::Evaluate;
+use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
+use crate::hive::steps::ping::Ping;
+use crate::hive::steps::push::{PushBuildOutput, PushEvaluatedOutput};
 
 use super::HiveLibError;
-use super::steps::activate::SwitchToConfigurationStep;
+use super::steps::activate::SwitchToConfiguration;
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
@@ -193,8 +196,8 @@ pub enum Goal {
     Keys,
 }
 
-#[async_trait]
-pub trait ExecuteStep: Send + Sync + Display + std::fmt::Debug {
+#[enum_dispatch]
+pub(crate) trait ExecuteStep: Send + Sync + Display + std::fmt::Debug {
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError>;
 
     fn should_execute(&self, context: &Context) -> bool;
@@ -219,33 +222,25 @@ pub struct Context<'a> {
     pub clobber_lock: Arc<Mutex<()>>,
 }
 
+#[allow(clippy::too_many_lines)]
+#[enum_dispatch(ExecuteStep)]
 #[derive(Debug, PartialEq)]
 enum Step {
-    Ping(PingStep),
-    PushKeyAgent(PushKeyAgentStep),
-    Keys(KeysStep),
-    Evaluate(super::steps::evaluate::Step),
-    PushEvaluatedOutput(super::steps::push::EvaluatedOutputStep),
-    Build(super::steps::build::Step),
-    PushBuildOutput(super::steps::push::BuildOutputStep),
-    SwitchToConfiguration(SwitchToConfigurationStep),
+    Ping,
+    PushKeyAgent,
+    Keys,
+    Evaluate,
+    PushEvaluatedOutput,
+    Build,
+    PushBuildOutput,
+    SwitchToConfiguration,
 }
 
-impl Step {
-    pub fn as_step(&self) -> &dyn ExecuteStep {
-        match self {
-            Self::Ping(step) => step,
-            Self::PushKeyAgent(step) => step,
-            Self::Keys(step) => step,
-            Self::Evaluate(step) => step,
-            Self::PushEvaluatedOutput(step) => step,
-            Self::Build(step) => step,
-            Self::PushBuildOutput(step) => step,
-            Self::SwitchToConfiguration(step) => step,
-        }
+impl Display for Step {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Hello")
     }
 }
-
 pub struct GoalExecutor<'a> {
     steps: Vec<Step>,
     context: Context<'a>,
@@ -255,20 +250,20 @@ impl<'a> GoalExecutor<'a> {
     pub fn new(context: Context<'a>) -> Self {
         Self {
             steps: vec![
-                Step::Ping(PingStep),
-                Step::PushKeyAgent(PushKeyAgentStep),
-                Step::Keys(KeysStep {
+                Step::Ping(Ping),
+                Step::PushKeyAgent(PushKeyAgent),
+                Step::Keys(Keys {
                     filter: UploadKeyAt::NoFilter,
                 }),
-                Step::Keys(KeysStep {
+                Step::Keys(Keys {
                     filter: UploadKeyAt::PreActivation,
                 }),
-                Step::Evaluate(super::steps::evaluate::Step),
-                Step::PushEvaluatedOutput(super::steps::push::EvaluatedOutputStep),
-                Step::Build(super::steps::build::Step),
-                Step::PushBuildOutput(super::steps::push::BuildOutputStep),
-                Step::SwitchToConfiguration(SwitchToConfigurationStep),
-                Step::Keys(KeysStep {
+                Step::Evaluate(super::steps::evaluate::Evaluate),
+                Step::PushEvaluatedOutput(super::steps::push::PushEvaluatedOutput),
+                Step::Build(super::steps::build::Build),
+                Step::PushBuildOutput(super::steps::push::PushBuildOutput),
+                Step::SwitchToConfiguration(SwitchToConfiguration),
+                Step::Keys(Keys {
                     filter: UploadKeyAt::PostActivation,
                 }),
             ],
@@ -281,7 +276,6 @@ impl<'a> GoalExecutor<'a> {
         let steps = self
             .steps
             .iter()
-            .map(Step::as_step)
             .filter(|step| step.should_execute(&self.context))
             .inspect(|step| {
                 trace!("Will execute step `{step}` for {}", self.context.name);
@@ -310,7 +304,7 @@ mod tests {
         goal_executor
             .steps
             .into_iter()
-            .filter(|step| step.as_step().should_execute(&goal_executor.context))
+            .filter(|step| step.should_execute(&goal_executor.context))
             .collect::<Vec<_>>()
     }
 
@@ -353,18 +347,20 @@ mod tests {
         assert_eq!(
             steps,
             vec![
-                Step::Ping(PingStep),
-                Step::PushKeyAgent(PushKeyAgentStep),
-                Step::Keys(KeysStep {
+                Ping.into(),
+                PushKeyAgent.into(),
+                Keys {
                     filter: UploadKeyAt::PreActivation
-                }),
-                Step::Evaluate(crate::hive::steps::evaluate::Step),
-                Step::Build(crate::hive::steps::build::Step),
-                Step::PushBuildOutput(crate::hive::steps::push::BuildOutputStep),
-                Step::SwitchToConfiguration(SwitchToConfigurationStep),
-                Step::Keys(KeysStep {
+                }
+                .into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::build::Build.into(),
+                crate::hive::steps::push::PushBuildOutput.into(),
+                SwitchToConfiguration.into(),
+                Keys {
                     filter: UploadKeyAt::PostActivation
-                })
+                }
+                .into()
             ]
         );
     }
@@ -384,11 +380,12 @@ mod tests {
         assert_eq!(
             steps,
             vec![
-                Step::Ping(PingStep),
-                Step::PushKeyAgent(PushKeyAgentStep),
-                Step::Keys(KeysStep {
+                Ping.into(),
+                PushKeyAgent.into(),
+                Keys {
                     filter: UploadKeyAt::NoFilter
-                }),
+                }
+                .into(),
             ]
         );
     }
@@ -408,10 +405,10 @@ mod tests {
         assert_eq!(
             steps,
             vec![
-                Step::Ping(PingStep),
-                Step::Evaluate(crate::hive::steps::evaluate::Step),
-                Step::Build(crate::hive::steps::build::Step),
-                Step::PushBuildOutput(crate::hive::steps::push::BuildOutputStep),
+                Ping.into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::build::Build.into(),
+                crate::hive::steps::push::PushBuildOutput.into(),
             ]
         );
     }
@@ -431,9 +428,9 @@ mod tests {
         assert_eq!(
             steps,
             vec![
-                Step::Ping(PingStep),
-                Step::Evaluate(crate::hive::steps::evaluate::Step),
-                Step::PushEvaluatedOutput(crate::hive::steps::push::EvaluatedOutputStep),
+                Ping.into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::push::PushEvaluatedOutput.into(),
             ]
         );
     }
@@ -453,18 +450,20 @@ mod tests {
         assert_eq!(
             steps,
             vec![
-                Step::Ping(PingStep),
-                Step::PushKeyAgent(PushKeyAgentStep),
-                Step::Keys(KeysStep {
+                Ping.into(),
+                PushKeyAgent.into(),
+                Keys {
                     filter: UploadKeyAt::PreActivation
-                }),
-                Step::Evaluate(crate::hive::steps::evaluate::Step),
-                Step::PushEvaluatedOutput(crate::hive::steps::push::EvaluatedOutputStep),
-                Step::Build(crate::hive::steps::build::Step),
-                Step::SwitchToConfiguration(SwitchToConfigurationStep),
-                Step::Keys(KeysStep {
+                }
+                .into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::push::PushEvaluatedOutput.into(),
+                crate::hive::steps::build::Build.into(),
+                SwitchToConfiguration.into(),
+                Keys {
                     filter: UploadKeyAt::PostActivation
-                })
+                }
+                .into()
             ]
         );
     }

@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use futures::future::join_all;
 use prost::Message;
 use serde::{Deserialize, Serialize};
@@ -128,26 +127,25 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyEr
 }
 
 #[derive(Debug, PartialEq)]
-pub struct KeysStep {
+pub struct Keys {
     pub filter: UploadKeyAt,
 }
 #[derive(Debug, PartialEq)]
-pub struct PushKeyAgentStep;
+pub struct PushKeyAgent;
 
-impl Display for KeysStep {
+impl Display for Keys {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Upload key @ {:?}", self.filter)
     }
 }
 
-impl Display for PushKeyAgentStep {
+impl Display for PushKeyAgent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Push the key agent")
     }
 }
 
-#[async_trait]
-impl ExecuteStep for KeysStep {
+impl ExecuteStep for Keys {
     fn should_execute(&self, ctx: &Context) -> bool {
         if ctx.no_keys {
             return false;
@@ -232,8 +230,7 @@ impl ExecuteStep for KeysStep {
     }
 }
 
-#[async_trait]
-impl ExecuteStep for PushKeyAgentStep {
+impl ExecuteStep for PushKeyAgent {
     fn should_execute(&self, ctx: &Context) -> bool {
         if ctx.no_keys {
             return false;

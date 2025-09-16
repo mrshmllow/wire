@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use async_trait::async_trait;
 use tracing::{error, info, instrument, warn};
 
 use crate::{
@@ -11,9 +10,9 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq)]
-pub struct SwitchToConfigurationStep;
+pub struct SwitchToConfiguration;
 
-impl Display for SwitchToConfigurationStep {
+impl Display for SwitchToConfiguration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Switch to configuration")
     }
@@ -38,8 +37,38 @@ pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
     result
 }
 
-#[async_trait]
-impl ExecuteStep for SwitchToConfigurationStep {
+async fn set_profile(
+    goal: SwitchToConfigurationGoal,
+    built_path: &String,
+    ctx: &Context<'_>,
+) -> Result<(), HiveLibError> {
+    info!("Setting profiles in anticipation for switch-to-configuration {goal}");
+
+    let mut command = get_elevated_command(
+        if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+            None
+        } else {
+            Some(&ctx.node.target)
+        },
+        ChildOutputMode::Nix,
+        ctx.modifiers,
+    )
+    .await?;
+    let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
+
+    let child = command.run_command(command_string, false, ctx.clobber_lock.clone())?;
+
+    let _ = child
+        .wait_till_success()
+        .await
+        .map_err(HiveLibError::DetachedError)?;
+
+    info!("Set system profile");
+
+    Ok(())
+}
+
+impl ExecuteStep for SwitchToConfiguration {
     fn should_execute(&self, ctx: &Context) -> bool {
         matches!(ctx.goal, Goal::SwitchToConfiguration(..))
     }
@@ -56,34 +85,10 @@ impl ExecuteStep for SwitchToConfigurationStep {
             goal,
             SwitchToConfigurationGoal::DryActivate | SwitchToConfigurationGoal::Boot
         ) {
-            info!("Setting profiles in anticipation for switch-to-configuration {goal}");
-
-            let mut command = get_elevated_command(
-                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                    None
-                } else {
-                    Some(&ctx.node.target)
-                },
-                ChildOutputMode::Nix,
-                ctx.modifiers,
-            )
-            .await?;
-            let command_string =
-                format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
-
-            let child = command.run_command(command_string, false, ctx.clobber_lock.clone())?;
-
-            let _ = child
-                .wait_till_success()
-                .await
-                .map_err(HiveLibError::DetachedError)?;
-
-            info!("Set system profile");
+            set_profile(*goal, built_path, ctx).await?;
         }
 
         info!("Running switch-to-configuration {goal}");
-
-        // should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()),
 
         let mut command = get_elevated_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {

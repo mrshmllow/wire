@@ -1,6 +1,5 @@
 use std::fmt::Display;
 
-use async_trait::async_trait;
 use tracing::instrument;
 
 use crate::{
@@ -10,16 +9,15 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq)]
-pub struct Step;
+pub struct Evaluate;
 
-impl Display for Step {
+impl Display for Evaluate {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Evaluate the node")
     }
 }
 
-#[async_trait]
-impl ExecuteStep for Step {
+impl ExecuteStep for Evaluate {
     fn should_execute(&self, ctx: &Context) -> bool {
         !matches!(ctx.goal, Goal::Keys)
     }
