@@ -237,9 +237,19 @@ enum Step {
 
 impl Display for Step {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Hello")
+        match self {
+            Self::Ping(step) => step.fmt(f),
+            Self::PushKeyAgent(step) => step.fmt(f),
+            Self::Keys(step) => step.fmt(f),
+            Self::Evaluate(step) => step.fmt(f),
+            Self::PushEvaluatedOutput(step) => step.fmt(f),
+            Self::Build(step) => step.fmt(f),
+            Self::PushBuildOutput(step) => step.fmt(f),
+            Self::SwitchToConfiguration(step) => step.fmt(f),
+        }
     }
 }
+
 pub struct GoalExecutor<'a> {
     steps: Vec<Step>,
     context: Context<'a>,
