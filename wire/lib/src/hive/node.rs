@@ -222,7 +222,6 @@ pub struct Context<'a> {
     pub clobber_lock: Arc<Mutex<()>>,
 }
 
-#[allow(clippy::too_many_lines)]
 #[enum_dispatch(ExecuteStep)]
 #[derive(Debug, PartialEq)]
 enum Step {
