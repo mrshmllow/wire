@@ -14,14 +14,14 @@ const DOCS_URL: &str = "https://wire.althaea.zone/reference/errors.html";
 #[derive(Debug, Diagnostic, Error)]
 pub enum KeyError {
     #[diagnostic(
-        code(wire::Key::File),
+        code(wire::key::File),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("error reading file")]
     File(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::Key::SpawningCommand),
+        code(wire::key::SpawningCommand),
         help("Ensure wire has the correct $PATH for this command"),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
@@ -38,7 +38,7 @@ pub enum KeyError {
     },
 
     #[diagnostic(
-        code(wire::Key::Resolving),
+        code(wire::key::Resolving),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Error resolving key command child process")]
@@ -51,21 +51,21 @@ pub enum KeyError {
     },
 
     #[diagnostic(
-        code(wire::Key::CommandExit),
+        code(wire::key::CommandExit),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("key command failed with status {}: {}", .0,.1)]
     CommandError(ExitStatus, String),
 
     #[diagnostic(
-        code(wire::Key::Empty),
+        code(wire::key::Empty),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Command list empty")]
     Empty,
 
     #[diagnostic(
-        code(wire::Key::ParseKeyPermissions),
+        code(wire::key::ParseKeyPermissions),
         help("Refer to the documentation for the format of key file permissions."),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
@@ -76,7 +76,7 @@ pub enum KeyError {
 #[derive(Debug, Diagnostic, Error)]
 pub enum ActivationError {
     #[diagnostic(
-        code(wire::Activation::SwitchToConfiguration),
+        code(wire::activation::SwitchToConfiguration),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("failed to run switch-to-configuration {0} on node {1}")]
@@ -86,7 +86,7 @@ pub enum ActivationError {
 #[derive(Debug, Diagnostic, Error)]
 pub enum NetworkError {
     #[diagnostic(
-        code(wire::Network::HostUnreachable),
+        code(wire::network::HostUnreachable),
         help(
             "If you failed due to a fault in DNS, note that a node can have multiple targets defined."
         ),
@@ -100,14 +100,14 @@ pub enum NetworkError {
     },
 
     #[diagnostic(
-        code(wire::Network::HostUnreachableAfterReboot),
+        code(wire::network::HostUnreachableAfterReboot),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to get regain connection to {0} after activation.")]
     HostUnreachableAfterReboot(String),
 
     #[diagnostic(
-        code(wire::Network::HostsExhausted),
+        code(wire::network::HostsExhausted),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Ran out of contactable hosts")]
@@ -117,7 +117,7 @@ pub enum NetworkError {
 #[derive(Debug, Diagnostic, Error)]
 pub enum HiveInitializationError {
     #[diagnostic(
-        code(wire::HiveInit::NoHiveFound),
+        code(wire::hive_init::NoHiveFound),
         help(
             "Double check the path is correct. You can adjust the hive path with `--path` when the hive lies outside of the CWD."
         ),
@@ -127,7 +127,7 @@ pub enum HiveInitializationError {
     NoHiveFound(PathBuf),
 
     #[diagnostic(
-        code(wire::HiveInit::Parse),
+        code(wire::hive_init::Parse),
         help("Please create an issue!"),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
@@ -135,7 +135,7 @@ pub enum HiveInitializationError {
     ParseEvaluateError(#[source] serde_json::Error),
 
     #[diagnostic(
-        code(wire::HiveInit::NodeDoesNotExist),
+        code(wire::hive_init::NodeDoesNotExist),
         help("Please create an issue!"),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
@@ -146,14 +146,14 @@ pub enum HiveInitializationError {
 #[derive(Debug, Diagnostic, Error)]
 pub enum DetachedError {
     #[diagnostic(
-        code(wire::Detached::TermAttrs),
+        code(wire::detached::TermAttrs),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to set PTY attrs")]
     TermAttrs(#[source] nix::errno::Errno),
 
     #[diagnostic(
-        code(wire::Detached::PosixPipe),
+        code(wire::detached::PosixPipe),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("There was an error in regards to a pipe")]
@@ -162,28 +162,28 @@ pub enum DetachedError {
     /// Error wrapped around `portable_pty`'s anyhow
     /// errors
     #[diagnostic(
-        code(wire::Detached::PortablePty),
+        code(wire::detached::PortablePty),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("There was an error from the portable_pty crate")]
     PortablePty(#[source] anyhow::Error),
 
     #[diagnostic(
-        code(wire::Detached::Joining),
+        code(wire::detached::Joining),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to join on some tokio task")]
     JoinError(#[source] JoinError),
 
     #[diagnostic(
-        code(wire::Detached::WaitForStatus),
+        code(wire::detached::WaitForStatus),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to wait for the child's status")]
     WaitForStatus(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::Detatched::NoHandle),
+        code(wire::detatched::NoHandle),
         help("This should never happen, please create an issue!"),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
@@ -191,21 +191,21 @@ pub enum DetachedError {
     NoHandle,
 
     #[diagnostic(
-        code(wire::Detached::WritingClientStdout),
+        code(wire::detached::WritingClientStdout),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to write to client stdout.")]
     WritingClientStdout(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::Detached::WritingMasterStdin),
+        code(wire::detached::WritingMasterStdin),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to write to PTY master stdout.")]
     WritingMasterStdout(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::Detached::Recv),
+        code(wire::detached::Recv),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("please create an issue!"),
     )]
@@ -213,7 +213,7 @@ pub enum DetachedError {
     RecvError(#[source] RecvError),
 
     #[diagnostic(
-        code(wire::Detached::ThreadPanic),
+        code(wire::detached::ThreadPanic),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("please create an issue!"),
     )]
@@ -221,7 +221,7 @@ pub enum DetachedError {
     ThreadPanic,
 
     #[diagnostic(
-        code(wire::Detached::CommandFailed),
+        code(wire::detached::CommandFailed),
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("`nix` commands are filtered, run with -vvv to view all"),
     )]
