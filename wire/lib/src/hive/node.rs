@@ -4,7 +4,6 @@ use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, trace};
@@ -232,10 +231,8 @@ enum Step {
     SwitchToConfiguration(SwitchToConfigurationStep),
 }
 
-impl Deref for Step {
-    type Target = dyn ExecuteStep;
-
-    fn deref(&self) -> &Self::Target {
+impl Step {
+    pub fn as_step(&self) -> &dyn ExecuteStep {
         match self {
             Self::Ping(step) => step,
             Self::PushKeyAgent(step) => step,
@@ -284,21 +281,18 @@ impl<'a> GoalExecutor<'a> {
         let steps = self
             .steps
             .iter()
+            .map(Step::as_step)
             .filter(|step| step.should_execute(&self.context))
             .inspect(|step| {
-                trace!(
-                    "Will execute step `{}` for {}",
-                    step.to_string(),
-                    self.context.name
-                );
+                trace!("Will execute step `{step}` for {}", self.context.name);
             })
             .collect::<Vec<_>>();
 
         for step in steps {
-            info!("Executing step `{}`", step.to_string());
+            info!("Executing step `{step}`");
 
             step.execute(&mut self.context).await.inspect_err(|_| {
-                error!("Failed to execute `{}`", step.to_string());
+                error!("Failed to execute `{step}`");
             })?;
         }
 
@@ -316,7 +310,7 @@ mod tests {
         goal_executor
             .steps
             .into_iter()
-            .filter(|step| step.should_execute(&goal_executor.context))
+            .filter(|step| step.as_step().should_execute(&goal_executor.context))
             .collect::<Vec<_>>()
     }
 
