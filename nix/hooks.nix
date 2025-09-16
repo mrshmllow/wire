@@ -17,6 +17,7 @@
             };
             clippy = {
               enable = true;
+              settings.extraArgs = "--tests";
               packageOverrides = {
                 inherit (toolchain) cargo clippy;
               };

@@ -28,6 +28,14 @@ makeHive {
         group = "owner";
         destDir = "/home/owner/some/deep/path";
       };
+      environment = {
+        source = [
+          "bash"
+          "-c"
+          "echo $ENV_STRING"
+        ];
+        environment.ENV_STRING = "string_from_environment";
+      };
     };
 
     users.groups."owner" = { };

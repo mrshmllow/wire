@@ -11,7 +11,7 @@ use crate::{
         interactive::{InteractiveChildChip, InteractiveCommand},
         noninteractive::{NonInteractiveChildChip, NonInteractiveCommand},
     },
-    errors::{DetachedError, HiveLibError},
+    errors::{CommandError, HiveLibError},
     hive::node::Target,
     nix_log::{Action, Internal, NixLog, Trace},
 };
@@ -76,7 +76,7 @@ pub(crate) trait WireCommand<'target>: Sized {
 pub(crate) trait WireCommandChip {
     type ExitStatus;
 
-    async fn wait_till_success(self) -> Result<Self::ExitStatus, DetachedError>;
+    async fn wait_till_success(self) -> Result<Self::ExitStatus, CommandError>;
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError>;
 }
 
@@ -119,7 +119,7 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
         }
     }
 
-    async fn wait_till_success(self) -> Result<Self::ExitStatus, DetachedError> {
+    async fn wait_till_success(self) -> Result<Self::ExitStatus, CommandError> {
         match self {
             Self::Left(left) => left.wait_till_success().await.map(Either::Left),
             Self::Right(right) => right.wait_till_success().await.map(Either::Right),

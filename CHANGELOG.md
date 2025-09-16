@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   A non-wheel user combined with `--non-interactive` will likely fail.
 
+- Added `deployment.keys.environment` to give key commands environment variables.
+
 ### Changed
 
 - `wire inspect/show --json` will no longer use a pretty print.

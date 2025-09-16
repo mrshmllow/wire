@@ -103,7 +103,7 @@ mod tests {
     use im::vector;
 
     use crate::{
-        errors::DetachedError,
+        errors::CommandError,
         get_test_path,
         hive::steps::keys::{Key, Source, UploadKeyAt},
         test_support::{get_clobber_lock, make_flake_sandbox},
@@ -169,6 +169,7 @@ mod tests {
                 permissions: "0600".into(),
                 source: Source::String("hi".into()),
                 upload_at: UploadKeyAt::PreActivation,
+                environment: im::HashMap::new()
             }],
             ..Default::default()
         };
@@ -229,7 +230,7 @@ mod tests {
         assert_matches!(
             Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
             Err(HiveLibError::NixEvalError {
-                source: DetachedError::CommandFailed {
+                source: CommandError::CommandFailed {
                     logs,
                     ..
                 },
@@ -246,7 +247,7 @@ mod tests {
         assert_matches!(
             Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
             Err(HiveLibError::NixEvalError {
-                source: DetachedError::CommandFailed {
+                source: CommandError::CommandFailed {
                     logs,
                     ..
                 },
