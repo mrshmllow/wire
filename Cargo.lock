@@ -611,7 +611,7 @@ dependencies = [
 
 [[package]]
 name = "key_agent"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "nix 0.30.1",
@@ -628,7 +628,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "lib"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "derive_more",
@@ -1971,7 +1971,7 @@ dependencies = [
 
 [[package]]
 name = "wire"
-version = "0.5.0"
+version = "0.6.0"
 dependencies = [
  "clap",
  "clap-markdown",
