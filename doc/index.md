@@ -8,11 +8,11 @@ hero:
   # tagline: My great project tagline
   actions:
     - theme: brand
-      text: Read Guide
-      link: /guide/wire
+      text: Read Tutorial
+      link: /guide/tutorial
     - theme: alt
-      text: Reference
-      link: /reference/cli
+      text: Guides
+      link: /reference/guide
 
 features:
   - title: Parallelism

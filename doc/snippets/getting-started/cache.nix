@@ -1,11 +1,12 @@
 {
   nix.settings = {
     substituters = [
-      "https://wires.cachix.org"
+      "https://cache.nixos.org"
+      "https://cache.althaea.zone"
       # ...
     ];
     trusted-public-keys = [
-      "wires.cachix.org-1:7XQoG91Bh+Aj01mAJi77Ui5AYyM1uEyV0h1wOomqjpk="
+      "cache.althaea.zone:BelRpa863X9q3Y+AOnl5SM7QFzre3qb+5I7g2s/mqHI="
       # ...
     ];
   };

@@ -27,7 +27,8 @@ export default withMermaid(
       // https://vitepress.dev/reference/default-theme-config
       nav: [
         { text: "Home", link: "/" },
-        { text: "Guide", link: "/guide/wire" },
+        { text: "Tutorial", link: "/tutorial/overview" },
+        { text: "Guides", link: "/guide/wire" },
         { text: "Reference", link: "/reference/cli" },
         {
           text: pkg.version,
@@ -41,6 +42,24 @@ export default withMermaid(
       ],
 
       sidebar: {
+        "/tutorial/": [
+          {
+            text: "Tutorial",
+            items: [{ text: "Overview", link: "/tutorial/overview" }],
+          },
+          {
+            text: "Part One",
+            items: [
+              { text: "Installation", link: "/tutorial/installation" },
+              { text: "Preparing Repo & Shell", link: "/tutorial/repo-setup" },
+              {
+                text: "Creating a Virtual Machine",
+                link: "/tutorial/vm-setup",
+              },
+              { text: "Basic Hive", link: "/tutorial/basic-hive" },
+            ],
+          },
+        ],
         "/guide/": [
           {
             text: "Introduction",
@@ -107,6 +126,8 @@ export default withMermaid(
             "hive.nix": "vscode-icons:file-type-nix",
             "flake.nix": "vscode-icons:file-type-nix",
             "module.nix": "vscode-icons:file-type-nix",
+            "vm.nix": "vscode-icons:file-type-nix",
+            "shell.nix": "vscode-icons:file-type-nix",
             home: localIconLoader(import.meta.url, "../assets/homemanager.svg"),
             ".conf": "vscode-icons:file-type-config",
           },
