@@ -32,6 +32,10 @@
           '';
         };
 
+        wire-unwrapped-dev = self'.packages.wire-unwrapped.overrideAttrs {
+          CARGO_PROFILE = "dev";
+        };
+
         wire = pkgs.symlinkJoin {
           name = "wire";
           paths = [ self'.packages.wire-unwrapped ];
@@ -54,6 +58,14 @@
             wrapProgram $out/bin/wire --set WIRE_KEY_AGENT_${cleanSystem system} ${self'.packages.agent}
           '';
           meta.mainProgram = "wire";
+        };
+
+        wire-dev = self'.packages.wire.overrideAttrs {
+          paths = [ self'.packages.wire-unwrapped-dev ];
+        };
+
+        wire-small-dev = self'.packages.wire-small.overrideAttrs {
+          paths = [ self'.packages.wire-unwrapped-dev ];
         };
 
         wire-dignostics-md = self'.packages.wire-unwrapped.overrideAttrs {
