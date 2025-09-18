@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Logs with level `tracing_level::TRACE` are no compiled-out of release builds
+- Logs with level `tracing_level::TRACE` are compiled out of release builds
 
 ## [0.5.0] - 2025-09-18
 
