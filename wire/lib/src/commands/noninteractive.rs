@@ -14,6 +14,7 @@ use tokio::{
 use tracing::{debug, trace};
 
 use crate::{
+    SubCommandModifiers,
     commands::{ChildOutputMode, WireCommand, WireCommandChip},
     errors::{CommandError, HiveLibError},
     hive::node::Target,
@@ -23,6 +24,7 @@ use crate::{
 pub(crate) struct NonInteractiveCommand<'t> {
     target: Option<&'t Target>,
     output_mode: Arc<ChildOutputMode>,
+    modifiers: SubCommandModifiers,
 }
 
 pub(crate) struct NonInteractiveChildChip {
@@ -42,12 +44,14 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
     async fn spawn_new(
         target: Option<&'t Target>,
         output_mode: ChildOutputMode,
+        modifiers: SubCommandModifiers,
     ) -> Result<Self, crate::errors::HiveLibError> {
         let output_mode = Arc::new(output_mode);
 
         Ok(Self {
             target,
             output_mode,
+            modifiers,
         })
     }
 
@@ -59,7 +63,7 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
         _clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         let mut command = if let Some(target) = self.target {
-            create_sync_ssh_command(target)?
+            create_sync_ssh_command(target, self.modifiers)?
         } else {
             let mut command = Command::new("sh");
 
@@ -193,12 +197,11 @@ pub async fn handle_io<R>(
     debug!("io_handler: goodbye!");
 }
 
-fn create_sync_ssh_command(target: &Target) -> Result<Command, HiveLibError> {
+fn create_sync_ssh_command(
+    target: &Target,
+    modifiers: SubCommandModifiers,
+) -> Result<Command, HiveLibError> {
     let mut command = Command::new("ssh");
-
-    command.args(["-l", target.user.as_ref()]);
-    command.arg(target.get_preffered_host()?.as_ref());
-    command.args(["-p", &target.port.to_string()]);
-
+    command.args(target.create_ssh_args(modifiers)?);
     Ok(command)
 }
