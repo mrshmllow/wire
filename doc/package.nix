@@ -2,7 +2,7 @@
   lib,
   nixosOptionsDoc,
   runCommand,
-  wire-small,
+  wire-small-dev,
   wire-dignostics-md,
   nix,
   nodejs,
@@ -42,7 +42,7 @@ stdenv.mkDerivation (finalAttrs: {
   inherit (pkg) version;
   pname = pkg.name;
   nativeBuildInputs = [
-    wire-small
+    wire-small-dev
     nodejs
     pnpm.configHook
     nix
