@@ -54,7 +54,7 @@ impl Target {
         let mut vector = vec![
             "-l".to_string(),
             self.user.to_string(),
-            self.get_preffered_host()?.to_string(),
+            self.get_preferred_host()?.to_string(),
             "-p".to_string(),
             self.port.to_string(),
         ];
