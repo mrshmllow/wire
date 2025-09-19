@@ -42,7 +42,7 @@ impl Target {
             if modifiers.ssh_accept_host {
                 "-o StrictHostKeyChecking=no"
             } else {
-                "-o StrictHostKeyChecking=yes"
+                "-o StrictHostKeyChecking=accept-new"
             }
         )
     }
