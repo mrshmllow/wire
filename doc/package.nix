@@ -2,7 +2,7 @@
   lib,
   nixosOptionsDoc,
   runCommand,
-  wire-small,
+  wire-small-dev,
   wire-dignostics-md,
   nix,
   nodejs,
@@ -42,7 +42,7 @@ stdenv.mkDerivation (finalAttrs: {
   inherit (pkg) version;
   pname = pkg.name;
   nativeBuildInputs = [
-    wire-small
+    wire-small-dev
     nodejs
     pnpm.configHook
     nix
@@ -51,7 +51,7 @@ stdenv.mkDerivation (finalAttrs: {
   pnpmDeps = pnpm.fetchDeps {
     inherit (finalAttrs) pname version src;
     fetcherVersion = 1;
-    hash = "sha256-mOlPgdZrG9UeDVLDNl6aCnlpb6/V5kkf4u1/W6ROEmQ=";
+    hash = "sha256-/zIHc3tgqJD+Xw3H3I6Y/gSYuqYYQfQJnjA6Sk4m1rw=";
   };
   patchPhase = ''
     cat ${optionsDoc} >> ./reference/module.md

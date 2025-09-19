@@ -49,6 +49,7 @@ pub struct Cli {
     #[arg(long, global = true, default_value_t = false)]
     pub show_trace: bool,
 
+    #[cfg(debug_assertions)]
     #[arg(long, hide = true, global = true)]
     pub markdown_help: bool,
 }

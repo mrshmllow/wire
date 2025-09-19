@@ -38,6 +38,7 @@ async fn main() -> Result<()> {
     let modifiers = args.to_subcommand_modifiers();
     setup_logging(args.verbose, clobber_lock.clone());
 
+    #[cfg(debug_assertions)]
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();
         return Ok(());

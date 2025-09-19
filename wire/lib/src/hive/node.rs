@@ -112,7 +112,7 @@ impl<'a> Context<'a> {
 }
 
 impl Target {
-    pub fn get_preffered_host(&self) -> Result<&Arc<str>, HiveLibError> {
+    pub fn get_preferred_host(&self) -> Result<&Arc<str>, HiveLibError> {
         self.hosts
             .get(self.current_host)
             .ok_or(HiveLibError::NetworkError(NetworkError::HostsExhausted))
@@ -180,7 +180,7 @@ impl Node {
         modifiers: SubCommandModifiers,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<(), HiveLibError> {
-        let host = self.target.get_preffered_host()?;
+        let host = self.target.get_preferred_host()?;
 
         let command_string = format!(
             "nix --extra-experimental-features nix-command \

@@ -38,12 +38,12 @@ jobs:
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Upgrade Hash
-        if: ${{ needs.check-changes.outputs.docs-pnpm == 'true' }}
-        run: bash ./doc/upgrade.sh
       - name: clippy --fix
         run: nix develop --print-build-logs -v --command cargo clippy --fix
       - name: nix fmt
         run: nix develop --print-build-logs -v --command pre-commit run --all-files
         continue-on-error: true
+      - name: Upgrade Hash
+        if: ${{ needs.check-changes.outputs.docs-pnpm == 'true' }}
+        run: bash ./doc/upgrade.sh
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

@@ -24,7 +24,7 @@ impl ExecuteStep for Ping {
     #[instrument(skip_all, name = "ping")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         loop {
-            info!("Attempting host {}", ctx.node.target.get_preffered_host()?);
+            info!("Attempting host {}", ctx.node.target.get_preferred_host()?);
 
             if ctx
                 .node
@@ -38,7 +38,7 @@ impl ExecuteStep for Ping {
             warn!(
                 "Failed to ping host {}",
                 // ? will take us out if we ran out of hosts
-                ctx.node.target.get_preffered_host()?
+                ctx.node.target.get_preferred_host()?
             );
             ctx.node.target.host_failed();
         }
