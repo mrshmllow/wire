@@ -411,7 +411,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
                     }
 
                     if began {
-                        let log = output_mode.trace(line.to_string());
+                        let log = output_mode.trace(line.to_string(), false);
 
                         if let Some(NixLog::Internal(log)) = log {
                             if let Some(message) = log.get_errorish_message() {

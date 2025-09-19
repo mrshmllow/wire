@@ -40,9 +40,9 @@ impl Target {
             "-p {} {}",
             self.port,
             if modifiers.ssh_accept_host {
-                "-o StrictHostKeyChecking no"
+                "-o StrictHostKeyChecking=no"
             } else {
-                "-o StrictHostKeyChecking accept-new"
+                "-o StrictHostKeyChecking=yes"
             }
         )
     }
@@ -61,12 +61,14 @@ impl Target {
 
         vector.extend([
             "-o".to_string(),
-            "StrictHostKeyChecking".to_string(),
-            if modifiers.ssh_accept_host {
-                "no"
-            } else {
-                "accept-new"
-            }
+            format!(
+                "StrictHostKeyChecking {}",
+                if modifiers.ssh_accept_host {
+                    "no"
+                } else {
+                    "accept-new"
+                }
+            )
             .to_string(),
         ]);
 

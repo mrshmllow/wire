@@ -109,13 +109,13 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
             stderr_handle,
             self.output_mode.clone(),
             error_collection.clone(),
-            false,
+            true,
         ));
         joinset.spawn(handle_io(
             stdout_handle,
             self.output_mode.clone(),
             stdout_collection.clone(),
-            true,
+            false,
         ));
 
         Ok(NonInteractiveChildChip {
@@ -171,17 +171,19 @@ pub async fn handle_io<R>(
     reader: R,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
-    always_collect: bool,
+    is_error: bool,
 ) where
     R: tokio::io::AsyncRead + Unpin,
 {
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
-        trace!("Got line: {line:?}");
-        let log = output_mode.trace(line.clone());
+        trace!("Got line: {line:?}, on is_error: {is_error:#?}");
+        let log = output_mode.trace(line.clone(), is_error);
 
-        if always_collect {
+        trace!("{log:#?}");
+
+        if !is_error {
             let mut queue = collection.lock().await;
             queue.push_front(line);
         } else if let Some(NixLog::Internal(log)) = log {
