@@ -19,7 +19,7 @@ impl Display for SwitchToConfiguration {
 }
 
 pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
-    let host = ctx.node.target.get_preffered_host()?;
+    let host = ctx.node.target.get_preferred_host()?;
     let mut result = ctx.node.ping(ctx.clobber_lock.clone()).await;
 
     for num in 0..2 {
@@ -154,12 +154,12 @@ impl ExecuteStep for SwitchToConfiguration {
                 error!(
                     "Failed to get regain connection to {name} via {host} after reboot.",
                     name = ctx.name,
-                    host = ctx.node.target.get_preffered_host()?
+                    host = ctx.node.target.get_preferred_host()?
                 );
 
                 return Err(HiveLibError::NetworkError(
                     NetworkError::HostUnreachableAfterReboot(
-                        ctx.node.target.get_preffered_host()?.to_string(),
+                        ctx.node.target.get_preferred_host()?.to_string(),
                     ),
                 ));
             }
@@ -186,12 +186,12 @@ impl ExecuteStep for SwitchToConfiguration {
                 error!(
                     "Failed to get regain connection to {name} via {host} after {goal} activation.",
                     name = ctx.name,
-                    host = ctx.node.target.get_preffered_host()?
+                    host = ctx.node.target.get_preferred_host()?
                 );
 
                 return Err(HiveLibError::NetworkError(
                     NetworkError::HostUnreachableAfterReboot(
-                        ctx.node.target.get_preffered_host()?.to_string(),
+                        ctx.node.target.get_preferred_host()?.to_string(),
                     ),
                 ));
             }

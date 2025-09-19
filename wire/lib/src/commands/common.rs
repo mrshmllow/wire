@@ -28,7 +28,7 @@ pub async fn push(
         "nix --extra-experimental-features nix-command \
         copy --substitute-on-destination --to ssh://{user}@{host} {path}",
         user = node.target.user,
-        host = node.target.get_preffered_host()?,
+        host = node.target.get_preferred_host()?,
         path = match push {
             Push::Derivation(drv) => format!("{drv} --derivation"),
             Push::Path(path) => path.clone(),

@@ -197,7 +197,7 @@ fn create_sync_ssh_command(target: &Target) -> Result<Command, HiveLibError> {
     let mut command = Command::new("ssh");
 
     command.args(["-l", target.user.as_ref()]);
-    command.arg(target.get_preffered_host()?.as_ref());
+    command.arg(target.get_preferred_host()?.as_ref());
     command.args(["-p", &target.port.to_string()]);
 
     Ok(command)

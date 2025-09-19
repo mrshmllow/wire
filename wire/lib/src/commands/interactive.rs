@@ -357,7 +357,7 @@ fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuild
     let mut command = portable_pty::CommandBuilder::new("ssh");
 
     command.args(["-l", target.user.as_ref()]);
-    command.arg(target.get_preffered_host()?.as_ref());
+    command.arg(target.get_preferred_host()?.as_ref());
     command.args(["-p", &target.port.to_string()]);
 
     Ok(command)
