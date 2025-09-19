@@ -178,10 +178,7 @@ pub async fn handle_io<R>(
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
-        trace!("Got line: {line:?}, on is_error: {is_error:#?}");
         let log = output_mode.trace(line.clone(), is_error);
-
-        trace!("{log:#?}");
 
         if !is_error {
             let mut queue = collection.lock().await;
