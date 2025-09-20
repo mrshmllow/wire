@@ -96,7 +96,7 @@ impl ExecuteStep for SwitchToConfiguration {
             } else {
                 Some(&ctx.node.target)
             },
-            ChildOutputMode::Nix,
+            ChildOutputMode::Raw,
             ctx.modifiers,
         )
         .await?;
