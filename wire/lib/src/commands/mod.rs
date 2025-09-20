@@ -31,7 +31,7 @@ pub(crate) async fn get_elevated_command(
     output_mode: ChildOutputMode,
     modifiers: SubCommandModifiers,
 ) -> Result<Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>>, HiveLibError> {
-    if modifiers.non_interactive {
+    if !modifiers.non_interactive {
         return Ok(Either::Left(
             InteractiveCommand::spawn_new(target, output_mode).await?,
         ));
