@@ -16,7 +16,7 @@ im = { workspace = true }
 serde-query = "0.2.0"
 thiserror = "2.0.16"
 serde_repr = "0.1.20"
-regex = "1.11.2"
+regex = "1.11.3"
 derive_more = { version = "2.0.1", features = ["display"] }
 key_agent = { path = "../key_agent" }
 futures = "0.3.31"
