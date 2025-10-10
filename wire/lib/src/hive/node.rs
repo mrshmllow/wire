@@ -264,13 +264,13 @@ impl<'a> GoalExecutor<'a> {
                 Step::Keys(Keys {
                     filter: UploadKeyAt::NoFilter,
                 }),
-                Step::Keys(Keys {
-                    filter: UploadKeyAt::PreActivation,
-                }),
                 Step::Evaluate(super::steps::evaluate::Evaluate),
                 Step::PushEvaluatedOutput(super::steps::push::PushEvaluatedOutput),
                 Step::Build(super::steps::build::Build),
                 Step::PushBuildOutput(super::steps::push::PushBuildOutput),
+                Step::Keys(Keys {
+                    filter: UploadKeyAt::PreActivation,
+                }),
                 Step::SwitchToConfiguration(SwitchToConfiguration),
                 Step::Keys(Keys {
                     filter: UploadKeyAt::PostActivation,
@@ -358,13 +358,13 @@ mod tests {
             vec![
                 Ping.into(),
                 PushKeyAgent.into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::build::Build.into(),
+                crate::hive::steps::push::PushBuildOutput.into(),
                 Keys {
                     filter: UploadKeyAt::PreActivation
                 }
                 .into(),
-                crate::hive::steps::evaluate::Evaluate.into(),
-                crate::hive::steps::build::Build.into(),
-                crate::hive::steps::push::PushBuildOutput.into(),
                 SwitchToConfiguration.into(),
                 Keys {
                     filter: UploadKeyAt::PostActivation
@@ -461,13 +461,13 @@ mod tests {
             vec![
                 Ping.into(),
                 PushKeyAgent.into(),
+                crate::hive::steps::evaluate::Evaluate.into(),
+                crate::hive::steps::push::PushEvaluatedOutput.into(),
+                crate::hive::steps::build::Build.into(),
                 Keys {
                     filter: UploadKeyAt::PreActivation
                 }
                 .into(),
-                crate::hive::steps::evaluate::Evaluate.into(),
-                crate::hive::steps::push::PushEvaluatedOutput.into(),
-                crate::hive::steps::build::Build.into(),
                 SwitchToConfiguration.into(),
                 Keys {
                     filter: UploadKeyAt::PostActivation
