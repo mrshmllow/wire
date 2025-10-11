@@ -1,14 +1,14 @@
 ---
 comment: true
-title: Basic Hive
-description:
+title: Basic Hive & Deployment
+description: Creating a basic hive and deploying changes to the virtual machine.
 ---
 
 # {{ $frontmatter.title }}
 
 {{ $frontmatter.description }}
 
-## First Basic Hive
+## Editing `hive.nix`
 
 Open a text editor and edit `hive.nix`. You should copy this example, which imports
 the npins sources we added. It also calls `makeHive`, and gives Wire `nixpkgs`
@@ -32,7 +32,7 @@ wire.makeHive {
 Lets check out what wire sees with `wire show`.
 
 ```sh
-$ wire show
+[nix-shell:~/scratch/wire-tutorial]$ wire show
  WARN wire: use --json to output something scripting suitable
 Hive {
     nodes: {},
@@ -41,9 +41,12 @@ Hive {
 ```
 
 The line `nodes: {}` means theres no "nodes" in our hive.
-Lets fix that by adding a node to our Hive.
 
 ## Adding The First Node
+
+Lets add the virtual machine as a node to the hive with the name
+`virtual-machine`. Additionally, we will add `deployment.target`, recalling we
+forwarded sshd `virtual-machine:22` to the port `localhost:2222`:
 
 ```nix:line-numbers [hive.nix]
 let
@@ -64,12 +67,14 @@ wire.makeHive {
 }
 ```
 
+## A naive `wire apply`
+
 If we tried to run `wire apply` on our hive at this stage, it likely won't work.
 If you've used NixOS before, you'll notice that many important options are
 missing. But let's try anyway:
 
 ```sh
-$ wire apply
+[nix-shell:~/scratch/wire-tutorial]$ wire apply
 ERROR apply{goal=Switch on=}:goal{node=virtual-machine}: lib::hive::node: Failed to execute `Evaluate the node`
 Error:   × 1 node(s) failed to apply.
 
@@ -116,8 +121,8 @@ extra work to make our virtual machine work, which we are currently missing.
 
 ## Importing `vm.nix`
 
-Lets import our `vm.nix` to this hive, and add a package such as `vim` to our
-configuration which we did not include before:
+Lets import our `vm.nix` to this hive to fix our evaluation errors.
+Additionally, add a new package such as `vim` to our configuration:
 
 ```nix:line-numbers [hive.nix]
 let

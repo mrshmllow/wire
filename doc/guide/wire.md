@@ -1,5 +1,5 @@
 ---
-comment: true
+comment: false
 ---
 
 # What is Wire?

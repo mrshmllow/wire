@@ -8,6 +8,8 @@ description:
 
 {{ $frontmatter.description }}
 
+## Creating a `vm.nix`
+
 Open a text editor and edit `vm.nix`. Place in it this basic NixOS
 virtual machine configuration, which enables openssh and forwards it's 22 port.
 
@@ -50,6 +52,8 @@ in
 }
 ```
 
+## Building & Running the virtual machine
+
 Open a seperate Terminal tab/window/instance, ensuring you enter the development
 shell with `nix-shell`.
 Then, build the virtual machine with a bootloader,
@@ -57,14 +61,14 @@ taking our `vm.nix` as the nixos configuration.
 
 ```sh
 $ nix-shell
-[nix-shell:~/scratch/wire-tutorial]$ $ nix-build '<nixpkgs/nixos>' -A vmWithBootLoader -I nixos-config=./vm.nix
+[nix-shell:~/scratch/wire-tutorial]$ nix-build '<nixpkgs/nixos>' -A vmWithBootLoader -I nixos-config=./vm.nix
 ```
 
 Building the virtual machine can take some time, but once it completes, start it
 by running:
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ $ ./result/bin/run-wire-tutorial-vm
+[nix-shell:~/scratch/wire-tutorial]$ ./result/bin/run-wire-tutorial-vm
 ```
 
 You will see boot-up logs fly across the screen and eventually you will be placed
@@ -93,6 +97,8 @@ wire-tutorial login: root (automatic login)
 Further details on how the above commands work can be found at
 [nix.dev](https://nix.dev/tutorials/nixos/nixos-configuration-on-vm.html#creating-a-qemu-based-virtual-machine-from-a-nixos-configuration)
 :::
+
+## Summary
 
 Congratulations, you created a virtual machine in your terminal.
 We'll be deploying to this virtual machine, so keep the

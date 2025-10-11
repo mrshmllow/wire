@@ -8,7 +8,7 @@ description: Installing npins, wire, and enabling the binary cache.
 
 {{ $frontmatter.description }}
 
-::: tip
+::: warning
 This page is for the purposes for the **Tutorial**.
 You should read [Guides - Installation](/guide/installation.html) for installing Wire for
 regular use.

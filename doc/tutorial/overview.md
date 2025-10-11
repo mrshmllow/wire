@@ -1,5 +1,5 @@
 ---
-comment: true
+comment: false
 title: Wire Tutorial Overview
 description: In this tutorial we will create and deploy a Wire Hive.
 ---

@@ -50,13 +50,28 @@ export default withMermaid(
           {
             text: "Part One",
             items: [
-              { text: "Installation", link: "/tutorial/installation" },
-              { text: "Preparing Repo & Shell", link: "/tutorial/repo-setup" },
+              { text: "Installation", link: "/tutorial/part-one/installation" },
+              {
+                text: "Preparing Repo & Shell",
+                link: "/tutorial/part-one/repo-setup",
+              },
               {
                 text: "Creating a Virtual Machine",
-                link: "/tutorial/vm-setup",
+                link: "/tutorial/part-one/vm-setup",
               },
-              { text: "Basic Hive", link: "/tutorial/basic-hive" },
+              {
+                text: "Basic Hive & Deployment",
+                link: "/tutorial/part-one/basic-hive",
+              },
+            ],
+          },
+          {
+            text: "Part Two",
+            items: [
+              {
+                text: "Basic Deployment Keys",
+                link: "/tutorial/part-two/basic-keys",
+              },
             ],
           },
         ],
