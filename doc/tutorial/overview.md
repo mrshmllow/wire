@@ -22,6 +22,6 @@ configurations, and create deployment keys.
 
 <div class="tip custom-block" style="padding-top: 8px">
 
-Ready? Skip to [Installation](./installation).
+Ready? Skip to [Installation](./part-one/installation).
 
 </div>
