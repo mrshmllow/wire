@@ -30,7 +30,7 @@ impl ExecuteStep for Build {
 
         let command_string = format!(
             "nix --extra-experimental-features nix-command \
-            build --print-build-logs --print-out-paths {top_level}"
+            build --print-build-logs --no-link --print-out-paths {top_level}"
         );
 
         let mut command = NonInteractiveCommand::spawn_new(
