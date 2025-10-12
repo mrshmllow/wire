@@ -20,18 +20,29 @@ in
 {
   imports = [ "${sources.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix" ];
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-
   networking.hostName = "wire-tutorial";
 
+  boot = {
+    loader = {
+      systemd-boot.enable = true;
+      efi.canTouchEfiVariables = true;
+    };
+
+    kernelParams = [ "console=ttyS0" ];
+  };
+
   # enable openssh
-  services.openssh = {
-    enable = true;
-    settings.PermitRootLogin = "yes";
+  services = {
+    openssh = {
+      enable = true;
+      settings.PermitRootLogin = "yes";
+    };
+
+    getty.autologinUser = "root";
   };
 
   virtualisation = {
+    graphics = false;
     useBootLoader = true;
 
     # forward `openssh` port 22 to localhost:2222.
@@ -44,8 +55,6 @@ in
     ];
   };
 
-  # set a password and autologin
-  services.getty.autologinUser = "root";
   users.users.root.initialPassword = "root";
 
   system.stateVersion = "23.11";
@@ -102,6 +111,6 @@ Further details on how the above commands work can be found at
 
 Congratulations, you created a virtual machine in your terminal.
 We'll be deploying to this virtual machine, so keep the
-window open.
+terminal instance open.
 
 If you ever want to quit the virtual machine, run the command `poweroff`.
