@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2024-2025 wire Contributors
+
 use futures::{FutureExt, StreamExt};
 use itertools::{Either, Itertools};
 use lib::hive::Hive;
