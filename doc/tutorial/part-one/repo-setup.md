@@ -14,9 +14,9 @@ First, lets create an adhoc shell to bring these two tools into our $PATH.
 
 ```sh
 $ nix-shell -p git npins
-[nix-shell:~/scratch/wire-tutorial]$ git --version
+[nix-shell]$ git --version
 git version 2.51.0
-[nix-shell:~/scratch/wire-tutorial]$ npins --version
+[nix-shell]$ npins --version
 npins 0.3.1
 ```
 
@@ -24,10 +24,10 @@ Great! Now lets use Git & `npins` to create a new Git repo and initialise it.
 `npins init` may take a while to download `nixpkgs`.
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ git init -b main wire-tutorial
+[nix-shell]$ git init -b main wire-tutorial
 Initialized empty Git repository in /home/.../wire-tutorial/.git/
-[nix-shell:~/scratch/wire-tutorial]$ cd wire-tutorial/
-[nix-shell:~/scratch/wire-tutorial]$ npins init
+[nix-shell]$ cd wire-tutorial/
+[nix-shell]$ npins init
 [INFO ] Welcome to npins!
 [INFO ] Creating `npins` directory
 [INFO ] Writing default.nix
@@ -42,7 +42,7 @@ This has created a pinned version of `nixpkgs` for us to use in our Wire hive.
 We can now need to tell `npins` to use `wires-org/wire` as a dependency.
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ npins add github wires-org wire
+[nix-shell]$ npins add github wires-org wire
 [INFO ] Adding 'wire' …
     repository: https://github.com/wires-org/wire.git
     pre_releases: false
@@ -57,7 +57,7 @@ Great, now lets confirm the two dependencies we have added to this `npins`
 project:
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ npins show
+[nix-shell]$ npins show
 nixpkgs: (Nix channel)
     name: nixpkgs-unstable
     url: https://releases.nixos.org/nixpkgs/nixpkgs-25.11pre861972.88cef159e47c/nixexprs.tar.xz
@@ -100,10 +100,10 @@ enter a new shell with `nix-shell`. Since we added wire as a package, our new
 shell should have wire in the $PATH:
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ exit
+[nix-shell]$ exit
 exit
 $ nix-shell
-[nix-shell:~/scratch/wire-tutorial]$ wire --version
+[nix-shell]$ wire --version
 wire 0.5.0
 Debug: Hive::SCHEMA_VERSION 0
 

@@ -9,10 +9,10 @@ hero:
   actions:
     - theme: brand
       text: Read Tutorial
-      link: /guide/tutorial
+      link: /tutorial/overview
     - theme: alt
       text: Guides
-      link: /reference/guide
+      link: /guides/installation
 
 features:
   - title: Parallelism

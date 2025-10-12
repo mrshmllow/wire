@@ -28,7 +28,7 @@ export default withMermaid(
       nav: [
         { text: "Home", link: "/" },
         { text: "Tutorial", link: "/tutorial/overview" },
-        { text: "Guides", link: "/guide/wire" },
+        { text: "Guides", link: "/guides/installation" },
         { text: "Reference", link: "/reference/cli" },
         {
           text: pkg.version,
@@ -72,32 +72,30 @@ export default withMermaid(
                 text: "Basic Deployment Keys",
                 link: "/tutorial/part-two/basic-keys",
               },
+              {
+                text: "Encrypted Deployment Keys",
+                link: "/tutorial/part-two/encryption",
+              },
             ],
           },
         ],
-        "/guide/": [
+        "/guides/": [
           {
-            text: "Introduction",
+            text: "Guides",
             items: [
-              { text: "What is Wire?", link: "/guide/wire" },
-              { text: "Getting Started", link: "/guide/getting-started" },
-              { text: "Flakes", link: "/guide/flakes" },
-              { text: "Applying Your Config", link: "/guide/apply" },
-              { text: "Targeting Nodes", link: "/guide/targeting" },
+              { text: "Installing Wire", link: "/guides/installation" },
+              { text: "Flakes", link: "/guides/flakes" },
+              { text: "Applying Your Config", link: "/guides/apply" },
+              { text: "Targeting Nodes", link: "/guides/targeting" },
             ],
           },
           {
             text: "Features",
             items: [
-              { text: "Secret management", link: "/guide/keys" },
-              { text: "Parallelism", link: "/guide/parallelism" },
-              { text: "hive.default", link: "/guide/hive-default" },
-              { text: "Magic Rollback", link: "/guide/magic-rollback" },
+              { text: "Secret management", link: "/guides/keys" },
+              { text: "Parallelism", link: "/guides/parallelism" },
+              { text: "hive.default", link: "/guides/hive-default" },
             ],
-          },
-          {
-            text: "Use cases",
-            items: [{ text: "Tailscale", link: "/guide/tailscale" }],
           },
         ],
         "/reference/": [
@@ -125,7 +123,9 @@ export default withMermaid(
     markdown: {
       config: (md) => {
         md.use(markdownItFootnote);
-        md.use(groupIconMdPlugin);
+        md.use(groupIconMdPlugin, {
+          titleBar: { includeSnippet: true },
+        });
       },
     },
     vite: {
@@ -143,6 +143,7 @@ export default withMermaid(
             "module.nix": "vscode-icons:file-type-nix",
             "vm.nix": "vscode-icons:file-type-nix",
             "shell.nix": "vscode-icons:file-type-nix",
+            "secrets.nix": "vscode-icons:file-type-nix",
             home: localIconLoader(import.meta.url, "../assets/homemanager.svg"),
             ".conf": "vscode-icons:file-type-config",
           },

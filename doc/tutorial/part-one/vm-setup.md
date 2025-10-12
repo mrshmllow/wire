@@ -70,20 +70,20 @@ taking our `vm.nix` as the nixos configuration.
 
 ```sh
 $ nix-shell
-[nix-shell:~/scratch/wire-tutorial]$ nix-build '<nixpkgs/nixos>' -A vmWithBootLoader -I nixos-config=./vm.nix
+[nix-shell]$ nix-build '<nixpkgs/nixos>' -A vmWithBootLoader -I nixos-config=./vm.nix
 ```
 
 Building the virtual machine can take some time, but once it completes, start it
 by running:
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ ./result/bin/run-wire-tutorial-vm
+[nix-shell]$ ./result/bin/run-wire-tutorial-vm
 ```
 
 You will see boot-up logs fly across the screen and eventually you will be placed
 into shell inside the virtual machine.
 
-```sh
+```sh [Virtual Machine]
 running activation script...
 setting up /etc...
 

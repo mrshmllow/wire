@@ -25,3 +25,18 @@ configurations, and create deployment keys.
 Ready? Skip to [Installation](./part-one/installation).
 
 </div>
+
+## Why Wire?
+
+::: info
+The following is the goal for a stable release and not fully implemented.
+:::
+
+| Features              | Wire               | Colmena                                                                                                    |
+| --------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Secret Management     | :white_check_mark: | :white_check_mark:                                                                                         |
+| Parallel Evaluation   | :white_check_mark: | [Experimental](https://colmena.cli.rs/unstable/features/parallelism.html#parallel-evaluation-experimental) |
+| Node Tagging          | :white_check_mark: | :white_check_mark:                                                                                         |
+| `jq` pipeline support | :white_check_mark: | :x:[^2]                                                                                                    |
+
+[^2]: You need to write custom nix code to use Colmena hive metadata inside environments like CI pipelines, bash scripting, etc., which requires a knowledge of its internals.

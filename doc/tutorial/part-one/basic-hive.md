@@ -32,7 +32,7 @@ wire.makeHive {
 Lets check out what wire sees with `wire show`.
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ wire show
+[nix-shell]$ wire show
  WARN wire: use --json to output something scripting suitable
 Hive {
     nodes: {},
@@ -74,7 +74,7 @@ If you've used NixOS before, you'll notice that many important options are
 missing. But let's try anyway:
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ wire apply
+[nix-shell]$ wire apply
 ERROR apply{goal=Switch on=}:goal{node=virtual-machine}: lib::hive::node: Failed to execute `Evaluate the node`
 Error:   × 1 node(s) failed to apply.
 
@@ -115,7 +115,7 @@ Error:
 ```
 
 The command complained about not defining any fileSystems or a boot loader.
-The `${sources.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix` import in
+The `${sources.nixpkgs}/nixos/modules/virtualisation/qemu-vm.nix` imported in
 `vm.nix` does
 extra work to make our virtual machine work, which we are currently missing.
 
@@ -154,7 +154,7 @@ wire.makeHive {
 Trying our basic `wire apply` again with these changes:
 
 ```sh
-[nix-shell:~/scratch/wire-tutorial]$ wire apply
+[nix-shell]$ wire apply
 ...
  INFO lib::nix_log: stopping the following units: boot.mount
  INFO lib::nix_log: NOT restarting the following changed units: systemd-fsck@dev-disk-by\x2dlabel-ESP.service
@@ -172,7 +172,7 @@ Trying our basic `wire apply` again with these changes:
 Now, lets confirm these changes were applied to the virtual machine by executing
 `vim` in the virtual machine window:
 
-```sh
+```sh [Virtual Machine]
 [root@wire-tutorial:~]# vim --version
 VIM - Vi IMproved 9.1 (2024 Jan 02, compiled Jan 01 1980 00:00:00)
 ```

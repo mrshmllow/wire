@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Flakes
-description: Learn how to output a hive from a flake.
+description: How to output a hive from a flake.
 ---
 
 # {{ $frontmatter.title }}
