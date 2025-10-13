@@ -330,6 +330,10 @@ impl WireCommandChip for InteractiveChildChip {
 
         Ok(())
     }
+
+    fn drop_stdin(&mut self) -> Result<(), HiveLibError> {
+        Ok(())
+    }
 }
 
 impl StdinTermiosAttrGuard {

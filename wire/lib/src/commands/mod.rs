@@ -81,6 +81,8 @@ pub(crate) trait WireCommandChip {
 
     async fn wait_till_success(self) -> Result<Self::ExitStatus, CommandError>;
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError>;
+
+    fn drop_stdin(&mut self) -> Result<(), HiveLibError>;
 }
 
 impl WireCommand<'_> for Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>> {
@@ -126,6 +128,13 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
         match self {
             Self::Left(left) => left.wait_till_success().await.map(Either::Left),
             Self::Right(right) => right.wait_till_success().await.map(Either::Right),
+        }
+    }
+
+    fn drop_stdin(&mut self) -> Result<(), HiveLibError> {
+        match self {
+            Self::Left(left) => left.drop_stdin(),
+            Self::Right(right) => right.drop_stdin(),
         }
     }
 }

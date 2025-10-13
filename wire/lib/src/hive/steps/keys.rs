@@ -18,6 +18,7 @@ use tracing::{debug, trace};
 
 use crate::HiveLibError;
 use crate::commands::common::push;
+use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip, get_elevated_command};
 use crate::errors::KeyError;
 use crate::hive::node::{
@@ -196,13 +197,16 @@ impl ExecuteStep for Keys {
             return Ok(());
         }
 
-        let msg = key_agent::keys::Keys { keys };
+        let msg = key_agent::keys::Keys {
+            keys,
+            create_fifo_as: ctx.node.target.user.to_string(),
+        };
 
         trace!("Will send message {msg:?}");
 
         let buf = msg.encode_to_vec();
 
-        let mut command = get_elevated_command(
+        let mut agent_command = get_elevated_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                 None
             } else {
@@ -212,23 +216,54 @@ impl ExecuteStep for Keys {
             ctx.modifiers,
         )
         .await?;
-        let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
 
-        let mut child = command.run_command(command_string, true, ctx.clobber_lock.clone())?;
+        let mut fifo_command = NonInteractiveCommand::spawn_new(
+            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                None
+            } else {
+                Some(&ctx.node.target)
+            },
+            ChildOutputMode::Raw,
+        )
+        .await?;
 
-        child.write_stdin(buf).await?;
+        let agent_child = agent_command.run_command(
+            format!(
+                "{agent_directory}/bin/key_agent {} {}",
+                buf.len(),
+                ctx.node.target.user
+            ),
+            false,
+            ctx.clobber_lock.clone(),
+        )?;
+        let mut fifo_child = fifo_command.run_command(
+            "cp /dev/stdin /run/wire_keyagent_fifo",
+            true,
+            ctx.clobber_lock.clone(),
+        )?;
+
+        fifo_child.write_stdin(buf).await?;
 
         for buf in bufs {
             trace!("Pushing buf");
-            child.write_stdin(buf).await?;
+            fifo_child.write_stdin(buf).await?;
         }
 
-        let status = child
+        fifo_child.drop_stdin()?;
+
+        let agent_status = agent_child
             .wait_till_success()
             .await
             .map_err(HiveLibError::CommandError)?;
 
-        debug!("status: {status:?}");
+        debug!("agent status: {agent_status:?}");
+
+        let fifo_status = fifo_child
+            .wait_till_success()
+            .await
+            .map_err(HiveLibError::CommandError)?;
+
+        debug!("fifo status: {fifo_status:?}");
 
         Ok(())
     }

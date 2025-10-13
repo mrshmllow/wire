@@ -15,4 +15,5 @@ message Key {
 
 message Keys {
   repeated Key keys = 1;
+  string create_fifo_as = 2;
 }

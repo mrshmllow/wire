@@ -34,7 +34,7 @@ pub(crate) struct NonInteractiveChildChip {
     child: Child,
     joinset: JoinSet<()>,
     command_string: String,
-    stdin: ChildStdin,
+    stdin: Option<ChildStdin>,
 }
 
 impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
@@ -123,7 +123,7 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
             child,
             joinset,
             command_string,
-            stdin,
+            stdin: Some(stdin),
         })
     }
 }
@@ -161,7 +161,12 @@ impl WireCommandChip for NonInteractiveChildChip {
 
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError> {
         trace!("Writing {} bytes", data.len());
-        self.stdin.write_all(&data).await.unwrap();
+        self.stdin.as_mut().unwrap().write_all(&data).await.unwrap();
+        Ok(())
+    }
+
+    fn drop_stdin(&mut self) -> Result<(), HiveLibError> {
+        drop(self.stdin.take());
         Ok(())
     }
 }

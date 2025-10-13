@@ -2,9 +2,11 @@
 // Copyright 2024-2025 wire Contributors
 
 #![deny(clippy::pedantic)]
-use nix::unistd::{Group, User};
+use nix::sys::stat;
+use nix::unistd::{self, Group, User};
 use prost::Message;
 use std::env;
+use std::io::BufReader;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::{
@@ -23,13 +25,38 @@ fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+/// Returns path of FIFO created.
+fn create_fifo(user: &str) -> Result<String, anyhow::Error> {
+    let path_string = "/run/wire_keyagent_fifo";
+    let fifo_path = Path::new(path_string);
+
+    if std::fs::exists(fifo_path)? {
+        std::fs::remove_file(fifo_path)?;
+    }
+
+    unistd::mkfifo(fifo_path, stat::Mode::S_IRUSR | stat::Mode::S_IWUSR)?;
+
+    let user = User::from_name(user)?;
+
+    chown(
+        fifo_path,
+        Some(user.as_ref().map_or(0, |user| user.uid.into())),
+        Some(user.map_or(0, |user| user.gid.into())),
+    )?;
+
+    Ok(path_string.to_string())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let mut stdin = std::io::stdin();
     let length: usize = env::args().nth(1).expect("failed to grab arg").parse()?;
+    let fifo_owner = env::args().nth(2).expect("failed to grab user");
     let mut msg_buf = vec![0u8; length];
 
-    stdin.read_exact(&mut msg_buf)?;
+    let fifo_path = create_fifo(&fifo_owner)?;
+    let mut reader = BufReader::new(std::fs::File::open(fifo_path)?);
+
+    reader.read_exact(&mut msg_buf)?;
 
     let msg = Keys::decode(&mut Cursor::new(&msg_buf))?;
 
@@ -63,7 +90,7 @@ async fn main() -> Result<(), anyhow::Error> {
                 .expect("failed to convert size to usize")
         ];
 
-        stdin.read_exact(&mut file_buf)?;
+        reader.read_exact(&mut file_buf)?;
         file.write_all(&file_buf).await?;
 
         println!("Wrote to {file:?}");
