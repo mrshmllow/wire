@@ -24,7 +24,7 @@
       deployer.fail("test -f /run/keys/source_string")
 
       def test_keys(target, target_object):
-          deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix -vvv >&2")
+          deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix --non-interactive -vvv >&2")
 
           keys = [
             ("/run/keys/source_string", "hello_world_source", "root root 600"),
