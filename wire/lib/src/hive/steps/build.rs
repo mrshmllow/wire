@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2024-2025 wire Contributors
+
 use std::fmt::Display;
 
 use tracing::{info, instrument};
@@ -30,7 +33,7 @@ impl ExecuteStep for Build {
 
         let command_string = format!(
             "nix --extra-experimental-features nix-command \
-            build --print-build-logs --print-out-paths {top_level}"
+            build --print-build-logs --no-link --print-out-paths {top_level}"
         );
 
         let mut command = NonInteractiveCommand::spawn_new(

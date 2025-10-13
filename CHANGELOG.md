@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Fixed
+
+- Fix bug where --non-interactive was inversed
+- `./result` links where being created. they will not be created anymore
+
 ### Changed
 
 - Logs with level `tracing_level::TRACE` are compiled out of release builds

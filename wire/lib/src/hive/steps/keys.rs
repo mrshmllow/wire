@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2024-2025 wire Contributors
+
 use futures::future::join_all;
 use prost::Message;
 use serde::{Deserialize, Serialize};

@@ -18,6 +18,12 @@ export default withMermaid(
         provider: "local",
       },
 
+      footer: {
+        message:
+          'Released under the <a href="https://github.com/wires-org/wire/blob/main/COPYING">AGPL-3.0 License</a>.',
+        copyright: "Copyright 2024-2025 wire Contributors",
+      },
+
       // https://vitepress.dev/reference/default-theme-config
       nav: [
         { text: "Home", link: "/" },

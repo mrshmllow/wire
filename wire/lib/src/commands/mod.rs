@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2024-2025 wire Contributors
+
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -32,13 +35,13 @@ pub(crate) async fn get_elevated_command(
     modifiers: SubCommandModifiers,
 ) -> Result<Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>>, HiveLibError> {
     if modifiers.non_interactive {
-        return Ok(Either::Left(
-            InteractiveCommand::spawn_new(target, output_mode, modifiers).await?,
+        return Ok(Either::Right(
+            NonInteractiveCommand::spawn_new(target, output_mode).await?,
         ));
     }
 
-    return Ok(Either::Right(
-        NonInteractiveCommand::spawn_new(target, output_mode, modifiers).await?,
+    return Ok(Either::Left(
+        InteractiveCommand::spawn_new(target, output_mode).await?,
     ));
 }
 

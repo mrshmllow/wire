@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2024-2025 wire Contributors
+
 use std::fmt::Display;
 
 use tracing::{error, info, instrument, warn};
@@ -96,7 +99,7 @@ impl ExecuteStep for SwitchToConfiguration {
             } else {
                 Some(&ctx.node.target)
             },
-            ChildOutputMode::Nix,
+            ChildOutputMode::Raw,
             ctx.modifiers,
         )
         .await?;
