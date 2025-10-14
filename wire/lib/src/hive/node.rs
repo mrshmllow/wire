@@ -5,13 +5,13 @@
 use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
-use crate::commands::common::get_nix_sshopts;
 use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::NetworkError;
@@ -35,6 +35,62 @@ pub struct Target {
 
     #[serde(skip)]
     current_host: usize,
+}
+
+impl Target {
+    pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers) -> String {
+        format!(
+            "-p {} {} {}",
+            self.port,
+            if modifiers.ssh_accept_host {
+                "-o StrictHostKeyChecking=no"
+            } else {
+                "-o StrictHostKeyChecking=accept-new"
+            },
+            if modifiers.non_interactive {
+                // make nix refuse to auth with interactivity
+                "-o PasswordAuthentication=no -o KbdInteractiveAuthentication=no".to_string()
+            } else {
+                String::new()
+            }
+        )
+    }
+
+    pub fn create_ssh_args(
+        &self,
+        modifiers: SubCommandModifiers,
+    ) -> Result<Vec<String>, HiveLibError> {
+        let mut vector = vec![
+            "-l".to_string(),
+            self.user.to_string(),
+            self.get_preferred_host()?.to_string(),
+            "-p".to_string(),
+            self.port.to_string(),
+        ];
+
+        vector.extend([
+            "-o".to_string(),
+            format!(
+                "StrictHostKeyChecking {}",
+                if modifiers.ssh_accept_host {
+                    "no"
+                } else {
+                    "accept-new"
+                }
+            )
+            .to_string(),
+        ]);
+
+        if modifiers.non_interactive {
+            vector.extend(["-o".to_string(), "PasswordAuthentication=no".to_string()]);
+            vector.extend([
+                "-o".to_string(),
+                "KbdInteractiveAuthentication=no".to_string(),
+            ]);
+        }
+
+        Ok(vector)
+    }
 }
 
 #[cfg(test)]
@@ -149,11 +205,12 @@ impl Node {
             self.target.user, host
         );
 
-        let mut command = NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix).await?;
+        let mut command =
+            NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix, modifiers).await?;
         let output = command.run_command_with_env(
             command_string,
             false,
-            get_nix_sshopts(self, modifiers),
+            HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers))]),
             clobber_lock,
         )?;
 

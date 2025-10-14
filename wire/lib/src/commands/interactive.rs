@@ -19,6 +19,7 @@ use std::{
 };
 use tracing::{debug, error, info, trace};
 
+use crate::SubCommandModifiers;
 use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
 use crate::nix_log::NixLog;
@@ -38,6 +39,7 @@ pub(crate) struct InteractiveCommand<'t> {
     succeed_needle: Arc<String>,
     failed_needle: Arc<String>,
     start_needle: Arc<String>,
+    modifiers: SubCommandModifiers,
 }
 
 pub(crate) struct InteractiveChildChip {
@@ -83,6 +85,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
     async fn spawn_new(
         target: Option<&'t Target>,
         output_mode: ChildOutputMode,
+        modifiers: SubCommandModifiers,
     ) -> Result<InteractiveCommand<'t>, HiveLibError> {
         let output_mode = Arc::new(output_mode);
         let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
@@ -96,6 +99,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             succeed_needle,
             failed_needle,
             start_needle,
+            modifiers,
         })
     }
 
@@ -151,7 +155,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         debug!("{command_string}");
 
         let mut command = if let Some(target) = self.target {
-            let mut command = create_sync_ssh_command(target)?;
+            let mut command = create_sync_ssh_command(target, self.modifiers)?;
 
             // force ssh to use our pesudo terminal
             command.arg("-tt");
@@ -357,13 +361,12 @@ impl Drop for StdinTermiosAttrGuard {
     }
 }
 
-fn create_sync_ssh_command(target: &Target) -> Result<portable_pty::CommandBuilder, HiveLibError> {
+fn create_sync_ssh_command(
+    target: &Target,
+    modifiers: SubCommandModifiers,
+) -> Result<portable_pty::CommandBuilder, HiveLibError> {
     let mut command = portable_pty::CommandBuilder::new("ssh");
-
-    command.args(["-l", target.user.as_ref()]);
-    command.arg(target.get_preferred_host()?.as_ref());
-    command.args(["-p", &target.port.to_string()]);
-
+    command.args(target.create_ssh_args(modifiers)?);
     Ok(command)
 }
 
@@ -414,7 +417,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
                     }
 
                     if began {
-                        let log = output_mode.trace(line.clone());
+                        let log = output_mode.trace(line.clone(), false);
 
                         if let Some(NixLog::Internal(log)) = log {
                             if let Some(message) = log.get_errorish_message() {

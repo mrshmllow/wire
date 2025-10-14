@@ -43,6 +43,7 @@ impl ExecuteStep for Build {
                 None
             },
             ChildOutputMode::Nix,
+            ctx.modifiers,
         )
         .await?;
 
