@@ -23,8 +23,11 @@
       receiver.fail("test -f /run/keys/source_string")
       deployer.fail("test -f /run/keys/source_string")
 
-      def test_keys(target, target_object):
-          deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix --non-interactive -vvv >&2")
+      def test_keys(target, target_object, non_interactive):
+          if non_interactive:
+              deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix --non-interactive -vvv >&2")
+          else:
+              deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix -vvv >&2")
 
           keys = [
             ("/run/keys/source_string", "hello_world_source", "root root 600"),
@@ -41,8 +44,8 @@
               stat = target_object.succeed(f"stat -c '%U %G %a' {path}").rstrip()
               assert permissions == stat, f"{path} has correct permissions ({target})"
 
-      def perform_routine(target, target_object):
-          test_keys(target, target_object)
+      def perform_routine(target, target_object, non_interactive):
+          test_keys(target, target_object, non_interactive)
 
           # Mess with the keys to make sure that every push refreshes the permissions
           target_object.succeed("echo 'incorrect_value' > /run/keys/source_string")
@@ -52,10 +55,12 @@
 
           # Test keys twice to ensure the operation is idempotent,
           # especially around directory creation.
-          test_keys(target, target_object)
+          test_keys(target, target_object, non_interactive)
 
-      perform_routine("receiver", receiver)
-      perform_routine("deployer", deployer)
+      perform_routine("receiver", receiver, True)
+      perform_routine("deployer", deployer, True)
+      perform_routine("receiver", receiver, False)
+      perform_routine("deployer", deployer, False)
 
       new_deployer_store_objects = collect_store_objects(deployer).difference(deployer_so)
       new_receiver_store_objects = collect_store_objects(receiver).difference(receiver_so)
