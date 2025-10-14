@@ -36,12 +36,12 @@ pub(crate) async fn get_elevated_command(
 ) -> Result<Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>>, HiveLibError> {
     if modifiers.non_interactive {
         return Ok(Either::Right(
-            NonInteractiveCommand::spawn_new(target, output_mode).await?,
+            NonInteractiveCommand::spawn_new(target, output_mode, modifiers).await?,
         ));
     }
 
     return Ok(Either::Left(
-        InteractiveCommand::spawn_new(target, output_mode).await?,
+        InteractiveCommand::spawn_new(target, output_mode, modifiers).await?,
     ));
 }
 
