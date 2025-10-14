@@ -172,9 +172,9 @@ in
       checks = builtins.listToAttrs (
         builtins.map (
           {
-            nix,
             nixpkgs,
             testName,
+            ...
           }:
           let
             opts = cfg.${testName};
@@ -183,7 +183,6 @@ in
             inherit
               testName
               opts
-              nix
               nixpkgs
               ;
           }
