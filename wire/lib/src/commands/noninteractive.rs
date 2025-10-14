@@ -203,5 +203,9 @@ fn create_sync_ssh_command(target: &Target) -> Result<Command, HiveLibError> {
     command.arg(target.get_preferred_host()?.as_ref());
     command.args(["-p", &target.port.to_string()]);
 
+    // this is the NON interactive command runner.
+    command.args(["-o", "PasswordAuthentication=no"]);
+    command.args(["-o", "KbdInteractiveAuthentication=no"]);
+
     Ok(command)
 }

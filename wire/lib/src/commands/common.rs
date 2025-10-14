@@ -19,10 +19,27 @@ use crate::{
     },
 };
 
+pub fn get_nix_sshopts(node: &Node, modifiers: SubCommandModifiers) -> HashMap<String, String> {
+    HashMap::from([(
+        "NIX_SSHOPTS".into(),
+        format!(
+            "-p {} {}",
+            node.target.port,
+            if modifiers.non_interactive {
+                // make nix refuse to auth with interactivity
+                "-o PasswordAuthentication=no -o KbdInteractiveAuthentication=no".to_string()
+            } else {
+                String::new()
+            }
+        ),
+    )])
+}
+
 pub async fn push(
     node: &Node,
     name: &Name,
     push: Push<'_>,
+    modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<(), HiveLibError> {
     let mut command = NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix).await?;
@@ -41,7 +58,7 @@ pub async fn push(
     let child = command.run_command_with_env(
         command_string,
         false,
-        HashMap::from([("NIX_SSHOPTS".into(), format!("-p {}", node.target.port))]),
+        get_nix_sshopts(node, modifiers),
         clobber_lock,
     )?;
 

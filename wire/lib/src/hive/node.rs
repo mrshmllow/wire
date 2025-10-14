@@ -5,13 +5,13 @@
 use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
+use crate::commands::common::get_nix_sshopts;
 use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
 use crate::errors::NetworkError;
@@ -136,7 +136,11 @@ impl Node {
         }
     }
 
-    pub async fn ping(&self, clobber_lock: Arc<Mutex<()>>) -> Result<(), HiveLibError> {
+    pub async fn ping(
+        &self,
+        modifiers: SubCommandModifiers,
+        clobber_lock: Arc<Mutex<()>>,
+    ) -> Result<(), HiveLibError> {
         let host = self.target.get_preferred_host()?;
 
         let command_string = format!(
@@ -149,7 +153,7 @@ impl Node {
         let output = command.run_command_with_env(
             command_string,
             false,
-            HashMap::from([("NIX_SSHOPTS".into(), format!("-p {}", self.target.port))]),
+            get_nix_sshopts(self, modifiers),
             clobber_lock,
         )?;
 
