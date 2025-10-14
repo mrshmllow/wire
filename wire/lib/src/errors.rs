@@ -294,4 +294,11 @@ pub enum HiveLibError {
         #[source]
         source: CommandError,
     },
+
+    #[diagnostic(
+        code(wire::Encoding),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("error encoding length delimited data")]
+    Encoding(#[source] std::io::Error),
 }

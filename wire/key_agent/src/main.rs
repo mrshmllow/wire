@@ -2,19 +2,20 @@
 // Copyright 2024-2025 wire Contributors
 
 #![deny(clippy::pedantic)]
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
+use futures_util::stream::StreamExt;
+use key_agent::keys::KeySpec;
 use nix::unistd::{Group, User};
 use prost::Message;
-use std::env;
+use prost::bytes::Bytes;
+use sha2::{Digest, Sha256};
 use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::chown;
 use std::path::{Path, PathBuf};
-use std::{
-    io::{Cursor, Read},
-    os::unix::fs::chown,
-};
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
-
-use key_agent::keys::Keys;
+use tokio_util::codec::{FramedRead, LengthDelimitedCodec};
 
 fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
     let prefix = key_path.parent().unwrap();
@@ -25,48 +26,57 @@ fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
-    let mut stdin = std::io::stdin();
-    let length: usize = env::args().nth(1).expect("failed to grab arg").parse()?;
-    let mut msg_buf = vec![0u8; length];
+    let stdin = tokio::io::stdin();
 
-    stdin.read_exact(&mut msg_buf)?;
+    let mut framed = FramedRead::new(stdin, LengthDelimitedCodec::new());
 
-    let msg = Keys::decode(&mut Cursor::new(&msg_buf))?;
+    while let Some(spec_bytes) = framed.next().await {
+        let spec_bytes = Bytes::from(BASE64_STANDARD.decode(spec_bytes?)?);
+        let spec = KeySpec::decode(spec_bytes)?;
 
-    println!("{msg:?}");
+        let key_bytes = BASE64_STANDARD.decode(
+            framed
+                .next()
+                .await
+                .expect("expected key_bytes to come after spec_bytes")?,
+        )?;
 
-    for key in msg.keys {
-        let path = PathBuf::from(&key.destination);
+        let digest = Sha256::digest(&key_bytes).to_vec();
+
+        println!("Writing key {spec:?}, {:?} bytes of data", key_bytes.len());
+
+        if digest != spec.digest {
+            return Err(anyhow::anyhow!(
+                "digest of {spec:?} did not match {digest:?}! Please create an issue!"
+            ));
+        }
+
+        let path = PathBuf::from(&spec.destination);
         create_path(&path)?;
 
         let mut file = File::create(path).await?;
         let mut permissions = file.metadata().await?.permissions();
 
-        permissions.set_mode(key.permissions);
+        permissions.set_mode(spec.permissions);
         file.set_permissions(permissions).await?;
 
-        let user = User::from_name(&key.user)?;
-        let group = Group::from_name(&key.group)?;
+        let user = User::from_name(&spec.user)?;
+        let group = Group::from_name(&spec.group)?;
 
         chown(
-            key.destination,
+            spec.destination,
             // Default uid/gid to 0. This is then wrapped around an Option again for
             // the function.
             Some(user.map_or(0, |user| user.uid.into())),
             Some(group.map_or(0, |group| group.gid.into())),
         )?;
 
-        let mut file_buf = vec![
-            0u8;
-            key.length
-                .try_into()
-                .expect("failed to convert size to usize")
-        ];
+        file.write_all(&key_bytes).await?;
 
-        stdin.read_exact(&mut file_buf)?;
-        file.write_all(&file_buf).await?;
-
-        println!("Wrote to {file:?}");
+        // last key, goobye
+        if spec.last {
+            break;
+        }
     }
 
     Ok(())
