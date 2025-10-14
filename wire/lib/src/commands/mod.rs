@@ -21,6 +21,7 @@ use crate::{
 
 pub(crate) mod common;
 pub(crate) mod interactive;
+pub(crate) mod interactive_logbuffer;
 pub(crate) mod noninteractive;
 
 #[derive(Copy, Clone)]

@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
 use futures::future::join_all;
+use itertools::{Itertools, Position};
 use prost::Message;
+use prost::bytes::BytesMut;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::env;
 use std::fmt::Display;
 use std::io::Cursor;
@@ -14,7 +19,8 @@ use std::str::from_utf8;
 use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
-use tracing::{debug, trace};
+use tokio_util::codec::LengthDelimitedCodec;
+use tracing::debug;
 
 use crate::HiveLibError;
 use crate::commands::common::push;
@@ -98,7 +104,7 @@ async fn create_reader(key: &'_ Key) -> Result<Pin<Box<dyn AsyncRead + Send + '_
     }
 }
 
-async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyError> {
+async fn process_key(key: &Key) -> Result<(key_agent::keys::KeySpec, Vec<u8>), KeyError> {
     let mut reader = create_reader(key).await?;
 
     let mut buf = Vec::new();
@@ -116,7 +122,7 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyEr
     );
 
     Ok((
-        key_agent::keys::Key {
+        key_agent::keys::KeySpec {
             length: buf
                 .len()
                 .try_into()
@@ -125,6 +131,8 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::Key, Vec<u8>), KeyEr
             group: key.group.clone(),
             permissions: get_u32_permission(key)?,
             destination: destination.into_os_string().into_string().unwrap(),
+            digest: Sha256::digest(&buf).to_vec(),
+            last: false,
         },
         buf,
     ))
@@ -146,6 +154,32 @@ impl Display for Keys {
 impl Display for PushKeyAgent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Push the key agent")
+    }
+}
+
+pub struct SimpleLengthDelimWriter<F> {
+    codec: LengthDelimitedCodec,
+    write_fn: F,
+}
+
+impl<F> SimpleLengthDelimWriter<F>
+where
+    F: AsyncFnMut(Vec<u8>) -> Result<(), HiveLibError>,
+{
+    fn new(write_fn: F) -> Self {
+        Self {
+            codec: LengthDelimitedCodec::new(),
+            write_fn,
+        }
+    }
+
+    async fn send(&mut self, data: prost::bytes::Bytes) -> Result<(), HiveLibError> {
+        let mut buffer = BytesMut::new();
+        tokio_util::codec::Encoder::encode(&mut self.codec, data, &mut buffer)
+            .map_err(HiveLibError::Encoding)?;
+
+        (self.write_fn)(buffer.to_vec()).await?;
+        Ok(())
     }
 }
 
@@ -184,23 +218,17 @@ impl ExecuteStep for Keys {
                     .map_err(|err| HiveLibError::KeyError(key.name.clone(), err))
             });
 
-        let (keys, bufs): (Vec<key_agent::keys::Key>, Vec<Vec<u8>>) = join_all(futures)
+        let mut keys = join_all(futures)
             .await
             .into_iter()
             .collect::<Result<Vec<_>, HiveLibError>>()?
             .into_iter()
-            .unzip();
+            .peekable();
 
-        if keys.is_empty() {
+        if keys.peek().is_none() {
             debug!("Had no keys to push, ending KeyStep early.");
             return Ok(());
         }
-
-        let msg = key_agent::keys::Keys { keys };
-
-        trace!("Will send message {msg:?}");
-
-        let buf = msg.encode_to_vec();
 
         let mut command = get_elevated_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
@@ -212,15 +240,23 @@ impl ExecuteStep for Keys {
             ctx.modifiers,
         )
         .await?;
-        let command_string = format!("{agent_directory}/bin/key_agent {}", buf.len());
+        let command_string = format!("{agent_directory}/bin/key_agent");
 
         let mut child = command.run_command(command_string, true, ctx.clobber_lock.clone())?;
 
-        child.write_stdin(buf).await?;
+        let mut writer = SimpleLengthDelimWriter::new(async |data| child.write_stdin(data).await);
 
-        for buf in bufs {
-            trace!("Pushing buf");
-            child.write_stdin(buf).await?;
+        for (position, (mut spec, buf)) in keys.with_position() {
+            if matches!(position, Position::Last) {
+                spec.last = true;
+            }
+
+            debug!("Writing spec & buf for {:?}", spec);
+
+            writer
+                .send(BASE64_STANDARD.encode(spec.encode_to_vec()).into())
+                .await?;
+            writer.send(BASE64_STANDARD.encode(buf).into()).await?;
         }
 
         let status = child

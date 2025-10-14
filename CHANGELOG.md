@@ -11,10 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix bug where --non-interactive was inversed
 - `./result` links where being created. they will not be created anymore
+- Logging from interactive commands (absence of `--non-interactive`) was
+  improved.
 
 ### Changed
 
 - Logs with level `tracing_level::TRACE` are compiled out of release builds
+- Data integrity of keys have been greatly improved
 
 ## [0.5.0] - 2025-09-18
 

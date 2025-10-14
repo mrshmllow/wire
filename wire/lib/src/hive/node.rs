@@ -40,12 +40,18 @@ pub struct Target {
 impl Target {
     pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers) -> String {
         format!(
-            "-p {} {}",
+            "-p {} {} {}",
             self.port,
             if modifiers.ssh_accept_host {
                 "-o StrictHostKeyChecking=no"
             } else {
                 "-o StrictHostKeyChecking=accept-new"
+            },
+            if modifiers.non_interactive {
+                // make nix refuse to auth with interactivity
+                "-o PasswordAuthentication=no -o KbdInteractiveAuthentication=no".to_string()
+            } else {
+                String::new()
             }
         )
     }
@@ -74,6 +80,14 @@ impl Target {
             )
             .to_string(),
         ]);
+
+        if modifiers.non_interactive {
+            vector.extend(["-o".to_string(), "PasswordAuthentication=no".to_string()]);
+            vector.extend([
+                "-o".to_string(),
+                "KbdInteractiveAuthentication=no".to_string(),
+            ]);
+        }
 
         Ok(vector)
     }
