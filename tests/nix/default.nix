@@ -29,6 +29,7 @@ in
     ./suite/test_remote_deploy
     ./suite/test_local_deploy
     ./suite/test_keys
+    ./suite/test_stdin
   ];
   options.wire.testing = mkOption {
     type = attrsOf (

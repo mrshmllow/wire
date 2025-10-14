@@ -61,10 +61,15 @@ pub struct Cli {
 pub enum ApplyTarget {
     Node(Name),
     Tag(String),
+    Stdin,
 }
 
 impl From<String> for ApplyTarget {
     fn from(value: String) -> Self {
+        if value == "-" {
+            return ApplyTarget::Stdin;
+        }
+
         if let Some(stripped) = value.strip_prefix("@") {
             ApplyTarget::Tag(stripped.to_string())
         } else {
@@ -78,6 +83,7 @@ impl Display for ApplyTarget {
         match self {
             ApplyTarget::Node(name) => name.fmt(f),
             ApplyTarget::Tag(tag) => write!(f, "@{tag}"),
+            ApplyTarget::Stdin => write!(f, "#stdin"),
         }
     }
 }
@@ -91,8 +97,11 @@ pub struct ApplyArgs {
     #[arg(value_enum, default_value_t)]
     pub goal: Goal,
 
-    /// List of literal node names or `@` prefixed tags.
-    #[arg(short, long, value_name = "NODE | @TAG", num_args = 1..)]
+    /// List of literal node names, a literal `-`, or `@` prefixed tags.
+    ///
+    /// `-` will read additional values from stdin, seperated by whitespace.
+    /// Any `-` implies `--non-interactive`.
+    #[arg(short, long, value_name = "NODE | @TAG | `-`", num_args = 1..)]
     pub on: Vec<ApplyTarget>,
 
     #[arg(short, long, default_value_t = 10, value_parser=more_than_zero)]
