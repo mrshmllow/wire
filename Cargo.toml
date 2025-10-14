@@ -8,7 +8,7 @@ package.version = "0.6.0"
 name = "wire"
 
 [workspace.dependencies]
-clap = { version = "4.5.48", features = ["derive", "string", "cargo"] }
+clap = { version = "4.5.49", features = ["derive", "string", "cargo"] }
 clap-verbosity-flag = "3.0.4"
 serde = { version = "1.0.228", features = ["derive", "rc"] }
 serde_json = { version = "1.0.145" }
