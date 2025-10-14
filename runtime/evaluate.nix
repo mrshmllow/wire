@@ -27,6 +27,7 @@ let
     !builtins.elem name [
       "meta"
       "defaults"
+      "-"
     ]
   ) (builtins.filter (name: builtins.hasAttr name hive) (builtins.attrNames mergedHive));
 
