@@ -19,7 +19,6 @@
   outputs =
     {
       self,
-      nixpkgs,
       flake-parts,
       systems,
       git-hooks,

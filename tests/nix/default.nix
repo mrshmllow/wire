@@ -80,7 +80,6 @@ in
         {
           testName,
           opts,
-          nix,
           nixpkgs,
         }:
         let
@@ -117,7 +116,7 @@ in
               let
                 hive = builtins.scopedImport {
                   __nixPath = _b: null;
-                  __findFile = path: name: if name == "nixpkgs" then pkgs.path else throw "oops!!";
+                  __findFile = _path: name: if name == "nixpkgs" then pkgs.path else throw "oops!!";
                 } "${injectedFlakeDir}/${path}/hive.nix";
                 nodes = mapAttrsToList (_: val: val.config.system.build.toplevel.drvPath) hive.nodes;
                 # fetch **all** dependencies of a flake
