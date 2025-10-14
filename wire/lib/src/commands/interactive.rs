@@ -19,6 +19,7 @@ use std::{
 };
 use tracing::{debug, error, info, trace};
 
+use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
 use crate::nix_log::NixLog;
 use crate::{
@@ -381,14 +382,16 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
     let mut buffer = [0u8; 1024];
     let mut stdout = std::io::stdout();
     let mut began = false;
+    let mut log_buffer = LogBuffer::new();
 
     'outer: loop {
         match reader.read(&mut buffer) {
             Ok(0) => break 'outer,
             Ok(n) => {
                 let new_data = String::from_utf8_lossy(&buffer[..n]);
+                log_buffer.process(&new_data);
 
-                for line in new_data.split_inclusive('\n') {
+                for line in log_buffer.take_lines() {
                     trace!("line: {line}");
 
                     if line.contains(start_needle.as_ref()) {
@@ -411,7 +414,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
                     }
 
                     if began {
-                        let log = output_mode.trace(line.to_string());
+                        let log = output_mode.trace(line.clone());
 
                         if let Some(NixLog::Internal(log)) = log {
                             if let Some(message) = log.get_errorish_message() {
