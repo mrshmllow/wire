@@ -6,8 +6,9 @@ use itertools::{Either, Itertools};
 use lib::hive::Hive;
 use lib::hive::node::{Context, GoalExecutor, Name, StepState};
 use lib::{SubCommandModifiers, errors::HiveLibError};
-use miette::{Diagnostic, Result};
+use miette::{Diagnostic, IntoDiagnostic, Result};
 use std::collections::HashSet;
+use std::io::Read;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
@@ -28,12 +29,31 @@ struct NodeError(
 #[error("{} node(s) failed to apply.", .0.len())]
 struct NodeErrors(#[related] Vec<NodeError>);
 
+// returns Names and Tags
+fn read_apply_targets_from_stdin() -> Result<(Vec<String>, Vec<Name>)> {
+    let mut buf = String::new();
+    let mut stdin = std::io::stdin().lock();
+    stdin.read_to_string(&mut buf).into_diagnostic()?;
+
+    Ok(buf
+        .split_whitespace()
+        .map(|x| ApplyTarget::from(x.to_string()))
+        .fold((Vec::new(), Vec::new()), |(mut tags, mut names), target| {
+            match target {
+                ApplyTarget::Node(name) => names.push(name),
+                ApplyTarget::Tag(tag) => tags.push(tag),
+                ApplyTarget::Stdin => {}
+            }
+            (tags, names)
+        }))
+}
+
 #[instrument(skip_all, fields(goal = %args.goal, on = %args.on.iter().join(", ")))]
 pub async fn apply(
     hive: &mut Hive,
     args: ApplyArgs,
     path: PathBuf,
-    modifiers: SubCommandModifiers,
+    mut modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<()> {
     let header_span = Span::current();
@@ -47,9 +67,21 @@ pub async fn apply(
         (HashSet::new(), HashSet::new()),
         |(mut tags, mut names), target| {
             match target {
-                ApplyTarget::Tag(tag) => tags.insert(tag.clone()),
-                ApplyTarget::Node(name) => names.insert(name.clone()),
-            };
+                ApplyTarget::Tag(tag) => {
+                    tags.insert(tag.clone());
+                }
+                ApplyTarget::Node(name) => {
+                    names.insert(name.clone());
+                }
+                ApplyTarget::Stdin => {
+                    // implies non_interactive
+                    modifiers.non_interactive = true;
+
+                    let (found_tags, found_names) = read_apply_targets_from_stdin().unwrap();
+                    names.extend(found_names);
+                    tags.extend(found_tags);
+                }
+            }
             (tags, names)
         },
     );
