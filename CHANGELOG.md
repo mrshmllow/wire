@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Added
+
+- `--ssh-accept-host` was added.
+
 ### Fixed
 
 - Fix bug where --non-interactive was inversed
@@ -18,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Logs with level `tracing_level::TRACE` are compiled out of release builds
 - Data integrity of keys have been greatly improved
+- Unknown SSH keys will be immediately rejected unless `--ssh-accept-host` is passed.
 
 ## [0.5.0] - 2025-09-18
 
