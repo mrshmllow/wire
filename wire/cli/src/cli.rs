@@ -98,8 +98,9 @@ pub struct ApplyArgs {
     pub goal: Goal,
 
     /// List of literal node names, a literal `-`, or `@` prefixed tags.
+    ///
     /// `-` will read additional values from stdin, seperated by whitespace.
-    /// Any `-` implies `--non-interactive`
+    /// Any `-` implies `--non-interactive`.
     #[arg(short, long, value_name = "NODE | @TAG | `-`", num_args = 1..)]
     pub on: Vec<ApplyTarget>,
 
