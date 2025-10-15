@@ -42,4 +42,3 @@ either editing `/etc/nix/nix.conf` or updating your NixOS configuration:
 <<< @/snippets/getting-started/cache.nix [configuration.nix]
 
 :::
-
