@@ -22,7 +22,7 @@ configurations, virutal machines, and deployment keys.
 
 <div class="tip custom-block" style="padding-top: 8px">
 
-Ready? Skip to [Installation](./part-one/installation).
+Ready? Skip to [Nix Setup](./part-one/nix-setup).
 
 </div>
 

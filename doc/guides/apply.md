@@ -10,7 +10,7 @@ description: How to apply a node with wire.
 
 ## What does it mean to 'apply'?
 
-Once you have [created a hive](./getting-started), you can now "apply" your
+Once you have created a hive, you can now "apply" your
 configuration to nodes in your hive. Simply, "applying" is the term used by wire to describe **deploying the
 config**.
 
