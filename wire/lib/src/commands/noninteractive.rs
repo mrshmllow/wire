@@ -62,7 +62,7 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
         &mut self,
         command_string: S,
         _keep_stdin_open: bool,
-        _elevated: bool,
+        elevated: bool,
         envs: HashMap<String, String>,
         _clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
@@ -84,6 +84,14 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
                 ChildOutputMode::Nix => " --log-format internal-json",
             }
         );
+
+        let command_string = if elevated {
+            format!("sudo -u root -- sh -c '{command_string}'")
+        } else {
+            command_string
+        };
+
+        debug!("{command_string}");
 
         command.arg(&command_string);
         command.stdin(std::process::Stdio::piped());
