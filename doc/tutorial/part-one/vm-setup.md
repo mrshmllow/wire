@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Creating a Virtual Machine
-description:
+description: Creating a NixOS virtual machine to use as a deployment target.
 ---
 
 # {{ $frontmatter.title }}
@@ -11,7 +11,7 @@ description:
 ## Creating a `vm.nix`
 
 Open a text editor and edit `vm.nix`. Place in it this basic NixOS
-virtual machine configuration, which enables openssh and forwards it's 22 port.
+virtual machine configuration, which enables openssh and forwards it's 22 port:
 
 ```nix:line-numbers [vm.nix]
 let
@@ -60,6 +60,9 @@ in
   system.stateVersion = "23.11";
 }
 ```
+
+If you like, you may take a moment to understand each line of this
+configuration.
 
 ## Building & Running the virtual machine
 
@@ -113,4 +116,17 @@ Congratulations, you created a virtual machine in your terminal.
 We'll be deploying to this virtual machine, so keep the
 terminal instance open.
 
+::: info
+From now on, commands ran inside the virtual machine will be lead with the
+following prompt:
+
+```sh [Virtual Machine]
+[root@wire-tutorial:~]#
+
+```
+
+:::
+
+::: tip
 If you ever want to quit the virtual machine, run the command `poweroff`.
+:::

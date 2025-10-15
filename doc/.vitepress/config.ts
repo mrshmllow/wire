@@ -42,70 +42,76 @@ export default withMermaid(
       ],
 
       sidebar: {
-        "/tutorial/": [
+        "/": [
           {
             text: "Tutorial",
-            items: [{ text: "Overview", link: "/tutorial/overview" }],
-          },
-          {
-            text: "Part One",
+            collapsed: false,
             items: [
-              { text: "Installation", link: "/tutorial/part-one/installation" },
+              { text: "Overview", link: "/tutorial/overview" },
               {
-                text: "Preparing Repo & Shell",
-                link: "/tutorial/part-one/repo-setup",
+                text: "Part One",
+                items: [
+                  {
+                    text: "Installation",
+                    link: "/tutorial/part-one/installation",
+                  },
+                  {
+                    text: "Preparing Repo & Shell",
+                    link: "/tutorial/part-one/repo-setup",
+                  },
+                  {
+                    text: "Creating a Virtual Machine",
+                    link: "/tutorial/part-one/vm-setup",
+                  },
+                  {
+                    text: "Basic Hive & Deployment",
+                    link: "/tutorial/part-one/basic-hive",
+                  },
+                ],
               },
               {
-                text: "Creating a Virtual Machine",
-                link: "/tutorial/part-one/vm-setup",
-              },
-              {
-                text: "Basic Hive & Deployment",
-                link: "/tutorial/part-one/basic-hive",
+                text: "Part Two",
+                items: [
+                  {
+                    text: "Basic Deployment Keys",
+                    link: "/tutorial/part-two/basic-keys",
+                  },
+                  {
+                    text: "Encrypted Deployment Keys",
+                    link: "/tutorial/part-two/encryption",
+                  },
+                ],
               },
             ],
           },
           {
-            text: "Part Two",
-            items: [
-              {
-                text: "Basic Deployment Keys",
-                link: "/tutorial/part-two/basic-keys",
-              },
-              {
-                text: "Encrypted Deployment Keys",
-                link: "/tutorial/part-two/encryption",
-              },
-            ],
-          },
-        ],
-        "/guides/": [
-          {
-            text: "Guides",
+            text: "How-to Guides",
+            collapsed: false,
             items: [
               { text: "Installing Wire", link: "/guides/installation" },
               { text: "Applying Your Config", link: "/guides/apply" },
               { text: "Targeting Nodes", link: "/guides/targeting" },
-            ],
-          },
-          {
-            text: "Flakes",
-            items: [
-              { text: "Overview", link: "/guides/flakes/overview" },
               {
-                text: "How-to Keep Using nixos-rebuild",
-                link: "/guides/flakes/nixos-rebuild",
+                text: "Flakes",
+                items: [
+                  { text: "Overview", link: "/guides/flakes/overview" },
+                  {
+                    text: "How-to Keep Using nixos-rebuild",
+                    link: "/guides/flakes/nixos-rebuild",
+                  },
+                ],
+              },
+              {
+                text: "Features",
+                items: [
+                  { text: "Secret management", link: "/guides/keys" },
+                  { text: "Parallelism", link: "/guides/parallelism" },
+                  { text: "hive.default", link: "/guides/hive-default" },
+                ],
               },
             ],
           },
-          {
-            text: "Features",
-            items: [
-              { text: "Secret management", link: "/guides/keys" },
-              { text: "Parallelism", link: "/guides/parallelism" },
-              { text: "hive.default", link: "/guides/hive-default" },
-            ],
-          },
+          { text: "CLI & Module Reference", link: "/reference/cli.html" },
         ],
         "/reference/": [
           {

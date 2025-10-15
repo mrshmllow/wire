@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Preparing Repo & Shell
-description:
+description: Adding npins sources and a nix development shell.
 ---
 
 # {{ $frontmatter.title }}
@@ -24,7 +24,7 @@ Great! Now lets use Git & `npins` to create a new Git repo and initialise it.
 `npins init` may take a while to download `nixpkgs`.
 
 ```sh
-[nix-shell]$ git init -b main wire-tutorial
+[nix-shell]$ git init wire-tutorial
 Initialized empty Git repository in /home/.../wire-tutorial/.git/
 [nix-shell]$ cd wire-tutorial/
 [nix-shell]$ npins init

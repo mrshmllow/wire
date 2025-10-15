@@ -18,7 +18,7 @@ Wire is alpha software, please use at your own risk. Many features listed in thi
 
 In this tutorial we will create and deploy a Wire Hive. Along the way we will
 encounter [npins](https://github.com/andir/npins), simple NixOS
-configurations, and create deployment keys.
+configurations, virutal machines, and deployment keys.
 
 <div class="tip custom-block" style="padding-top: 8px">
 

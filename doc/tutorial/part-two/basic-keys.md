@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Deployment Keys Basics
-description: Deploy a basic secret with Wire tool.
+description: Deploy some basic secrets with Wire tool.
 ---
 
 # {{ $frontmatter.title }}
