@@ -58,7 +58,7 @@ impl Target {
     pub fn create_ssh_args(
         &self,
         modifiers: SubCommandModifiers,
-        non_elevated_forced: bool
+        non_elevated_forced: bool,
     ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
