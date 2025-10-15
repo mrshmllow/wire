@@ -2,4 +2,4 @@
 comment: false
 ---
 
-# Installation
+# Install Wire

@@ -1,6 +1,6 @@
 ---
 comment: true
-title: Secret Management
+title: Manage Secrets
 description: Keys, files, and other out-of-store paths with Wire Tool.
 ---
 

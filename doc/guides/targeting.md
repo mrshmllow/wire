@@ -1,6 +1,6 @@
 ---
 comment: true
-title: Targeting Nodes
+title: Target Nodes
 description: Tags, nodes, and how to target them with Wire Tool.
 ---
 

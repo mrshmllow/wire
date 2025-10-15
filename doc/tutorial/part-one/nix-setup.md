@@ -1,7 +1,7 @@
 ---
 comment: true
-title: Installation
-description: Installing npins, wire, and enabling the binary cache.
+title: Nix Setup
+description: Installing npins, nix, and enabling the binary cache.
 ---
 
 # {{ $frontmatter.title }}
@@ -43,7 +43,3 @@ either editing `/etc/nix/nix.conf` or updating your NixOS configuration:
 
 :::
 
-## Installing Wire
-
-For the purposes of this tutorial we won't be directly installing wire, we'll
-setup a nix development shell in the next stage.

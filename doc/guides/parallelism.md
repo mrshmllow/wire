@@ -1,6 +1,6 @@
 ---
 comment: true
-title: Parallelism
+title: Use Parallelism
 description: A deeper dive into parallelism with Wire Tool.
 ---
 

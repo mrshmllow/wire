@@ -1,6 +1,6 @@
 ---
 comment: true
-title: Applying Your Config
+title: Apply your Config
 description: How to apply a node with wire.
 ---
 

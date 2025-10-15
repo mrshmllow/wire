@@ -52,8 +52,8 @@ export default withMermaid(
                 text: "Part One",
                 items: [
                   {
-                    text: "Installation",
-                    link: "/tutorial/part-one/installation",
+                    text: "Nix Setup",
+                    link: "/tutorial/part-one/nix-setup",
                   },
                   {
                     text: "Preparing Repo & Shell",
@@ -88,15 +88,15 @@ export default withMermaid(
             text: "How-to Guides",
             collapsed: false,
             items: [
-              { text: "Installing Wire", link: "/guides/installation" },
-              { text: "Applying Your Config", link: "/guides/apply" },
-              { text: "Targeting Nodes", link: "/guides/targeting" },
+              { text: "Install wire", link: "/guides/installation" },
+              { text: "Apply your Config", link: "/guides/apply" },
+              { text: "Target Nodes", link: "/guides/targeting" },
               {
                 text: "Flakes",
                 items: [
-                  { text: "Overview", link: "/guides/flakes/overview" },
+                  { text: "Use Flakes", link: "/guides/flakes/overview" },
                   {
-                    text: "How-to Keep Using nixos-rebuild",
+                    text: "Keep Using nixos-rebuild",
                     link: "/guides/flakes/nixos-rebuild",
                   },
                 ],
@@ -104,9 +104,9 @@ export default withMermaid(
               {
                 text: "Features",
                 items: [
-                  { text: "Secret management", link: "/guides/keys" },
-                  { text: "Parallelism", link: "/guides/parallelism" },
-                  { text: "hive.default", link: "/guides/hive-default" },
+                  { text: "Manage Secrets", link: "/guides/keys" },
+                  { text: "Use Parallelism", link: "/guides/parallelism" },
+                  { text: "Use hive.default", link: "/guides/hive-default" },
                 ],
               },
             ],
