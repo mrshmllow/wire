@@ -9,7 +9,7 @@ description: Deploy a basic age-encrypted secret with Wire tool.
 {{ $frontmatter.description }}
 
 ::: tip
-For this tutorial we will be using [`age`](https://github.com/FiloSottile/age), 
+For this tutorial we will be using [`age`](https://github.com/FiloSottile/age),
 but other encryption cli tools work just as well such as GnuPG.
 :::
 

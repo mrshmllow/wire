@@ -92,7 +92,10 @@ export default withMermaid(
             text: "Flakes",
             items: [
               { text: "Overview", link: "/guides/flakes/overview" },
-              { text: "How-to Keep Using nixos-rebuild", link: "/guides/flakes/nixos-rebuild" },
+              {
+                text: "How-to Keep Using nixos-rebuild",
+                link: "/guides/flakes/nixos-rebuild",
+              },
             ],
           },
           {
