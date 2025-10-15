@@ -21,7 +21,7 @@ derive_more = { version = "2.0.1", features = ["display"] }
 key_agent = { path = "../key_agent" }
 futures = "0.3.31"
 prost = { workspace = true }
-gethostname = "1.0.2"
+gethostname = "1.1.0"
 nix.workspace = true
 miette = { workspace = true }
 rand = "0.9.2"
