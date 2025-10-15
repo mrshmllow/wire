@@ -1,6 +1,6 @@
 ---
 comment: true
-title: hive.default
+title: Use hive.default
 description: Deduplicate options with default node configuration.
 ---
 

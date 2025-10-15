@@ -27,7 +27,8 @@ export default withMermaid(
       // https://vitepress.dev/reference/default-theme-config
       nav: [
         { text: "Home", link: "/" },
-        { text: "Guide", link: "/guide/wire" },
+        { text: "Tutorial", link: "/tutorial/overview" },
+        { text: "Guides", link: "/guides/installation" },
         { text: "Reference", link: "/reference/cli" },
         {
           text: pkg.version,
@@ -41,30 +42,76 @@ export default withMermaid(
       ],
 
       sidebar: {
-        "/guide/": [
+        "/": [
           {
-            text: "Introduction",
+            text: "Tutorial",
+            collapsed: false,
             items: [
-              { text: "What is Wire?", link: "/guide/wire" },
-              { text: "Getting Started", link: "/guide/getting-started" },
-              { text: "Flakes", link: "/guide/flakes" },
-              { text: "Applying Your Config", link: "/guide/apply" },
-              { text: "Targeting Nodes", link: "/guide/targeting" },
+              { text: "Overview", link: "/tutorial/overview" },
+              {
+                text: "Part One",
+                items: [
+                  {
+                    text: "Nix Setup",
+                    link: "/tutorial/part-one/nix-setup",
+                  },
+                  {
+                    text: "Preparing Repo & Shell",
+                    link: "/tutorial/part-one/repo-setup",
+                  },
+                  {
+                    text: "Creating a Virtual Machine",
+                    link: "/tutorial/part-one/vm-setup",
+                  },
+                  {
+                    text: "Basic Hive & Deployment",
+                    link: "/tutorial/part-one/basic-hive",
+                  },
+                ],
+              },
+              {
+                text: "Part Two",
+                items: [
+                  {
+                    text: "Basic Deployment Keys",
+                    link: "/tutorial/part-two/basic-keys",
+                  },
+                  {
+                    text: "Encrypted Deployment Keys",
+                    link: "/tutorial/part-two/encryption",
+                  },
+                ],
+              },
             ],
           },
           {
-            text: "Features",
+            text: "How-to Guides",
+            collapsed: false,
             items: [
-              { text: "Secret management", link: "/guide/keys" },
-              { text: "Parallelism", link: "/guide/parallelism" },
-              { text: "hive.default", link: "/guide/hive-default" },
-              { text: "Magic Rollback", link: "/guide/magic-rollback" },
+              { text: "Install wire", link: "/guides/installation" },
+              { text: "Apply your Config", link: "/guides/apply" },
+              { text: "Target Nodes", link: "/guides/targeting" },
+              {
+                text: "Flakes",
+                items: [
+                  { text: "Use Flakes", link: "/guides/flakes/overview" },
+                  {
+                    text: "Keep Using nixos-rebuild",
+                    link: "/guides/flakes/nixos-rebuild",
+                  },
+                ],
+              },
+              {
+                text: "Features",
+                items: [
+                  { text: "Manage Secrets", link: "/guides/keys" },
+                  { text: "Use Parallelism", link: "/guides/parallelism" },
+                  { text: "Use hive.default", link: "/guides/hive-default" },
+                ],
+              },
             ],
           },
-          {
-            text: "Use cases",
-            items: [{ text: "Tailscale", link: "/guide/tailscale" }],
-          },
+          { text: "CLI & Module Reference", link: "/reference/cli.html" },
         ],
         "/reference/": [
           {
@@ -91,7 +138,9 @@ export default withMermaid(
     markdown: {
       config: (md) => {
         md.use(markdownItFootnote);
-        md.use(groupIconMdPlugin);
+        md.use(groupIconMdPlugin, {
+          titleBar: { includeSnippet: true },
+        });
       },
     },
     vite: {
@@ -107,6 +156,9 @@ export default withMermaid(
             "hive.nix": "vscode-icons:file-type-nix",
             "flake.nix": "vscode-icons:file-type-nix",
             "module.nix": "vscode-icons:file-type-nix",
+            "vm.nix": "vscode-icons:file-type-nix",
+            "shell.nix": "vscode-icons:file-type-nix",
+            "secrets.nix": "vscode-icons:file-type-nix",
             home: localIconLoader(import.meta.url, "../assets/homemanager.svg"),
             ".conf": "vscode-icons:file-type-config",
           },

@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Data integrity of keys have been greatly improved
 - Unknown SSH keys will be immediately rejected unless `--ssh-accept-host` is passed.
 
+### Documented
+
+- Added a real tutorial, and seperated many how-to guides.
+  The tutorial leads the user through creating and deploying a Wire Hive.
+
 ## [0.5.0] - 2025-09-18
 
 ### Added
