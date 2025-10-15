@@ -1,12 +1,17 @@
 ---
 comment: true
 title: Deployment Keys Basics
-description: Deploy a basic secret with Wire tool.
+description: Deploy a basic age-encrypted secret with Wire tool.
 ---
 
 # {{ $frontmatter.title }}
 
 {{ $frontmatter.description }}
+
+::: tip
+For this tutorial we will be using [`age`](https://github.com/FiloSottile/age), 
+but other encryption cli tools work just as well such as GnuPG.
+:::
 
 ## Installing age
 
@@ -53,21 +58,24 @@ Public key: age1j08s3kmr8zw4w8k99vs4nut5mg03dm8nfuaajuekdyzlujxply5qwsv4g0
 
 ::: details
 Further details on how age works can be found on in the
-[age manual](https://man.archlinux.org/man/age.1.en.txt)
+[age manual](https://man.archlinux.org/man/age.1.en.txt).
 :::
 
-Now, lets encrypt the words `"encrypted string"` with age and save it to the
+Now, lets encrypt the words `"!! encrypted string !!"` with age and save it to the
 file `top-secret.age`.
 
 We will use a pipeline to echo the encrypted string into
 age, and use `age-keygent -y` to give age the public key we generated, then we
-use the redirection operator to save the encrypted data to `top-secret.age`
+use the redirection operator to save the encrypted data to `top-secret.age`.
 
 ```sh
-[nix-shell]$ echo encrypted string | age --encrypt --recipient $(age-keygen -y key.txt) > top-secret.age
+[nix-shell]$ echo "!! encrypted string !!" | age --encrypt --recipient $(age-keygen -y key.txt) > top-secret.age
 ```
 
 ## Adding an age-encrypted key
+
+Now, lets combine our previous command-sourced key with `age`. Pass the
+arguments `age --decrypt --identity key.txt ./age-secret.age` to wire:
 
 ```nix:line-numbers [secrets.nix]
 {
@@ -87,8 +95,11 @@ use the redirection operator to save the encrypted data to `top-secret.age`
 }
 ```
 
+One `wire apply keys` later, and you have successfully deployed an encrypted
+key:
+
 ```sh [Virtual Machine]
 [root@wire-tutorial:~]# cat /run/keys/age-secret
-Hello World
+!! encrypted string !!
 
 ```

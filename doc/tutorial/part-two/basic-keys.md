@@ -10,7 +10,7 @@ description: Deploy a basic secret with Wire tool.
 
 ## Creating a `secrets.nix`
 
-Lets create a NixOS module that will contain our secret keys.
+Lets create a NixOS module that will contain our secret keys, and import it:
 
 ```nix:line-numbers [hive.nix]
 let
@@ -41,7 +41,9 @@ wire.makeHive {
 ```nix:line-numbers [secrets.nix]
 {
   deployment.keys = {
+    # the key's unique name is `"basic.txt"`.
     "basic.txt" = {
+      # In this key's case, the source is a literal string:
       source = ''
         Hello World
       '';
@@ -49,6 +51,14 @@ wire.makeHive {
   };
 }
 ```
+
+::: details
+Further details on the `deployment.keys` options can be found
+[in the reference](/reference/module.html#deployment-keys)
+:::
+
+Once we deploy this new configuration to the virtul machine,
+`/run/keys/basic.txt` will be created with the contents of the key.
 
 ```sh
 [nix-shell]$ wire apply keys
@@ -63,10 +73,16 @@ Hello World
 
 ```
 
-## File-sourced keys
+You successfully deployed your first, albeit not-so-secret, secret key! Let's
+move on from literal-text keys and use something a bit more powerful.
+
+## File-sourced keys <Badge type="info">Optional</Badge>
+
+This section is optional to try, but you can also pass `deployment.keys.<name>.source`
+a file path. It's contents is read and treated as literal text.
 
 ```sh
-[nix-shell]$ echo hello world > very-important-secret.txt
+$ echo hello world > very-important-secret.txt
 ```
 
 ```nix:line-numbers [secrets.nix]
@@ -89,6 +105,15 @@ hello world
 
 ## Command-sourced keys
 
+Command-sourced keys are where the real power of wire keys lie. By passing a
+list of strings, wire will execute them as a command and create a key out of it's `stdout`.
+
+Because the command's output is never written to the nix store, these can be
+considered real secrets.
+
+To create a basic example, update your `secrets.nix` to include a secret that
+echos "hello world":
+
 ```nix:line-numbers [secrets.nix]
 {
   deployment.keys = {
@@ -103,6 +128,9 @@ hello world
   };
 }
 ```
+
+After a quick `wire deploy secrets`, the `/run/keys/command.txt` file is
+created:
 
 ```sh [Virtual Machine]
 [root@wire-tutorial:~]# cat /run/keys/command.txt

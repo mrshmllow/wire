@@ -28,15 +28,21 @@ Ready? Skip to [Installation](./part-one/installation).
 
 ## Why Wire?
 
-::: info
-The following is the goal for a stable release and not fully implemented.
-:::
+| Features                 | Wire               | Colmena            |
+| ------------------------ | ------------------ | ------------------ |
+| Node Tagging             | :white_check_mark: | :white_check_mark: |
+| Secret Management        | :white_check_mark: | :white_check_mark: |
+| Parallel Evaluation      | :white_check_mark: | :white_check_mark: |
+| Node Tagging             | :white_check_mark: | :white_check_mark: |
+| Remote Builds            | :white_check_mark: | :white_check_mark: |
+| Pipeline Support         | :white_check_mark: | :x:[^2]            |
+| Non-Root Deployments[^4] | :white_check_mark: | :x:[^3]            |
 
-| Features              | Wire               | Colmena                                                                                                    |
-| --------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------- |
-| Secret Management     | :white_check_mark: | :white_check_mark:                                                                                         |
-| Parallel Evaluation   | :white_check_mark: | [Experimental](https://colmena.cli.rs/unstable/features/parallelism.html#parallel-evaluation-experimental) |
-| Node Tagging          | :white_check_mark: | :white_check_mark:                                                                                         |
-| `jq` pipeline support | :white_check_mark: | :x:[^2]                                                                                                    |
+[^2]: You need to write custom nix code to use Colmena hive metadata inside environments like CI pipelines, bash scripting, etc., which requires a knowledge of its internals. Recently it agained the [eval feature](https://colmena.cli.rs/unstable/features/eval.html) which has improved the situation since wire was first started.
 
-[^2]: You need to write custom nix code to use Colmena hive metadata inside environments like CI pipelines, bash scripting, etc., which requires a knowledge of its internals.
+[^3]: See https://github.com/zhaofengli/colmena/issues/120
+
+[^4]:
+    You may deploy with _any_ user who can login through SSH, whether they be
+    `wheel` or not. You may need to enter your password multiple times for the various elevated
+    steps wire needs to perform.
