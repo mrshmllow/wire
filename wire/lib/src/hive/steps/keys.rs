@@ -247,7 +247,7 @@ impl ExecuteStep for Keys {
         let mut writer = SimpleLengthDelimWriter::new(async |data| child.write_stdin(data).await);
 
         for (position, (mut spec, buf)) in keys.with_position() {
-            if matches!(position, Position::Last) {
+            if matches!(position, Position::Last | Position::Only) {
                 spec.last = true;
             }
 
