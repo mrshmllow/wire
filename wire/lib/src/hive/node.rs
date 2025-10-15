@@ -12,7 +12,6 @@ use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
-use crate::commands::noninteractive::NonInteractiveCommand;
 use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip, get_command};
 use crate::errors::NetworkError;
 use crate::hive::steps::build::Build;

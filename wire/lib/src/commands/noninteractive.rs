@@ -62,7 +62,7 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
         &mut self,
         command_string: S,
         _keep_stdin_open: bool,
-        elevated: bool,
+        _elevated: bool,
         envs: HashMap<String, String>,
         _clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
