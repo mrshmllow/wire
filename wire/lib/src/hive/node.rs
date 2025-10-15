@@ -45,7 +45,7 @@ impl Target {
             if modifiers.ssh_accept_host {
                 "-o StrictHostKeyChecking=no"
             } else {
-                "-o StrictHostKeyChecking=accept-new"
+                "-o StrictHostKeyChecking=yes"
             },
             if modifiers.non_interactive {
                 // make nix refuse to auth with interactivity
