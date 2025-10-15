@@ -2,6 +2,7 @@
 # Copyright 2024-2025 wire Contributors
 
 {
+  pkgs,
   lib,
   name,
   config,
@@ -185,6 +186,23 @@ in
   };
 
   config = {
+    systemd.services = lib.mapAttrs' (
+      name: value:
+      lib.nameValuePair "${name}-key" {
+        description = "Waits for ${value.path}";
+        after = [ "local-fs.target" ];
+        unitConfig = {
+          ConditionFileNotEmpty = value.path;
+        };
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = "${lib.getExe' pkgs.coreutils "echo"} ${value.path} exists.";
+          RemainAfterExit = "yes";
+          Restart = "no";
+        };
+      }
+    ) config.deployment.keys;
+
     deployment = {
       _keys = lib.mapAttrsToList (
         _: value:
