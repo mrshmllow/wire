@@ -13,7 +13,7 @@ use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
 use crate::commands::noninteractive::NonInteractiveCommand;
-use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
+use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip, get_command};
 use crate::errors::NetworkError;
 use crate::hive::steps::build::Build;
 use crate::hive::steps::evaluate::Evaluate;
@@ -205,10 +205,10 @@ impl Node {
             self.target.user, host
         );
 
-        let mut command =
-            NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix, modifiers).await?;
+        let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
         let output = command.run_command_with_env(
             command_string,
+            false,
             false,
             HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers))]),
             clobber_lock,

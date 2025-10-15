@@ -9,9 +9,7 @@ use std::{
 
 use crate::{
     EvalGoal, SubCommandModifiers,
-    commands::{
-        ChildOutputMode, WireCommand, WireCommandChip, noninteractive::NonInteractiveCommand,
-    },
+    commands::{ChildOutputMode, WireCommand, WireCommandChip, get_command},
     errors::{HiveInitializationError, HiveLibError},
     hive::{
         find_hive,
@@ -26,8 +24,7 @@ pub async fn push(
     modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<(), HiveLibError> {
-    let mut command =
-        NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix, modifiers).await?;
+    let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
 
     let command_string = format!(
         "nix --extra-experimental-features nix-command \
@@ -42,6 +39,7 @@ pub async fn push(
 
     let child = command.run_command_with_env(
         command_string,
+        false,
         false,
         HashMap::from([("NIX_SSHOPTS".into(), node.target.create_ssh_opts(modifiers))]),
         clobber_lock,
@@ -72,8 +70,8 @@ pub async fn evaluate_hive_attribute(
             HiveInitializationError::NoHiveFound(path.to_path_buf()),
         ))?;
 
-    let mut command =
-        NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix, modifiers).await?;
+    let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
+
     let attribute = if canon_path.ends_with("flake.nix") {
         format!(
             "{}#wire --apply \"hive: {}\"",
@@ -105,11 +103,11 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = command.run_command(command_string, false, clobber_lock)?;
+    let child = command.run_command(command_string, false, false, clobber_lock)?;
 
     child
         .wait_till_success()
         .await
         .map_err(|source| HiveLibError::NixEvalError { attribute, source })
-        .map(|(_, stdout)| stdout)
+        .map(|x| x.get_stdout().clone())
 }

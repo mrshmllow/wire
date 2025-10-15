@@ -48,7 +48,7 @@ impl ExecuteStep for Build {
         .await?;
 
         let (_, stdout) = command
-            .run_command(command_string, false, ctx.clobber_lock.clone())?
+            .run_command(command_string, false, false, ctx.clobber_lock.clone())?
             .wait_till_success()
             .await
             .map_err(|source| HiveLibError::NixBuildError {

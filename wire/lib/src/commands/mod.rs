@@ -6,8 +6,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use itertools::Either;
-
 use crate::{
     SubCommandModifiers,
     commands::{
@@ -30,7 +28,13 @@ pub(crate) enum ChildOutputMode {
     Nix,
 }
 
-pub(crate) async fn get_elevated_command(
+#[derive(Debug)]
+pub enum Either<L, R> {
+    Left(L),
+    Right(R),
+}
+
+pub(crate) async fn get_command(
     target: Option<&'_ Target>,
     output_mode: ChildOutputMode,
     modifiers: SubCommandModifiers,
@@ -59,11 +63,13 @@ pub(crate) trait WireCommand<'target>: Sized {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
+        elevated: bool,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         self.run_command_with_env(
             command_string,
             keep_stdin_open,
+            elevated,
             std::collections::HashMap::new(),
             clobber_lock,
         )
@@ -73,6 +79,7 @@ pub(crate) trait WireCommand<'target>: Sized {
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
+        elevated: bool,
         args: HashMap<String, String>,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError>;
@@ -101,22 +108,37 @@ impl WireCommand<'_> for Either<InteractiveCommand<'_>, NonInteractiveCommand<'_
         &mut self,
         command_string: S,
         keep_stdin_open: bool,
+        elevated: bool,
         args: HashMap<String, String>,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         match self {
             Self::Left(left) => left
-                .run_command_with_env(command_string, keep_stdin_open, args, clobber_lock)
+                .run_command_with_env(
+                    command_string,
+                    keep_stdin_open,
+                    elevated,
+                    args,
+                    clobber_lock,
+                )
                 .map(Either::Left),
             Self::Right(right) => right
-                .run_command_with_env(command_string, keep_stdin_open, args, clobber_lock)
+                .run_command_with_env(
+                    command_string,
+                    keep_stdin_open,
+                    elevated,
+                    args,
+                    clobber_lock,
+                )
                 .map(Either::Right),
         }
     }
 }
 
+type ExitStatus = Either<(portable_pty::ExitStatus, String), (std::process::ExitStatus, String)>;
+
 impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
-    type ExitStatus = Either<portable_pty::ExitStatus, (std::process::ExitStatus, String)>;
+    type ExitStatus = ExitStatus;
 
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError> {
         match self {
@@ -129,6 +151,14 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
         match self {
             Self::Left(left) => left.wait_till_success().await.map(Either::Left),
             Self::Right(right) => right.wait_till_success().await.map(Either::Right),
+        }
+    }
+}
+
+impl ExitStatus {
+    fn get_stdout(&self) -> &String {
+        match self {
+            Self::Left((_, stdout)) | Self::Right((_, stdout)) => stdout,
         }
     }
 }

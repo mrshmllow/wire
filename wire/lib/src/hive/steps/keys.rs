@@ -24,7 +24,7 @@ use tracing::debug;
 
 use crate::HiveLibError;
 use crate::commands::common::push;
-use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip, get_elevated_command};
+use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip, get_command};
 use crate::errors::KeyError;
 use crate::hive::node::{
     Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, should_apply_locally,
@@ -230,7 +230,7 @@ impl ExecuteStep for Keys {
             return Ok(());
         }
 
-        let mut command = get_elevated_command(
+        let mut command = get_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                 None
             } else {
@@ -242,7 +242,8 @@ impl ExecuteStep for Keys {
         .await?;
         let command_string = format!("{agent_directory}/bin/key_agent");
 
-        let mut child = command.run_command(command_string, true, ctx.clobber_lock.clone())?;
+        let mut child =
+            command.run_command(command_string, true, true, ctx.clobber_lock.clone())?;
 
         let mut writer = SimpleLengthDelimWriter::new(async |data| child.write_stdin(data).await);
 

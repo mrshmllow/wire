@@ -43,7 +43,7 @@ fn check_schema_version<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error
 impl Hive {
     pub const SCHEMA_VERSION: u32 = 0;
 
-    #[instrument]
+    #[instrument(skip_all, name = "eval_hive")]
     pub async fn new_from_path(
         path: &Path,
         modifiers: SubCommandModifiers,
@@ -53,6 +53,8 @@ impl Hive {
 
         let output =
             evaluate_hive_attribute(path, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
+
+        info!("evaluate_hive_attribute ouputted {output}");
 
         let hive: Hive = serde_json::from_str(&output).map_err(|err| {
             HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
