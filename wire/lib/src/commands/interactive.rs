@@ -378,7 +378,7 @@ fn create_sync_ssh_command(
     modifiers: SubCommandModifiers,
 ) -> Result<portable_pty::CommandBuilder, HiveLibError> {
     let mut command = portable_pty::CommandBuilder::new("ssh");
-    command.args(target.create_ssh_args(modifiers)?);
+    command.args(target.create_ssh_args(modifiers, false)?);
     Ok(command)
 }
 

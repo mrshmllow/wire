@@ -58,6 +58,7 @@ impl Target {
     pub fn create_ssh_args(
         &self,
         modifiers: SubCommandModifiers,
+        non_elevated_forced: bool
     ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
@@ -80,7 +81,7 @@ impl Target {
             .to_string(),
         ]);
 
-        if modifiers.non_interactive {
+        if modifiers.non_interactive || non_elevated_forced {
             vector.extend(["-o".to_string(), "PasswordAuthentication=no".to_string()]);
             vector.extend([
                 "-o".to_string(),
