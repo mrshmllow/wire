@@ -9,7 +9,7 @@ use std::{
 
 use crate::{
     EvalGoal, SubCommandModifiers,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip, get_command},
+    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
     errors::{HiveInitializationError, HiveLibError},
     hive::{
         find_hive,
@@ -38,11 +38,13 @@ pub async fn push(
     );
 
     let child = command.run_command_with_env(
-        command_string,
-        false,
-        false,
+        CommandArguments {
+            command_string,
+            keep_stdin_open: false,
+            elevated: false,
+            clobber_lock,
+        },
         HashMap::from([("NIX_SSHOPTS".into(), node.target.create_ssh_opts(modifiers))]),
-        clobber_lock,
     )?;
 
     child
@@ -103,7 +105,12 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = command.run_command(command_string, false, false, clobber_lock)?;
+    let child = command.run_command(CommandArguments {
+        command_string,
+        keep_stdin_open: false,
+        elevated: false,
+        clobber_lock,
+    })?;
 
     child
         .wait_till_success()

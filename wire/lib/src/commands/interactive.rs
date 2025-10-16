@@ -20,6 +20,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use crate::SubCommandModifiers;
+use crate::commands::CommandArguments;
 use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
 use crate::nix_log::NixLog;
@@ -111,16 +112,15 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
     #[allow(clippy::too_many_lines)]
     fn run_command_with_env<S: AsRef<str>>(
         &mut self,
-        command_string: S,
-        keep_stdin_open: bool,
-        elevated: bool,
+        arguments: CommandArguments<S>,
         envs: std::collections::HashMap<String, String>,
-        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        eprintln!(
-            "Please authenticate for \"sudo {}\"",
-            command_string.as_ref(),
-        );
+        if arguments.elevated {
+            eprintln!(
+                "Please authenticate for \"sudo {}\"",
+                arguments.command_string.as_ref(),
+            );
+        }
 
         let pty_system = NativePtySystem::default();
         let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();
@@ -147,7 +147,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             start = self.start_needle,
             succeed = self.succeed_needle,
             failed = self.failed_needle,
-            command = command_string.as_ref(),
+            command = arguments.command_string.as_ref(),
             flags = match *self.output_mode {
                 ChildOutputMode::Nix => "--log-format internal-json",
                 ChildOutputMode::Raw => "",
@@ -171,7 +171,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             command
         };
 
-        if elevated {
+        if arguments.elevated {
             command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
         } else {
             command.arg(command_string);
@@ -182,7 +182,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             command.env(key, value);
         }
 
-        let clobber_guard = clobber_lock.lock().unwrap();
+        let clobber_guard = arguments.clobber_lock.lock().unwrap();
         let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
         let child = pty_pair
             .slave
@@ -240,7 +240,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
 
         drop(clobber_guard);
 
-        if keep_stdin_open {
+        if arguments.keep_stdin_open {
             trace!("Sending THREAD_BEGAN_SIGNAL");
 
             posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)

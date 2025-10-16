@@ -7,7 +7,7 @@ use tracing::{error, info, instrument, warn};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip, get_command},
+    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
     errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
@@ -59,7 +59,12 @@ async fn set_profile(
     .await?;
     let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
-    let child = command.run_command(command_string, false, true, ctx.clobber_lock.clone())?;
+    let child = command.run_command(CommandArguments {
+        command_string,
+        keep_stdin_open: false,
+        elevated: true,
+        clobber_lock: ctx.clobber_lock.clone(),
+    })?;
 
     let _ = child
         .wait_till_success()
@@ -114,7 +119,12 @@ impl ExecuteStep for SwitchToConfiguration {
             }
         );
 
-        let child = command.run_command(command_string, false, true, ctx.clobber_lock.clone())?;
+        let child = command.run_command(CommandArguments {
+            command_string,
+            keep_stdin_open: false,
+            elevated: true,
+            clobber_lock: ctx.clobber_lock.clone(),
+        })?;
 
         let result = child.wait_till_success().await;
 
@@ -136,8 +146,12 @@ impl ExecuteStep for SwitchToConfiguration {
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot =
-                    command.run_command("reboot now", false, true, ctx.clobber_lock.clone())?;
+                let reboot = command.run_command(CommandArguments {
+                    command_string: "reboot now",
+                    keep_stdin_open: false,
+                    elevated: true,
+                    clobber_lock: ctx.clobber_lock.clone(),
+                })?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected

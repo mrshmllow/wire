@@ -34,6 +34,13 @@ pub enum Either<L, R> {
     Right(R),
 }
 
+pub(crate) struct CommandArguments<S: AsRef<str>> {
+    pub(crate) command_string: S,
+    pub(crate) keep_stdin_open: bool,
+    pub(crate) elevated: bool,
+    pub(crate) clobber_lock: Arc<Mutex<()>>,
+}
+
 pub(crate) async fn get_command(
     target: Option<&'_ Target>,
     output_mode: ChildOutputMode,
@@ -61,27 +68,15 @@ pub(crate) trait WireCommand<'target>: Sized {
 
     fn run_command<S: AsRef<str>>(
         &mut self,
-        command_string: S,
-        keep_stdin_open: bool,
-        elevated: bool,
-        clobber_lock: Arc<Mutex<()>>,
+        command_arugments: CommandArguments<S>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        self.run_command_with_env(
-            command_string,
-            keep_stdin_open,
-            elevated,
-            std::collections::HashMap::new(),
-            clobber_lock,
-        )
+        self.run_command_with_env(command_arugments, std::collections::HashMap::new())
     }
 
     fn run_command_with_env<S: AsRef<str>>(
         &mut self,
-        command_string: S,
-        keep_stdin_open: bool,
-        elevated: bool,
+        command_arugments: CommandArguments<S>,
         args: HashMap<String, String>,
-        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError>;
 }
 
@@ -106,30 +101,15 @@ impl WireCommand<'_> for Either<InteractiveCommand<'_>, NonInteractiveCommand<'_
 
     fn run_command_with_env<S: AsRef<str>>(
         &mut self,
-        command_string: S,
-        keep_stdin_open: bool,
-        elevated: bool,
-        args: HashMap<String, String>,
-        clobber_lock: Arc<Mutex<()>>,
+        command_arugments: CommandArguments<S>,
+        envs: HashMap<String, String>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         match self {
             Self::Left(left) => left
-                .run_command_with_env(
-                    command_string,
-                    keep_stdin_open,
-                    elevated,
-                    args,
-                    clobber_lock,
-                )
+                .run_command_with_env(command_arugments, envs)
                 .map(Either::Left),
             Self::Right(right) => right
-                .run_command_with_env(
-                    command_string,
-                    keep_stdin_open,
-                    elevated,
-                    args,
-                    clobber_lock,
-                )
+                .run_command_with_env(command_arugments, envs)
                 .map(Either::Right),
         }
     }

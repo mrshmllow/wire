@@ -18,7 +18,7 @@ use tracing::{debug, trace};
 
 use crate::{
     SubCommandModifiers,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip},
+    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip},
     errors::{CommandError, HiveLibError},
     hive::node::Target,
     nix_log::NixLog,
@@ -60,11 +60,8 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
 
     fn run_command_with_env<S: AsRef<str>>(
         &mut self,
-        command_string: S,
-        _keep_stdin_open: bool,
-        elevated: bool,
+        arguments: CommandArguments<S>,
         envs: HashMap<String, String>,
-        _clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         let mut command = if let Some(target) = self.target {
             create_sync_ssh_command(target, self.modifiers)?
@@ -78,14 +75,14 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
 
         let command_string = format!(
             "{command_string}{extra}",
-            command_string = command_string.as_ref(),
+            command_string = arguments.command_string.as_ref(),
             extra = match *self.output_mode {
                 ChildOutputMode::Raw => "",
                 ChildOutputMode::Nix => " --log-format internal-json",
             }
         );
 
-        let command_string = if elevated {
+        let command_string = if arguments.elevated {
             format!("sudo -u root -- sh -c '{command_string}'")
         } else {
             command_string
