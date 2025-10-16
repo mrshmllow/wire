@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+#![allow(unused_assignments)]
+
 use std::{num::ParseIntError, path::PathBuf, process::ExitStatus, sync::mpsc::RecvError};
 
 use miette::{Diagnostic, SourceSpan};
