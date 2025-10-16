@@ -19,7 +19,6 @@
           cfg.settings.package
 
           pkgs.just
-          pkgs.cargo-nextest
           pkgs.pnpm
           pkgs.nodejs
         ];

@@ -12,8 +12,9 @@ use std::sync::{Arc, Mutex};
 use tracing::{error, info, instrument, trace};
 
 use crate::SubCommandModifiers;
-use crate::commands::noninteractive::NonInteractiveCommand;
-use crate::commands::{ChildOutputMode, WireCommand, WireCommandChip};
+use crate::commands::{
+    ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command,
+};
 use crate::errors::NetworkError;
 use crate::hive::steps::build::Build;
 use crate::hive::steps::evaluate::Evaluate;
@@ -59,6 +60,7 @@ impl Target {
     pub fn create_ssh_args(
         &self,
         modifiers: SubCommandModifiers,
+        non_elevated_forced: bool,
     ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
@@ -81,7 +83,7 @@ impl Target {
             .to_string(),
         ]);
 
-        if modifiers.non_interactive {
+        if modifiers.non_interactive || non_elevated_forced {
             vector.extend(["-o".to_string(), "PasswordAuthentication=no".to_string()]);
             vector.extend([
                 "-o".to_string(),
@@ -205,13 +207,15 @@ impl Node {
             self.target.user, host
         );
 
-        let mut command =
-            NonInteractiveCommand::spawn_new(None, ChildOutputMode::Nix, modifiers).await?;
+        let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
         let output = command.run_command_with_env(
-            command_string,
-            false,
+            CommandArguments {
+                command_string,
+                keep_stdin_open: false,
+                elevated: false,
+                clobber_lock,
+            },
             HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers))]),
-            clobber_lock,
         )?;
 
         output.wait_till_success().await.map_err(|source| {

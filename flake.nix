@@ -33,7 +33,6 @@
         ./nix/hooks.nix # pre-commit hooks
         ./nix/utils.nix # utility functions
         ./nix/shells.nix
-        ./nix/checks.nix
         ./wire/cli
         ./wire/key_agent
         ./doc

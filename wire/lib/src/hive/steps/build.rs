@@ -8,7 +8,8 @@ use tracing::{info, instrument};
 use crate::{
     HiveLibError,
     commands::{
-        ChildOutputMode, WireCommand, WireCommandChip, noninteractive::NonInteractiveCommand,
+        ChildOutputMode, CommandArguments, WireCommand, WireCommandChip,
+        noninteractive::NonInteractiveCommand,
     },
     hive::node::{Context, ExecuteStep, Goal},
 };
@@ -48,7 +49,12 @@ impl ExecuteStep for Build {
         .await?;
 
         let (_, stdout) = command
-            .run_command(command_string, false, ctx.clobber_lock.clone())?
+            .run_command(CommandArguments {
+                command_string,
+                keep_stdin_open: false,
+                elevated: false,
+                clobber_lock: ctx.clobber_lock.clone(),
+            })?
             .wait_till_success()
             .await
             .map_err(|source| HiveLibError::NixBuildError {

@@ -20,6 +20,7 @@ use std::{
 use tracing::{debug, error, info, trace};
 
 use crate::SubCommandModifiers;
+use crate::commands::CommandArguments;
 use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
 use crate::nix_log::NixLog;
@@ -48,7 +49,8 @@ pub(crate) struct InteractiveChildChip {
     cancel_stdin_pipe_w: OwnedFd,
     write_stdin_pipe_w: OwnedFd,
 
-    error_collection: Arc<Mutex<VecDeque<String>>>,
+    stderr_collection: Arc<Mutex<VecDeque<String>>>,
+    stdout_collection: Arc<Mutex<VecDeque<String>>>,
 
     command_string: String,
 
@@ -71,13 +73,17 @@ struct WatchStdinArguments {
     failed_needle: Arc<String>,
     start_needle: Arc<String>,
     output_mode: Arc<ChildOutputMode>,
-    collection: Arc<Mutex<VecDeque<String>>>,
+    stderr_collection: Arc<Mutex<VecDeque<String>>>,
+    stdout_collection: Arc<Mutex<VecDeque<String>>>,
     completion_status: Arc<CompletionStatus>,
 }
 
 /// the underlying command began
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
+
+/// substitutes STDOUT with #$line. stdout is far less common than stderr.
+const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
 impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
     type ChildChip = InteractiveChildChip;
@@ -106,18 +112,14 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
     #[allow(clippy::too_many_lines)]
     fn run_command_with_env<S: AsRef<str>>(
         &mut self,
-        command_string: S,
-        keep_stdin_open: bool,
+        arguments: CommandArguments<S>,
         envs: std::collections::HashMap<String, String>,
-        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Self::ChildChip, HiveLibError> {
-        if let Some(target) = self.target {
-            if target.user != "root".into() {
-                eprintln!(
-                    "Non-root user: Please authenticate for \"sudo {}\"",
-                    command_string.as_ref(),
-                );
-            }
+        if arguments.elevated {
+            eprintln!(
+                "Please authenticate for \"sudo {}\"",
+                arguments.command_string.as_ref(),
+            );
         }
 
         let pty_system = NativePtySystem::default();
@@ -141,11 +143,11 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         }
 
         let command_string = &format!(
-            "echo '{start}' && {command} {flags} && echo '{succeed}' || echo '{failed}'",
+            "echo '{start}' && {command} {flags} {IO_SUBS} && echo '{succeed}' || echo '{failed}'",
             start = self.start_needle,
             succeed = self.succeed_needle,
             failed = self.failed_needle,
-            command = command_string.as_ref(),
+            command = arguments.command_string.as_ref(),
             flags = match *self.output_mode {
                 ChildOutputMode::Nix => "--log-format internal-json",
                 ChildOutputMode::Raw => "",
@@ -169,14 +171,18 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             command
         };
 
-        command.args([&format!("sudo -u root -- sh -c \"{command_string}\"")]);
+        if arguments.elevated {
+            command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
+        } else {
+            command.arg(command_string);
+        }
 
         // give command all env vars
         for (key, value) in envs {
             command.env(key, value);
         }
 
-        let clobber_guard = clobber_lock.lock().unwrap();
+        let clobber_guard = arguments.clobber_lock.lock().unwrap();
         let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
         let child = pty_pair
             .slave
@@ -196,7 +202,8 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             .take_writer()
             .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
 
-        let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+        let stderr_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+        let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
         let (began_tx, began_rx) = mpsc::channel::<()>();
         let completion_status = Arc::new(CompletionStatus::new());
 
@@ -208,7 +215,8 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
                 failed_needle: self.failed_needle.clone(),
                 start_needle: self.start_needle.clone(),
                 output_mode: self.output_mode.clone(),
-                collection: error_collection.clone(),
+                stderr_collection: stderr_collection.clone(),
+                stdout_collection: stdout_collection.clone(),
                 completion_status: completion_status.clone(),
             };
 
@@ -232,7 +240,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
 
         drop(clobber_guard);
 
-        if keep_stdin_open {
+        if arguments.keep_stdin_open {
             trace!("Sending THREAD_BEGAN_SIGNAL");
 
             posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
@@ -248,7 +256,8 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             child,
             cancel_stdin_pipe_w,
             write_stdin_pipe_w,
-            error_collection,
+            stderr_collection,
+            stdout_collection,
             command_string: command_string.clone(),
             completion_status,
             stdout_handle,
@@ -287,7 +296,7 @@ impl CompletionStatus {
 }
 
 impl WireCommandChip for InteractiveChildChip {
-    type ExitStatus = portable_pty::ExitStatus;
+    type ExitStatus = (portable_pty::ExitStatus, String);
 
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, CommandError> {
         info!("trying to grab status...");
@@ -308,12 +317,15 @@ impl WireCommandChip for InteractiveChildChip {
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         if let Some(true) = success {
-            return Ok(exit_status);
+            let mut collection = self.stdout_collection.lock().unwrap();
+            let logs = collection.make_contiguous().join("\n");
+
+            return Ok((exit_status, logs));
         }
 
         debug!("child did not succeed");
 
-        let mut collection = self.error_collection.lock().unwrap();
+        let mut collection = self.stderr_collection.lock().unwrap();
         let logs = collection.make_contiguous().join("\n");
 
         Err(CommandError::CommandFailed {
@@ -366,7 +378,7 @@ fn create_sync_ssh_command(
     modifiers: SubCommandModifiers,
 ) -> Result<portable_pty::CommandBuilder, HiveLibError> {
     let mut command = portable_pty::CommandBuilder::new("ssh");
-    command.args(target.create_ssh_args(modifiers)?);
+    command.args(target.create_ssh_args(modifiers, false)?);
     Ok(command)
 }
 
@@ -378,7 +390,8 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
         failed_needle,
         start_needle,
         output_mode,
-        collection,
+        stdout_collection,
+        stderr_collection,
         completion_status,
     } = arguments;
 
@@ -417,11 +430,18 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
                     }
 
                     if began {
+                        if let Some(stripped) = line.strip_prefix('#') {
+                            output_mode.trace(stripped.to_string(), false);
+                            let mut queue = stdout_collection.lock().unwrap();
+                            queue.push_front(stripped.to_string());
+                            continue;
+                        }
+
                         let log = output_mode.trace(line.clone(), false);
+                        let mut queue = stderr_collection.lock().unwrap();
 
                         if let Some(NixLog::Internal(log)) = log {
                             if let Some(message) = log.get_errorish_message() {
-                                let mut queue = collection.lock().unwrap();
                                 // add at most 10 message to the front, drop the rest.
                                 queue.push_front(message);
                                 queue.truncate(10);

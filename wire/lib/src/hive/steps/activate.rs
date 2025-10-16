@@ -7,7 +7,7 @@ use tracing::{error, info, instrument, warn};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, WireCommand, WireCommandChip, get_elevated_command},
+    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
     errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
@@ -47,7 +47,7 @@ async fn set_profile(
 ) -> Result<(), HiveLibError> {
     info!("Setting profiles in anticipation for switch-to-configuration {goal}");
 
-    let mut command = get_elevated_command(
+    let mut command = get_command(
         if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
             None
         } else {
@@ -59,7 +59,12 @@ async fn set_profile(
     .await?;
     let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
-    let child = command.run_command(command_string, false, ctx.clobber_lock.clone())?;
+    let child = command.run_command(CommandArguments {
+        command_string,
+        keep_stdin_open: false,
+        elevated: true,
+        clobber_lock: ctx.clobber_lock.clone(),
+    })?;
 
     let _ = child
         .wait_till_success()
@@ -93,7 +98,7 @@ impl ExecuteStep for SwitchToConfiguration {
 
         info!("Running switch-to-configuration {goal}");
 
-        let mut command = get_elevated_command(
+        let mut command = get_command(
             if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
                 None
             } else {
@@ -114,7 +119,12 @@ impl ExecuteStep for SwitchToConfiguration {
             }
         );
 
-        let child = command.run_command(command_string, false, ctx.clobber_lock.clone())?;
+        let child = command.run_command(CommandArguments {
+            command_string,
+            keep_stdin_open: false,
+            elevated: true,
+            clobber_lock: ctx.clobber_lock.clone(),
+        })?;
 
         let result = child.wait_till_success().await;
 
@@ -130,16 +140,18 @@ impl ExecuteStep for SwitchToConfiguration {
                     return Ok(());
                 }
 
-                let mut command = get_elevated_command(
-                    Some(&ctx.node.target),
-                    ChildOutputMode::Nix,
-                    ctx.modifiers,
-                )
-                .await?;
+                let mut command =
+                    get_command(Some(&ctx.node.target), ChildOutputMode::Nix, ctx.modifiers)
+                        .await?;
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot = command.run_command("reboot now", false, ctx.clobber_lock.clone())?;
+                let reboot = command.run_command(CommandArguments {
+                    command_string: "reboot now",
+                    keep_stdin_open: false,
+                    elevated: true,
+                    clobber_lock: ctx.clobber_lock.clone(),
+                })?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected
