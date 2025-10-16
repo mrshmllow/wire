@@ -42,7 +42,7 @@ impl Trace for LogMessage<'_> {
             match level {
                 VerbosityLevel::Info => event!(tracing_level::INFO, "{msg}"),
                 VerbosityLevel::Warn | VerbosityLevel::Notice => {
-                    event!(tracing_level::WARN, "{msg}")
+                    event!(tracing_level::WARN, "{msg}");
                 }
                 VerbosityLevel::Error => event!(tracing_level::ERROR, "{msg}"),
                 VerbosityLevel::Debug => event!(tracing_level::DEBUG, "{msg}"),
