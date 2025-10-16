@@ -6,6 +6,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use nix_compat::log::{AT_NIX_PREFIX, LogMessage};
+
 use crate::{
     SubCommandModifiers,
     commands::{
@@ -14,7 +16,7 @@ use crate::{
     },
     errors::{CommandError, HiveLibError},
     hive::node::Target,
-    nix_log::{Action, Internal, NixLog, Trace},
+    nix_log::{self, SubcommandLog, Trace},
 };
 
 pub(crate) mod common;
@@ -144,25 +146,21 @@ impl ExitStatus {
 }
 
 impl ChildOutputMode {
-    fn trace(self, line: String) -> Option<NixLog> {
+    fn trace(self, line: &String) -> Option<nix_log::SubcommandLog<'_>> {
         let log = match self {
             ChildOutputMode::Nix => {
-                let log =
-                    serde_json::from_str::<Internal>(line.strip_prefix("@nix ").unwrap_or(&line))
-                        .map(NixLog::Internal)
-                        .unwrap_or(NixLog::Raw(line));
+                 let log =
+                     serde_json::from_str::<LogMessage>(line.strip_prefix(AT_NIX_PREFIX).unwrap_or(line))
+                         .map(SubcommandLog::Internal)
+                         .unwrap_or(SubcommandLog::Raw(line.into()));
 
-                // Throw out stop logs
-                if let NixLog::Internal(Internal {
-                    action: Action::Stop,
-                }) = log
-                {
+                if !matches!(log, SubcommandLog::Internal(LogMessage::Msg {..})) {
                     return None;
                 }
 
                 log
             }
-            Self::Raw => NixLog::Raw(line),
+            Self::Raw => SubcommandLog::Raw(line.into()),
         };
 
         log.trace();

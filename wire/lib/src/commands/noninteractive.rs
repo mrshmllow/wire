@@ -21,7 +21,7 @@ use crate::{
     commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip},
     errors::{CommandError, HiveLibError},
     hive::node::Target,
-    nix_log::NixLog,
+    nix_log::{SubcommandLog, get_errorish_message},
 };
 
 pub(crate) struct NonInteractiveCommand<'t> {
@@ -187,15 +187,15 @@ pub async fn handle_io<R>(
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
-        let log = output_mode.trace(line.clone());
+        let log = output_mode.trace(&line);
 
         if !is_error {
             let mut queue = collection.lock().await;
             queue.push_front(line);
-        } else if let Some(NixLog::Internal(log)) = log {
-            if let Some(message) = log.get_errorish_message() {
+        } else if let Some(SubcommandLog::Internal(log)) = log {
+            if let Some(message) = get_errorish_message(&log) {
                 let mut queue = collection.lock().await;
-                queue.push_front(message);
+                queue.push_front(message.to_string());
                 // add at most 10 message to the front, drop the rest.
                 queue.truncate(10);
             }

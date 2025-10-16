@@ -23,7 +23,7 @@ use crate::SubCommandModifiers;
 use crate::commands::CommandArguments;
 use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
-use crate::nix_log::NixLog;
+use crate::nix_log::{SubcommandLog, get_errorish_message};
 use crate::{
     commands::{ChildOutputMode, WireCommand, WireCommandChip},
     errors::HiveLibError,
@@ -431,19 +431,19 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
 
                     if began {
                         if let Some(stripped) = line.strip_prefix('#') {
-                            output_mode.trace(stripped.to_string());
+                            output_mode.trace(&stripped.to_string());
                             let mut queue = stdout_collection.lock().unwrap();
                             queue.push_front(stripped.to_string());
                             continue;
                         }
 
-                        let log = output_mode.trace(line.clone());
+                        let log = output_mode.trace(&line);
                         let mut queue = stderr_collection.lock().unwrap();
 
-                        if let Some(NixLog::Internal(log)) = log {
-                            if let Some(message) = log.get_errorish_message() {
+                        if let Some(SubcommandLog::Internal(log)) = log {
+                            if let Some(message) = get_errorish_message(&log) {
                                 // add at most 10 message to the front, drop the rest.
-                                queue.push_front(message);
+                                queue.push_front(message.to_string());
                                 queue.truncate(10);
                             }
                         }
