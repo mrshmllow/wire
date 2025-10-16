@@ -144,17 +144,13 @@ impl ExitStatus {
 }
 
 impl ChildOutputMode {
-    fn trace(self, line: String, hint_error: bool) -> Option<NixLog> {
+    fn trace(self, line: String) -> Option<NixLog> {
         let log = match self {
             ChildOutputMode::Nix => {
                 let log =
                     serde_json::from_str::<Internal>(line.strip_prefix("@nix ").unwrap_or(&line))
                         .map(NixLog::Internal)
-                        .unwrap_or(if hint_error {
-                            NixLog::RawError(line)
-                        } else {
-                            NixLog::Raw(line)
-                        });
+                        .unwrap_or(NixLog::Raw(line));
 
                 // Throw out stop logs
                 if let NixLog::Internal(Internal {
@@ -166,7 +162,6 @@ impl ChildOutputMode {
 
                 log
             }
-            Self::Raw if hint_error => NixLog::RawError(line),
             Self::Raw => NixLog::Raw(line),
         };
 

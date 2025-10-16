@@ -431,13 +431,13 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
 
                     if began {
                         if let Some(stripped) = line.strip_prefix('#') {
-                            output_mode.trace(stripped.to_string(), false);
+                            output_mode.trace(stripped.to_string());
                             let mut queue = stdout_collection.lock().unwrap();
                             queue.push_front(stripped.to_string());
                             continue;
                         }
 
-                        let log = output_mode.trace(line.clone(), false);
+                        let log = output_mode.trace(line.clone());
                         let mut queue = stderr_collection.lock().unwrap();
 
                         if let Some(NixLog::Internal(log)) = log {
