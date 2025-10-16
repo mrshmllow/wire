@@ -149,12 +149,13 @@ impl ChildOutputMode {
     fn trace(self, line: &String) -> Option<nix_log::SubcommandLog<'_>> {
         let log = match self {
             ChildOutputMode::Nix => {
-                 let log =
-                     serde_json::from_str::<LogMessage>(line.strip_prefix(AT_NIX_PREFIX).unwrap_or(line))
-                         .map(SubcommandLog::Internal)
-                         .unwrap_or(SubcommandLog::Raw(line.into()));
+                let log = serde_json::from_str::<LogMessage>(
+                    line.strip_prefix(AT_NIX_PREFIX).unwrap_or(line),
+                )
+                .map(SubcommandLog::Internal)
+                .unwrap_or(SubcommandLog::Raw(line.into()));
 
-                if !matches!(log, SubcommandLog::Internal(LogMessage::Msg {..})) {
+                if !matches!(log, SubcommandLog::Internal(LogMessage::Msg { .. })) {
                     return None;
                 }
 

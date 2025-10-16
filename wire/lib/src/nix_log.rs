@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-use std::{borrow::Cow, fmt::{Debug, Display}};
-use tracing::{Level as tracing_level, event, info};
 use nix_compat::log::{LogMessage, VerbosityLevel};
+use std::{
+    borrow::Cow,
+    fmt::{Debug, Display},
+};
+use tracing::{Level as tracing_level, event, info};
 
 // static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
 
@@ -38,7 +41,9 @@ impl Trace for LogMessage<'_> {
 
             match level {
                 VerbosityLevel::Info => event!(tracing_level::INFO, "{msg}"),
-                VerbosityLevel::Warn | VerbosityLevel::Notice => event!(tracing_level::WARN, "{msg}"),
+                VerbosityLevel::Warn | VerbosityLevel::Notice => {
+                    event!(tracing_level::WARN, "{msg}")
+                }
                 VerbosityLevel::Error => event!(tracing_level::ERROR, "{msg}"),
                 VerbosityLevel::Debug => event!(tracing_level::DEBUG, "{msg}"),
                 VerbosityLevel::Vomit | VerbosityLevel::Talkative | VerbosityLevel::Chatty => {
@@ -69,12 +74,8 @@ impl Display for SubcommandLog<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
             SubcommandLog::Internal(line) => match line {
-                LogMessage::Msg { level, msg } => 
-                write!(
-                    f,
-                    "{level:?}: {msg}"
-                ),
-                _ => Ok(())
+                LogMessage::Msg { level, msg } => write!(f, "{level:?}: {msg}"),
+                _ => Ok(()),
             },
             SubcommandLog::Raw(line) => Display::fmt(&line, f),
         }
