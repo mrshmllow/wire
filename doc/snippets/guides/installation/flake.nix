@@ -5,7 +5,7 @@
     systems.url = "github:nix-systems/default";
   };
 
-  outputs = inputs @ {
+  outputs = {
     nixpkgs,
     wire,
     systems,
