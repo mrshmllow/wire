@@ -1,6 +1,6 @@
 ---
 comment: true
-title: How-to Keep Using nixos-rebuild
+title: Keep Using nixos-rebuild
 description: How to combine outputs.nixosConfigurations with outputs.wire
 ---
 

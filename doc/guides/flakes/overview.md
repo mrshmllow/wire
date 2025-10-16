@@ -1,6 +1,6 @@
 ---
 comment: true
-title: Flakes
+title: Use Flakes
 description: How to output a hive from a flake.
 ---
 
