@@ -9,6 +9,8 @@
 )]
 #![feature(assert_matches)]
 
+use std::io::IsTerminal;
+
 use crate::{errors::HiveLibError, hive::node::Name};
 
 pub mod commands;
@@ -23,11 +25,21 @@ mod test_support;
 
 pub mod errors;
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct SubCommandModifiers {
     pub show_trace: bool,
     pub non_interactive: bool,
     pub ssh_accept_host: bool,
+}
+
+impl Default for SubCommandModifiers {
+    fn default() -> Self {
+        SubCommandModifiers {
+            show_trace: false,
+            non_interactive: !std::io::stdin().is_terminal(),
+            ssh_accept_host: false,
+        }
+    }
 }
 
 pub enum EvalGoal<'a> {
