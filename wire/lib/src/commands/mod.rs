@@ -155,7 +155,10 @@ impl ChildOutputMode {
                 .map(SubcommandLog::Internal)
                 .unwrap_or(SubcommandLog::Raw(line.into()));
 
-                if !matches!(log, SubcommandLog::Internal(LogMessage::Msg { .. })) {
+                if !matches!(
+                    log,
+                    SubcommandLog::Internal(LogMessage::Msg { .. }) | SubcommandLog::Raw(..)
+                ) {
                     return None;
                 }
 
