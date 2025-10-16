@@ -15,7 +15,7 @@ jobs:
         with:
           concurrent_skipping: "same_content_newer"
           cancel_others: "true"
-  nextest:
+  test:
     runs-on: ubuntu-latest
     needs: pre-job
     permissions:
@@ -33,5 +33,5 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - name: Nextest
-        run: nix develop --print-build-logs -v --command cargo nextest run
+      - name: Cargo Tests
+        run: nix develop --print-build-logs -v --command cargo test
