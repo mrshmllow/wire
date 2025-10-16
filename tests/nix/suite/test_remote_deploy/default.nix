@@ -19,11 +19,17 @@
         # ran --ssh-accept-host, should succeed
         deployer.succeed(f"wire apply push --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys --ssh-accept-host -vvv >&2")
 
-      with subtest("Check basic apply"):
+      with subtest("Check basic apply: Interactive"):
           deployer.succeed(f"wire apply --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys --ssh-accept-host -vvv >&2")
 
           identity = receiver.succeed("cat /etc/identity")
           assert identity == "first", "Identity of first apply wasn't as expected"
+
+      with subtest("Check basic apply: NonInteractive"):
+          deployer.succeed(f"wire apply --on receiver-third --no-progress --path {TEST_DIR}/hive.nix --no-keys --ssh-accept-host --non-interactive -vvv >&2")
+
+          identity = receiver.succeed("cat /etc/identity")
+          assert identity == "third", "Identity of non-interactive apply wasn't as expected"
 
       with subtest("Check boot apply"):
         first_system = receiver.succeed("readlink -f /run/current-system")
