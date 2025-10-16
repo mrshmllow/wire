@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Manage Secrets
-description: Keys, files, and other out-of-store paths with Wire Tool.
+description: Manage keys, secrets, files, and other out-of-store paths with Wire Tool.
 ---
 
 # {{ $frontmatter.title }}
