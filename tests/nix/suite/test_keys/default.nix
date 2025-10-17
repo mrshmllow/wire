@@ -24,8 +24,8 @@
       deployer.fail("test -f /run/keys/source_string")
 
       receiver.succeed("systemctl cat source_string-key.service")
-      is_active = receiver.fail("systemctl is-active source_string-key.service")
-      assert is_active == "inactive", "source_string-key.service is inactive"
+      is_failed = receiver.fail("systemctl is-failed source_string-key.service")
+      assert is_failed == "failed", "source_string-key.service is failed before key exists"
 
       def test_keys(target, target_object, non_interactive):
           if non_interactive:
@@ -41,15 +41,15 @@
           ]
 
           for path, value, permissions, name in keys:
+              is_active = receiver.succeed(f"systemctl is-active {name}-key.service")
+              assert is_active == "active", f"{name}-key.service is active after creation"
+
               # test existence & value
               source_string = target_object.succeed(f"cat {path}")
               assert value in source_string, f"{path} has correct contents ({target})"
 
               stat = target_object.succeed(f"stat -c '%U %G %a' {path}").rstrip()
               assert permissions == stat, f"{path} has correct permissions ({target})"
-
-              is_active = receiver.succeed(f"systemctl is-active {name}-key.service")
-              assert is_active == "active", f"{name}-key.service is active"
 
       def perform_routine(target, target_object, non_interactive):
           test_keys(target, target_object, non_interactive)
@@ -59,6 +59,9 @@
           target_object.succeed("chown 600 /etc/keys/file")
           # Test having a key that doesn't exist mixed with keys that do
           target_object.succeed("rm /home/owner/some/deep/path/command")
+
+          is_failed = receiver.succeed(f"systemctl is-failed command-key.service")
+          assert is_failed == "active", "command-key.service is failed after deletion"
 
           # Test keys twice to ensure the operation is idempotent,
           # especially around directory creation.

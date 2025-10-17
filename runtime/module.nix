@@ -186,22 +186,54 @@ in
   };
 
   config = {
-    systemd.services = lib.mapAttrs' (
-      name: value:
-      lib.nameValuePair "${name}-key" {
-        description = "Waits for ${value.path}";
-        after = [ "local-fs.target" ];
-        unitConfig = {
-          ConditionFileNotEmpty = value.path;
-        };
-        serviceConfig = {
-          Type = "oneshot";
-          ExecStart = "${lib.getExe' pkgs.coreutils "echo"} ${value.path} exists.";
-          RemainAfterExit = "yes";
-          Restart = "no";
-        };
-      }
-    ) config.deployment.keys;
+    systemd = {
+      paths = lib.mapAttrs' (
+        name: value:
+        lib.nameValuePair "${name}-key" {
+          description = "Monitor changes to ${value.path}. You should Require ${name}-key.service instead of this.";
+          pathConfig = {
+            PathExists = value.path;
+            PathChanged = value.path;
+            Unit = "${name}-key.service";
+          };
+        }
+      ) config.deployment.keys;
+
+      services = lib.mapAttrs' (
+        name: value:
+        lib.nameValuePair "${name}-key" {
+          description = "Service that requires ${value.path}";
+          path = [
+            pkgs.inotify-tools
+            pkgs.coreutils
+          ];
+          script = ''
+            MSG="Key ${value.path} exists."
+            systemd-notify --ready --status="$MSG"
+
+            echo "waiting to fail if the key is removed..."
+
+            while inotifywait -e delete_self "${value.path}"; do
+              MSG="Key ${value.path} no longer exists."
+
+              systemd-notify --status="$MSG"
+              echo $MSG
+
+              exit 1
+            done
+          '';
+          unitConfig = {
+            ConditionPathExists = value.path;
+          };
+          serviceConfig = {
+            Type = "simple";
+            Restart = "no";
+            NotifyAccess = "all";
+            RemainAfterExit = "yes";
+          };
+        }
+      ) config.deployment.keys;
+    };
 
     deployment = {
       _keys = lib.mapAttrsToList (
