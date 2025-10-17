@@ -23,6 +23,10 @@
       receiver.fail("test -f /run/keys/source_string")
       deployer.fail("test -f /run/keys/source_string")
 
+      receiver.succeed("systemctl cat source_string-key.service")
+      is_active = receiver.fail("systemctl is-active source_string-key.service")
+      assert is_active == "inactive", "source_string-key.service is inactive"
+
       def test_keys(target, target_object, non_interactive):
           if non_interactive:
               deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix --non-interactive --ssh-accept-host -vvv >&2")
@@ -30,19 +34,22 @@
               deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix --ssh-accept-host -vvv >&2")
 
           keys = [
-            ("/run/keys/source_string", "hello_world_source", "root root 600"),
-            ("/etc/keys/file", "hello_world_file", "root root 644"),
-            ("/home/owner/some/deep/path/command", "hello_world_command", "owner owner 644"),
-            ("/run/keys/environment", "string_from_environment", "root root 600"),
+            ("/run/keys/source_string", "hello_world_source", "root root 600", "source_string"),
+            ("/etc/keys/file", "hello_world_file", "root root 644", "file"),
+            ("/home/owner/some/deep/path/command", "hello_world_command", "owner owner 644", "command"),
+            ("/run/keys/environment", "string_from_environment", "root root 600", "environment"),
           ]
 
-          for path, value, permissions in keys:
+          for path, value, permissions, name in keys:
               # test existence & value
               source_string = target_object.succeed(f"cat {path}")
               assert value in source_string, f"{path} has correct contents ({target})"
 
               stat = target_object.succeed(f"stat -c '%U %G %a' {path}").rstrip()
               assert permissions == stat, f"{path} has correct permissions ({target})"
+
+              is_active = receiver.succeed(f"systemctl is-active {name}-key.service")
+              assert is_active == "active", f"{name}-key.service is active"
 
       def perform_routine(target, target_object, non_interactive):
           test_keys(target, target_object, non_interactive)
