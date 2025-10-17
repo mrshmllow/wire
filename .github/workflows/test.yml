@@ -27,7 +27,7 @@ jobs:
         with:
           cachixToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Build Tests
-        run: nix run .#cargo-tests -L -vv
+        run: nix build .#cargo-tests -L -vv
       - name: Cargo Tests
         run: |
           nix develop \
