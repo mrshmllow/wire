@@ -12,19 +12,19 @@
     systemd = {
       paths = lib.mapAttrs' (
         name: value:
-        lib.nameValuePair "${name}-key" {
-          description = "Monitor changes to ${value.path}. You should Require ${name}-key.service instead of this.";
+        lib.nameValuePair "${value.name}-key" {
+          description = "Monitor changes to ${value.path}. You should Require ${value.service} instead of this.";
           pathConfig = {
             PathExists = value.path;
             PathChanged = value.path;
-            Unit = "${name}-key.service";
+            Unit = "${value.name}-key.service";
           };
         }
       ) config.deployment.keys;
 
       services = lib.mapAttrs' (
         name: value:
-        lib.nameValuePair "${name}-key" {
+        lib.nameValuePair "${value.name}-key" {
           description = "Service that requires ${value.path}";
           path = [
             pkgs.inotify-tools

@@ -14,18 +14,20 @@
       deployer_so = collect_store_objects(deployer)
       receiver_so = collect_store_objects(receiver)
 
-      # build all nodes without any keys
+      # build receiver with no keys
       deployer.succeed(f"wire apply --no-progress --on receiver --path {TEST_DIR}/hive.nix --no-keys --ssh-accept-host -vvv >&2")
 
       receiver.wait_for_unit("sshd.service")
 
       # --no-keys should never push a key
-      receiver.fail("test -f /run/keys/source_string")
-      deployer.fail("test -f /run/keys/source_string")
+      receiver.fail("test -f /run/keys/source_string_name")
+      deployer.fail("test -f /run/keys/source_string_name")
 
-      receiver.succeed("systemctl cat source_string-key.service")
-      is_failed = receiver.fail("systemctl is-failed source_string-key.service")
-      assert is_failed == "failed", "source_string-key.service is failed before key exists"
+      # key services are created
+      receiver.succeed("systemctl cat source_string_name-key.service")
+
+      _, is_failed = receiver.execute("systemctl is-failed source_string_name-key.service")
+      assert is_failed == "inactive\n", f"source_string_name-key.service must be inactive before key exists ({is_failed})"
 
       def test_keys(target, target_object, non_interactive):
           if non_interactive:
@@ -34,16 +36,13 @@
               deployer.succeed(f"wire apply keys --on {target} --no-progress --path {TEST_DIR}/hive.nix --ssh-accept-host -vvv >&2")
 
           keys = [
-            ("/run/keys/source_string", "hello_world_source", "root root 600", "source_string"),
+            ("/run/keys/source_string_name", "hello_world_source", "root root 600", "source_string_name"),
             ("/etc/keys/file", "hello_world_file", "root root 644", "file"),
             ("/home/owner/some/deep/path/command", "hello_world_command", "owner owner 644", "command"),
             ("/run/keys/environment", "string_from_environment", "root root 600", "environment"),
           ]
 
           for path, value, permissions, name in keys:
-              is_active = receiver.succeed(f"systemctl is-active {name}-key.service")
-              assert is_active == "active", f"{name}-key.service is active after creation"
-
               # test existence & value
               source_string = target_object.succeed(f"cat {path}")
               assert value in source_string, f"{path} has correct contents ({target})"
@@ -54,14 +53,19 @@
       def perform_routine(target, target_object, non_interactive):
           test_keys(target, target_object, non_interactive)
 
+          # only check systemd units on receiver since deployer applys are one time only
+          if target == "receiver":
+              target_object.wait_for_unit("source_string_name-key.service")
+              target_object.wait_for_unit("environment-key.service")
+
           # Mess with the keys to make sure that every push refreshes the permissions
           target_object.succeed("echo 'incorrect_value' > /run/keys/source_string")
           target_object.succeed("chown 600 /etc/keys/file")
           # Test having a key that doesn't exist mixed with keys that do
           target_object.succeed("rm /home/owner/some/deep/path/command")
 
-          is_failed = receiver.succeed("systemctl is-failed command-key.service")
-          assert is_failed == "active", "command-key.service is failed after deletion"
+          _, is_failed = target_object.execute("systemctl is-active command-key.service")
+          assert is_failed == "failed\n", f"command-key.service is failed after deletion ({is_failed})"
 
           # Test keys twice to ensure the operation is idempotent,
           # especially around directory creation.

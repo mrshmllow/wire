@@ -114,7 +114,18 @@ in
               path = lib.mkOption {
                 internal = true;
                 type = types.path;
-                default = "${config.destDir}/${config.name}";
+                default =
+                  if lib.hasSuffix "/" config.destDir then
+                    "${config.destDir}${config.name}"
+                  else
+                    "${config.destDir}/${config.name}";
+                description = "Path that the key is deployed to.";
+              };
+              service = lib.mkOption {
+                internal = true;
+                type = types.str;
+                default = "${config.name}-key.service";
+                description = "Name of the systemd service that represents this key.";
               };
               group = lib.mkOption {
                 type = types.str;
