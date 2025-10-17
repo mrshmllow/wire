@@ -112,7 +112,6 @@ pub fn find_hive(path: String) -> Result<HiveLocation, HiveLocationError> {
             let path = PathBuf::from(path);
             Ok(path_to_location(path)?)
         }
-        Err(err) => Err(HiveLocationError::Malformed(err)),
         Ok(FlakeRef::Path { path, .. }) => Ok(path_to_location(path)?),
         Ok(
             FlakeRef::Git { .. }
@@ -122,6 +121,7 @@ pub fn find_hive(path: String) -> Result<HiveLocation, HiveLocationError> {
             | FlakeRef::Mercurial { .. }
             | FlakeRef::SourceHut { .. },
         ) => Ok(HiveLocation::Flake(path)),
+        Err(err) => Err(HiveLocationError::Malformed(err)),
         Ok(flakeref) => Err(HiveLocationError::TypeUnsupported(flakeref)),
     }
 }
