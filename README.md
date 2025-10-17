@@ -6,7 +6,7 @@
 
 wire is a tool to deploy nixos systems. its usage is inspired by colmena however it is not a fork.
 
-Read the [The Guide](https://wire.althaea.zone/guides/installation.html), or continue reading this readme for development information.
+Read the [The Tutorial](https://wire.althaea.zone/tutorial/overview.html) , [Guides](https://wire.althaea.zone/guides/installation.html), or continue reading this readme for development information.
 
 ## Tree Layout
 
