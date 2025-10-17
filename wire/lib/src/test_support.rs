@@ -2,7 +2,8 @@
 // Copyright 2024-2025 wire Contributors
 
 use std::{
-    fs::{self, create_dir}, io,
+    fs::{self, create_dir},
+    io,
     path::Path,
     process::Command,
     sync::{Arc, Mutex},
