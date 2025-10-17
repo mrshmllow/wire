@@ -2,7 +2,6 @@
 // Copyright 2024-2025 wire Contributors
 
 use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
-use std::fmt::Debug;
 use nix::{
     poll::{PollFd, PollFlags, PollTimeout, poll},
     unistd::{pipe as posix_pipe, read as posix_read, write as posix_write},
@@ -10,6 +9,7 @@ use nix::{
 use portable_pty::{NativePtySystem, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
+use std::fmt::Debug;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Condvar, Mutex};
 use std::thread::JoinHandle;
@@ -18,8 +18,8 @@ use std::{
     os::fd::{AsFd, OwnedFd},
     sync::Arc,
 };
-use tracing::{Span, debug, error, info, trace, warn};
 use tracing::instrument;
+use tracing::{Span, debug, error, info, trace, warn};
 
 use crate::SubCommandModifiers;
 use crate::commands::CommandArguments;
@@ -79,7 +79,7 @@ struct WatchStdoutArguments {
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     completion_status: Arc<CompletionStatus>,
-    span: Span
+    span: Span,
 }
 
 /// the underlying command began
@@ -223,7 +223,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
                 stderr_collection: stderr_collection.clone(),
                 stdout_collection: stdout_collection.clone(),
                 completion_status: completion_status.clone(),
-                span: Span::current()
+                span: Span::current(),
             };
 
             std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
@@ -235,7 +235,12 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
         std::thread::spawn(move || {
-            watch_stdin_from_user(&cancel_stdin_pipe_r, master_writer, &write_stdin_pipe_r, Span::current())
+            watch_stdin_from_user(
+                &cancel_stdin_pipe_r,
+                master_writer,
+                &write_stdin_pipe_r,
+                Span::current(),
+            )
         });
 
         info!("Setup threads");
@@ -485,7 +490,7 @@ fn watch_stdin_from_user(
     cancel_pipe_r: &OwnedFd,
     mut master_writer: MasterWriter,
     write_pipe_r: &OwnedFd,
-    span: Span
+    span: Span,
 ) -> Result<(), CommandError> {
     const WRITER_POSITION: usize = 0;
     const SIGNAL_POSITION: usize = 1;

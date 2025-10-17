@@ -361,7 +361,11 @@ impl<'a> GoalExecutor<'a> {
         let length = steps.len();
 
         for (position, step) in steps.iter().enumerate() {
-            event!(Level::INFO, step = step.to_string(), progress = format!("{}/{length}", position + 1));
+            event!(
+                Level::INFO,
+                step = step.to_string(),
+                progress = format!("{}/{length}", position + 1)
+            );
 
             step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");

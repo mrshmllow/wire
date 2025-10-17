@@ -10,8 +10,6 @@ use nix::unistd::{Group, User};
 use prost::Message;
 use prost::bytes::Bytes;
 use sha2::{Digest, Sha256};
-use std::fmt;
-use std::fmt::Display;
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::fs::chown;
 use std::path::{Path, PathBuf};
@@ -27,7 +25,10 @@ fn create_path(key_path: &Path) -> Result<(), anyhow::Error> {
 }
 
 fn pretty_keyspec(spec: &KeySpec) -> String {
-    format!("{} {}:{} {}", spec.destination, spec.user, spec.group, spec.permissions)
+    format!(
+        "{} {}:{} {}",
+        spec.destination, spec.user, spec.group, spec.permissions
+    )
 }
 
 #[tokio::main]
@@ -49,7 +50,11 @@ async fn main() -> Result<(), anyhow::Error> {
 
         let digest = Sha256::digest(&key_bytes).to_vec();
 
-        println!("Writing {}, {:?} bytes of data", pretty_keyspec(&spec), key_bytes.len());
+        println!(
+            "Writing {}, {:?} bytes of data",
+            pretty_keyspec(&spec),
+            key_bytes.len()
+        );
 
         if digest != spec.digest {
             return Err(anyhow::anyhow!(

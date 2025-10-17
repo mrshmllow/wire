@@ -66,7 +66,7 @@ impl Write for NonClobberingWriter {
 pub fn setup_logging(verbosity: Verbosity<WarnLevel>, clobber_lock: Arc<Mutex<()>>) {
     let filter = verbosity.log_level_filter().as_trace();
     let registry = tracing_subscriber::registry();
-    
+
     let layer = tracing_subscriber::fmt::layer::<Registry>()
         .without_time()
         .with_target(false)
