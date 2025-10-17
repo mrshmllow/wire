@@ -33,6 +33,7 @@
         ./nix/hooks.nix # pre-commit hooks
         ./nix/utils.nix # utility functions
         ./nix/shells.nix
+        ./nix/tests.nix
         ./wire/cli
         ./wire/key_agent
         ./doc
@@ -48,12 +49,13 @@
             inherit (inputs.nixpkgs) lib;
           in
           {
-            packages = {
-              inherit (self.packages.x86_64-linux) docs;
-            }
-            // lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: {
-              inherit (self.packages.${system}) wire wire-small;
-            });
+            packages =
+              {
+                inherit (self.packages.x86_64-linux) docs;
+              }
+              // lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (system: {
+                inherit (self.packages.${system}) wire wire-small cargo-test;
+              });
 
             tests = lib.filterAttrs (n: _: (lib.hasPrefix "vm" n)) self.checks.x86_64-linux;
           };
