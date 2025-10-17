@@ -142,7 +142,7 @@ mod tests {
     fn test_hive_dot_nix_priority() {
         let location = location!(get_test_path!());
 
-        assert_matches!(location, HiveLocation::Flake(..))
+        assert_matches!(location, HiveLocation::Flake(..));
     }
 
     #[tokio::test]
