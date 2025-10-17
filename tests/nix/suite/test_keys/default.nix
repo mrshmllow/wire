@@ -55,8 +55,10 @@
 
           # only check systemd units on receiver since deployer applys are one time only
           if target == "receiver":
+              target_object.succeed("systemctl start source_string_name-key.path")
+              target_object.succeed("systemctl start command-key.path")
               target_object.wait_for_unit("source_string_name-key.service")
-              target_object.wait_for_unit("environment-key.service")
+              target_object.wait_for_unit("command-key.service")
 
           # Mess with the keys to make sure that every push refreshes the permissions
           target_object.succeed("echo 'incorrect_value' > /run/keys/source_string")
@@ -64,8 +66,9 @@
           # Test having a key that doesn't exist mixed with keys that do
           target_object.succeed("rm /home/owner/some/deep/path/command")
 
-          _, is_failed = target_object.execute("systemctl is-active command-key.service")
-          assert is_failed == "failed\n", f"command-key.service is failed after deletion ({is_failed})"
+          if target == "receiver":
+              _, is_failed = target_object.execute("systemctl is-active command-key.service")
+              assert is_failed == "failed\n", f"command-key.service is failed after deletion ({is_failed})"
 
           # Test keys twice to ensure the operation is idempotent,
           # especially around directory creation.
