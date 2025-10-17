@@ -32,7 +32,7 @@ pub struct Cli {
     pub verbose: clap_verbosity_flag::Verbosity<WarnLevel>,
 
     /// Path or flake reference
-    #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string())]
+    #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string(), visible_alias("flake"))]
     pub path: String,
 
     // Unused until a solution to tracing-indicatif log deadlocking is found...

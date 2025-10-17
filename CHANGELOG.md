@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--on -` will now read additional apply targets from stdin.
 - `--path` now supports flakerefs (`github:foo/bar`, `git+file:///...`,
   `gitlab:foo/bar`, etc).
+- `--flake` is now an alias for `--path`.
 
 ### Fixed
 
