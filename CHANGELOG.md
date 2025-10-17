@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--ssh-accept-host` was added.
 - `--on -` will now read additional apply targets from stdin.
+- `{key.name}-key.{path,service}` systemd units where added.
 
 ### Fixed
 
