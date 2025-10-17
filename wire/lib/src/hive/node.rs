@@ -379,8 +379,13 @@ impl<'a> GoalExecutor<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        function_name, get_test_path,
+        hive::{Hive, find_hive},
+        location,
+        test_support::get_clobber_lock,
+    };
     use std::path::PathBuf;
-    use crate::{function_name, get_test_path, hive::{Hive, find_hive}, location, test_support::get_clobber_lock};
     use std::{collections::HashMap, env};
 
     fn get_steps(goal_executor: GoalExecutor) -> std::vec::Vec<Step> {
@@ -397,9 +402,13 @@ mod tests {
         let mut path = get_test_path!();
 
         let location = find_hive(path.display().to_string()).unwrap();
-        let hive = Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock())
-            .await
-            .unwrap();
+        let hive = Hive::new_from_path(
+            &location,
+            SubCommandModifiers::default(),
+            get_clobber_lock(),
+        )
+        .await
+        .unwrap();
 
         let node = Node::default();
 

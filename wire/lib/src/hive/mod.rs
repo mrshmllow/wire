@@ -102,7 +102,7 @@ pub fn find_hive(path: String) -> Result<HiveLocation, HiveLocationError> {
                 } else {
                     HiveLocation::HiveNix(path.join("hive.nix"))
                 }
-            },
+            }
             None => return Err(HiveLocationError::MalformedPath(path.clone())),
         })
     };
@@ -131,7 +131,11 @@ mod tests {
     use im::vector;
 
     use crate::{
-        errors::CommandError, get_test_path, hive::steps::keys::{Key, Source, UploadKeyAt}, location, test_support::{get_clobber_lock, make_flake_sandbox}
+        errors::CommandError,
+        get_test_path,
+        hive::steps::keys::{Key, Source, UploadKeyAt},
+        location,
+        test_support::{get_clobber_lock, make_flake_sandbox},
     };
 
     use super::*;
@@ -150,9 +154,13 @@ mod tests {
     async fn test_hive_file() {
         let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock())
-            .await
-            .unwrap();
+        let hive = Hive::new_from_path(
+            &location,
+            SubCommandModifiers::default(),
+            get_clobber_lock(),
+        )
+        .await
+        .unwrap();
 
         let node = Node {
             target: node::Target::from_host("192.168.122.96"),
@@ -176,9 +184,13 @@ mod tests {
     async fn non_trivial_hive() {
         let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock())
-            .await
-            .unwrap();
+        let hive = Hive::new_from_path(
+            &location,
+            SubCommandModifiers::default(),
+            get_clobber_lock(),
+        )
+        .await
+        .unwrap();
 
         let node = Node {
             target: node::Target::from_host("name"),

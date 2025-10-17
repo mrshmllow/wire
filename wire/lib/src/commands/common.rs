@@ -6,7 +6,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
