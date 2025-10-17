@@ -14,6 +14,7 @@ use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
 use lib::hive::Hive;
+use lib::hive::get_hive_location;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tracing::error;
@@ -51,14 +52,15 @@ async fn main() -> Result<()> {
         miette::bail!("Nix is not availabile on this system.");
     }
 
+    let location = get_hive_location(args.path)?;
+
     match args.command {
         cli::Commands::Apply(apply_args) => {
-            let mut hive =
-                Hive::new_from_path(args.path.as_path(), modifiers, clobber_lock.clone()).await?;
-            apply::apply(&mut hive, apply_args, args.path, modifiers, clobber_lock).await?;
+            let mut hive = Hive::new_from_path(&location, modifiers, clobber_lock.clone()).await?;
+            apply::apply(&mut hive, location, apply_args, modifiers, clobber_lock).await?;
         }
         cli::Commands::Inspect { online: _, json } => println!("{}", {
-            let hive = Hive::new_from_path(args.path.as_path(), modifiers, clobber_lock).await?;
+            let hive = Hive::new_from_path(&location, modifiers, clobber_lock).await?;
             if json {
                 serde_json::to_string(&hive).into_diagnostic()?
             } else {

@@ -25,6 +25,12 @@ macro_rules! get_test_path {
             .last()
             .unwrap();
         path.push(function_name);
+
         path
     }};
+}
+
+#[macro_export]
+macro_rules! location {
+    ($path:expr) => {{ $crate::hive::get_hive_location($path.display().to_string()).unwrap() }};
 }
