@@ -55,7 +55,7 @@ pub(crate) struct InteractiveChildChip {
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
 
-    command_string: String,
+    original_command: String,
 
     completion_status: Arc<CompletionStatus>,
     stdout_handle: JoinHandle<Result<(), CommandError>>,
@@ -269,7 +269,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             write_stdin_pipe_w,
             stderr_collection,
             stdout_collection,
-            command_string: command_string.clone(),
+            original_command: arguments.command_string.as_ref().to_string(),
             completion_status,
             stdout_handle,
         })
@@ -339,7 +339,7 @@ impl WireCommandChip for InteractiveChildChip {
         let logs = collection.make_contiguous().join("\n");
 
         Err(CommandError::CommandFailed {
-            command_ran: self.command_string,
+            command_ran: self.original_command,
             logs,
             code: format!("code {}", exit_status.exit_code()),
             reason: match success {

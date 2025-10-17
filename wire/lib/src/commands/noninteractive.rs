@@ -35,7 +35,7 @@ pub(crate) struct NonInteractiveChildChip {
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     child: Child,
     joinset: JoinSet<()>,
-    command_string: String,
+    original_command: String,
     stdin: ChildStdin,
 }
 
@@ -132,7 +132,7 @@ impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
             stdout_collection,
             child,
             joinset,
-            command_string,
+            original_command: arguments.command_string.as_ref().to_string(),
             stdin,
         })
     }
@@ -154,7 +154,7 @@ impl WireCommandChip for NonInteractiveChildChip {
                 .join("\n");
 
             return Err(CommandError::CommandFailed {
-                command_ran: self.command_string,
+                command_ran: self.original_command,
                 logs,
                 code: match status.code() {
                     Some(code) => format!("code {code}"),
