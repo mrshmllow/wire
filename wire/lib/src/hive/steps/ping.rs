@@ -3,7 +3,7 @@
 
 use std::fmt::Display;
 
-use tracing::{info, instrument, warn};
+use tracing::{Level, event, instrument};
 
 use crate::{
     HiveLibError,
@@ -27,7 +27,7 @@ impl ExecuteStep for Ping {
     #[instrument(skip_all, name = "ping")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         loop {
-            info!("Attempting host {}", ctx.node.target.get_preferred_host()?);
+            event!(Level::INFO, status = "attempting", host = ctx.node.target.get_preferred_host()?.to_string());
 
             if ctx
                 .node
@@ -35,14 +35,12 @@ impl ExecuteStep for Ping {
                 .await
                 .is_ok()
             {
+                event!(Level::INFO, status = "success", host = ctx.node.target.get_preferred_host()?.to_string());
                 return Ok(());
             }
 
-            warn!(
-                "Failed to ping host {}",
-                // ? will take us out if we ran out of hosts
-                ctx.node.target.get_preferred_host()?
-            );
+            // ? will take us out if we ran out of hosts
+            event!(Level::WARN, status = "failed to ping", host = ctx.node.target.get_preferred_host()?.to_string());
             ctx.node.target.host_failed();
         }
     }

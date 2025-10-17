@@ -12,7 +12,7 @@ use std::io::Read;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
-use tracing::{Span, error, info, instrument};
+use tracing::{Span, error, info};
 
 use crate::cli::{ApplyArgs, ApplyTarget};
 
@@ -48,7 +48,7 @@ fn read_apply_targets_from_stdin() -> Result<(Vec<String>, Vec<Name>)> {
         }))
 }
 
-#[instrument(skip_all, fields(goal = %args.goal, on = %args.on.iter().join(", ")))]
+// #[instrument(skip_all, fields(goal = %args.goal, on = %args.on.iter().join(", ")))]
 pub async fn apply(
     hive: &mut Hive,
     args: ApplyArgs,

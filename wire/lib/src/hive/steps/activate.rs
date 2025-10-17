@@ -17,7 +17,7 @@ pub struct SwitchToConfiguration;
 
 impl Display for SwitchToConfiguration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Switch to configuration")
+        write!(f, "switch-to-configuration")
     }
 }
 
@@ -81,7 +81,7 @@ impl ExecuteStep for SwitchToConfiguration {
         matches!(ctx.goal, Goal::SwitchToConfiguration(..))
     }
 
-    #[instrument(skip_all, name = "switch")]
+    #[instrument(skip_all, name = "activate")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let built_path = ctx.state.build.as_ref().unwrap();
 

@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logs with level `tracing_level::TRACE` are compiled out of release builds
 - Data integrity of keys have been greatly improved
 - Unknown SSH keys will be immediately rejected unless `--ssh-accept-host` is passed.
+- Logging was improved.
 
 ### Documented
 

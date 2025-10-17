@@ -24,7 +24,7 @@ pub(crate) mod interactive;
 pub(crate) mod interactive_logbuffer;
 pub(crate) mod noninteractive;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum ChildOutputMode {
     Raw,
     Nix,
@@ -36,6 +36,7 @@ pub enum Either<L, R> {
     Right(R),
 }
 
+#[derive(Debug)]
 pub(crate) struct CommandArguments<S: AsRef<str>> {
     pub(crate) command_string: S,
     pub(crate) keep_stdin_open: bool,
@@ -68,14 +69,14 @@ pub(crate) trait WireCommand<'target>: Sized {
         modifiers: SubCommandModifiers,
     ) -> Result<Self, HiveLibError>;
 
-    fn run_command<S: AsRef<str>>(
+    fn run_command<S: AsRef<str> + std::fmt::Debug>(
         &mut self,
         command_arugments: CommandArguments<S>,
     ) -> Result<Self::ChildChip, HiveLibError> {
         self.run_command_with_env(command_arugments, std::collections::HashMap::new())
     }
 
-    fn run_command_with_env<S: AsRef<str>>(
+    fn run_command_with_env<S: AsRef<str> + std::fmt::Debug>(
         &mut self,
         command_arugments: CommandArguments<S>,
         args: HashMap<String, String>,
@@ -101,7 +102,7 @@ impl WireCommand<'_> for Either<InteractiveCommand<'_>, NonInteractiveCommand<'_
         unimplemented!()
     }
 
-    fn run_command_with_env<S: AsRef<str>>(
+    fn run_command_with_env<S: AsRef<str> + std::fmt::Debug>(
         &mut self,
         command_arugments: CommandArguments<S>,
         envs: HashMap<String, String>,
@@ -157,7 +158,7 @@ impl ChildOutputMode {
 
                 if !matches!(
                     log,
-                    SubcommandLog::Internal(LogMessage::Msg { .. }) | SubcommandLog::Raw(..)
+                    SubcommandLog::Internal(LogMessage::Msg { .. })
                 ) {
                     return None;
                 }

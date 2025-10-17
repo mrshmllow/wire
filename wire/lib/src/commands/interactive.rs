@@ -2,6 +2,7 @@
 // Copyright 2024-2025 wire Contributors
 
 use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
+use std::fmt::Debug;
 use nix::{
     poll::{PollFd, PollFlags, PollTimeout, poll},
     unistd::{pipe as posix_pipe, read as posix_read, write as posix_write},
@@ -17,7 +18,8 @@ use std::{
     os::fd::{AsFd, OwnedFd},
     sync::Arc,
 };
-use tracing::{debug, error, info, trace};
+use tracing::{Span, debug, error, info, trace, warn};
+use tracing::instrument;
 
 use crate::SubCommandModifiers;
 use crate::commands::CommandArguments;
@@ -34,6 +36,7 @@ type MasterWriter = Box<dyn Write + Send>;
 type MasterReader = Box<dyn Read + Send>;
 type Child = Box<dyn portable_pty::Child + Send + Sync>;
 
+#[derive(Debug)]
 pub(crate) struct InteractiveCommand<'t> {
     target: Option<&'t Target>,
     output_mode: Arc<ChildOutputMode>,
@@ -66,7 +69,7 @@ struct CompletionStatus {
     condvar: Condvar,
 }
 
-struct WatchStdinArguments {
+struct WatchStdoutArguments {
     began_tx: Sender<()>,
     reader: MasterReader,
     succeed_needle: Arc<String>,
@@ -76,6 +79,7 @@ struct WatchStdinArguments {
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     completion_status: Arc<CompletionStatus>,
+    span: Span
 }
 
 /// the underlying command began
@@ -110,7 +114,8 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn run_command_with_env<S: AsRef<str>>(
+    #[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+    fn run_command_with_env<S: AsRef<str> + Debug>(
         &mut self,
         arguments: CommandArguments<S>,
         envs: std::collections::HashMap<String, String>,
@@ -208,7 +213,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         let completion_status = Arc::new(CompletionStatus::new());
 
         let stdout_handle = {
-            let arguments = WatchStdinArguments {
+            let arguments = WatchStdoutArguments {
                 began_tx,
                 reader,
                 succeed_needle: self.succeed_needle.clone(),
@@ -218,6 +223,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
                 stderr_collection: stderr_collection.clone(),
                 stdout_collection: stdout_collection.clone(),
                 completion_status: completion_status.clone(),
+                span: Span::current()
             };
 
             std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
@@ -229,7 +235,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
         std::thread::spawn(move || {
-            watch_stdin_from_user(&cancel_stdin_pipe_r, master_writer, &write_stdin_pipe_r)
+            watch_stdin_from_user(&cancel_stdin_pipe_r, master_writer, &write_stdin_pipe_r, Span::current())
         });
 
         info!("Setup threads");
@@ -298,9 +304,8 @@ impl CompletionStatus {
 impl WireCommandChip for InteractiveChildChip {
     type ExitStatus = (portable_pty::ExitStatus, String);
 
+    #[instrument(skip_all)]
     async fn wait_till_success(mut self) -> Result<Self::ExitStatus, CommandError> {
-        info!("trying to grab status...");
-
         drop(self.write_stdin_pipe_w);
 
         let exit_status = tokio::task::spawn_blocking(move || self.child.wait())
@@ -382,8 +387,9 @@ fn create_sync_ssh_command(
     Ok(command)
 }
 
-fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), CommandError> {
-    let WatchStdinArguments {
+#[instrument(skip_all, name = "log", parent = arguments.span)]
+fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
+    let WatchStdoutArguments {
         began_tx,
         mut reader,
         succeed_needle,
@@ -393,6 +399,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
         stdout_collection,
         stderr_collection,
         completion_status,
+        ..
     } = arguments;
 
     let mut buffer = [0u8; 1024];
@@ -408,8 +415,6 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
                 log_buffer.process(&new_data);
 
                 for line in log_buffer.take_lines() {
-                    trace!("line: {line}");
-
                     if line.contains(start_needle.as_ref()) {
                         debug!("{start_needle} was found, switching mode...");
                         let _ = began_tx.send(());
@@ -475,10 +480,12 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdinArguments) -> Result<(), Comma
 }
 
 /// Exits on any data written to `cancel_pipe_r`
+#[instrument(skip_all, level = "trace", parent = span)]
 fn watch_stdin_from_user(
     cancel_pipe_r: &OwnedFd,
     mut master_writer: MasterWriter,
     write_pipe_r: &OwnedFd,
+    span: Span
 ) -> Result<(), CommandError> {
     const WRITER_POSITION: usize = 0;
     const SIGNAL_POSITION: usize = 1;

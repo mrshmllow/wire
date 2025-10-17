@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info, instrument, trace};
+use tracing::{Level, error, event, instrument, trace};
 
 use crate::SubCommandModifiers;
 use crate::commands::{
@@ -348,7 +348,7 @@ impl<'a> GoalExecutor<'a> {
         }
     }
 
-    #[instrument(skip_all, name = "goal", fields(node = %self.context.name))]
+    #[instrument(skip_all, fields(goal = %self.context.goal, node = %self.context.name))]
     pub async fn execute(mut self) -> Result<(), HiveLibError> {
         let steps = self
             .steps
@@ -358,9 +358,10 @@ impl<'a> GoalExecutor<'a> {
                 trace!("Will execute step `{step}` for {}", self.context.name);
             })
             .collect::<Vec<_>>();
+        let length = steps.len();
 
-        for step in steps {
-            info!("Executing step `{step}`");
+        for (position, step) in steps.iter().enumerate() {
+            event!(Level::INFO, step = step.to_string(), progress = format!("{}/{length}", position + 1));
 
             step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");
