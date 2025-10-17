@@ -60,7 +60,7 @@
           # Test having a key that doesn't exist mixed with keys that do
           target_object.succeed("rm /home/owner/some/deep/path/command")
 
-          is_failed = receiver.succeed(f"systemctl is-failed command-key.service")
+          is_failed = receiver.succeed("systemctl is-failed command-key.service")
           assert is_failed == "active", "command-key.service is failed after deletion"
 
           # Test keys twice to ensure the operation is idempotent,
