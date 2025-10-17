@@ -1,7 +1,7 @@
 {
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
-    flake-compat.url = "github:edolstra/flake-compat";
+    flake-compat.url = "https://git.lix.systems/lix-project/flake-compat/archive/main.tar.gz";
     git-hooks.url = "github:cachix/git-hooks.nix";
     systems.url = "github:nix-systems/default";
     crane.url = "github:ipetkov/crane";
