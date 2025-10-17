@@ -110,7 +110,7 @@ impl Default for Target {
 #[cfg(test)]
 impl<'a> Context<'a> {
     fn create_test_context(
-        hivepath: std::path::PathBuf,
+        hive_location: HiveLocation,
         name: &'a Name,
         node: &'a mut Node,
     ) -> Self {
@@ -119,7 +119,7 @@ impl<'a> Context<'a> {
         Context {
             name,
             node,
-            hivepath,
+            hive_location: Arc::new(hive_location),
             modifiers: SubCommandModifiers::default(),
             no_keys: false,
             state: StepState::default(),
@@ -379,7 +379,8 @@ impl<'a> GoalExecutor<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{function_name, get_test_path, hive::Hive, test_support::get_clobber_lock};
+    use std::path::PathBuf;
+    use crate::{function_name, get_test_path, hive::{Hive, find_hive}, location, test_support::get_clobber_lock};
     use std::{collections::HashMap, env};
 
     fn get_steps(goal_executor: GoalExecutor) -> std::vec::Vec<Step> {
@@ -395,7 +396,8 @@ mod tests {
     async fn default_values_match() {
         let mut path = get_test_path!();
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
+        let location = find_hive(path.display().to_string()).unwrap();
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 
@@ -417,13 +419,13 @@ mod tests {
 
     #[tokio::test]
     async fn order_build_locally() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
         let mut node = Node {
             build_remotely: false,
             ..Default::default()
         };
         let name = &Name(function_name!().into());
-        let executor = GoalExecutor::new(Context::create_test_context(path, name, &mut node));
+        let executor = GoalExecutor::new(Context::create_test_context(location, name, &mut node));
         let steps = get_steps(executor);
 
         assert_eq!(
@@ -449,10 +451,10 @@ mod tests {
 
     #[tokio::test]
     async fn order_keys_only() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
         let mut node = Node::default();
         let name = &Name(function_name!().into());
-        let mut context = Context::create_test_context(path, name, &mut node);
+        let mut context = Context::create_test_context(location, name, &mut node);
 
         context.goal = Goal::Keys;
 
@@ -474,10 +476,10 @@ mod tests {
 
     #[tokio::test]
     async fn order_build_only() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
         let mut node = Node::default();
         let name = &Name(function_name!().into());
-        let mut context = Context::create_test_context(path, name, &mut node);
+        let mut context = Context::create_test_context(location, name, &mut node);
 
         context.goal = Goal::Build;
 
@@ -497,10 +499,10 @@ mod tests {
 
     #[tokio::test]
     async fn order_push_only() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
         let mut node = Node::default();
         let name = &Name(function_name!().into());
-        let mut context = Context::create_test_context(path, name, &mut node);
+        let mut context = Context::create_test_context(location, name, &mut node);
 
         context.goal = Goal::Push;
 
@@ -519,14 +521,14 @@ mod tests {
 
     #[tokio::test]
     async fn order_remote_build() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
         let mut node = Node {
             build_remotely: true,
             ..Default::default()
         };
 
         let name = &Name(function_name!().into());
-        let executor = GoalExecutor::new(Context::create_test_context(path, name, &mut node));
+        let executor = GoalExecutor::new(Context::create_test_context(location, name, &mut node));
         let steps = get_steps(executor);
 
         assert_eq!(

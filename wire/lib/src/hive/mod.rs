@@ -8,6 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
 use std::ffi::OsStr;
+use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
@@ -92,25 +93,27 @@ pub enum HiveLocation {
 pub fn find_hive(path: String) -> Result<HiveLocation, HiveLocationError> {
     let flakeref = FlakeRef::from_str(&path);
 
+    let path_to_location = |path: PathBuf| {
+        Ok(match path.file_name().and_then(OsStr::to_str) {
+            Some("hive.nix") => HiveLocation::HiveNix(path.clone()),
+            Some(_) => {
+                if fs::metadata(path.join("flake.nix")).is_ok() {
+                    HiveLocation::Flake(path.join("flake.nix").display().to_string())
+                } else {
+                    HiveLocation::HiveNix(path.join("hive.nix"))
+                }
+            },
+            None => return Err(HiveLocationError::MalformedPath(path.clone())),
+        })
+    };
+
     match flakeref {
         Err(nix_compat::flakeref::FlakeRefError::UrlParseError(_err)) => {
-            Ok(HiveLocation::HiveNix({
-                let path = PathBuf::from(path);
-                match path.file_name().and_then(OsStr::to_str) {
-                    Some("hive.nix") => path.clone(),
-                    Some(_) => path.join("hive.nix"),
-                    None => return Err(HiveLocationError::MalformedPath(path.clone())),
-                }
-            }))
+            let path = PathBuf::from(path);
+            Ok(path_to_location(path)?)
         }
         Err(err) => Err(HiveLocationError::Malformed(err)),
-        Ok(FlakeRef::Path { path, .. }) => Ok(HiveLocation::HiveNix(
-            match path.file_name().and_then(OsStr::to_str) {
-                Some("hive.nix") => path.clone(),
-                Some(_) => path.join("hive.nix"),
-                None => return Err(HiveLocationError::MalformedPath(path.clone())),
-            },
-        )),
+        Ok(FlakeRef::Path { path, .. }) => Ok(path_to_location(path)?),
         Ok(
             FlakeRef::Git { .. }
             | FlakeRef::GitHub { .. }
@@ -128,30 +131,26 @@ mod tests {
     use im::vector;
 
     use crate::{
-        errors::CommandError,
-        get_test_path,
-        hive::steps::keys::{Key, Source, UploadKeyAt},
-        test_support::{get_clobber_lock, make_flake_sandbox},
+        errors::CommandError, get_test_path, hive::steps::keys::{Key, Source, UploadKeyAt}, location, test_support::{get_clobber_lock, make_flake_sandbox}
     };
 
     use super::*;
     use std::{assert_matches::assert_matches, env};
 
+    // flake should always come before hive.nix
     #[test]
     fn test_hive_dot_nix_priority() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
 
-        let hive = find_hive(path).unwrap();
-
-        assert!(hive.ends_with("flake.nix"));
+        assert_matches!(location, HiveLocation::Flake(..))
     }
 
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn test_hive_file() {
-        let mut path = get_test_path!();
+        let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 
@@ -162,8 +161,6 @@ mod tests {
 
         let mut nodes = HashMap::new();
         nodes.insert(Name("node-a".into()), node);
-
-        path.push("hive.nix");
 
         assert_eq!(
             hive,
@@ -177,9 +174,9 @@ mod tests {
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn non_trivial_hive() {
-        let mut path = get_test_path!();
+        let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock())
             .await
             .unwrap();
 
@@ -202,8 +199,6 @@ mod tests {
         let mut nodes = HashMap::new();
         nodes.insert(Name("node-a".into()), node);
 
-        path.push("hive.nix");
-
         assert_eq!(
             hive,
             Hive {
@@ -218,8 +213,9 @@ mod tests {
     async fn flake_hive() {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
 
+        let location = find_hive(tmp_dir.path().display().to_string()).unwrap();
         let hive = Hive::new_from_path(
-            tmp_dir.path(),
+            &location,
             SubCommandModifiers::default(),
             get_clobber_lock(),
         )
@@ -232,10 +228,6 @@ mod tests {
         nodes.insert(Name("node-a".into()), Node::from_host("node-a"));
         // a non-merged node
         nodes.insert(Name("node-b".into()), Node::from_host("node-b"));
-        // omit a node called system-c
-
-        let mut path = tmp_dir.path().to_path_buf();
-        path.push("flake.nix");
 
         assert_eq!(
             hive,
@@ -250,10 +242,10 @@ mod tests {
 
     #[tokio::test]
     async fn no_nixpkgs() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
 
         assert_matches!(
-            Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock()).await,
             Err(HiveLibError::NixEvalError {
                 source: CommandError::CommandFailed {
                     logs,
@@ -267,10 +259,10 @@ mod tests {
 
     #[tokio::test]
     async fn _keys_should_fail() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
 
         assert_matches!(
-            Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock()).await,
             Err(HiveLibError::NixEvalError {
                 source: CommandError::CommandFailed {
                     logs,
