@@ -14,7 +14,7 @@ use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
 use lib::hive::Hive;
-use lib::hive::find_hive;
+use lib::hive::get_hive_location;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tracing::error;
@@ -52,7 +52,7 @@ async fn main() -> Result<()> {
         miette::bail!("Nix is not availabile on this system.");
     }
 
-    let location = find_hive(args.path)?;
+    let location = get_hive_location(args.path)?;
 
     match args.command {
         cli::Commands::Apply(apply_args) => {

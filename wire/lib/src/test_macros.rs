@@ -32,5 +32,5 @@ macro_rules! get_test_path {
 
 #[macro_export]
 macro_rules! location {
-    ($path:expr) => {{ $crate::hive::find_hive($path.display().to_string()).unwrap() }};
+    ($path:expr) => {{ $crate::hive::get_hive_location($path.display().to_string()).unwrap() }};
 }

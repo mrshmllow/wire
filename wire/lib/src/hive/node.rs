@@ -381,7 +381,7 @@ mod tests {
     use super::*;
     use crate::{
         function_name, get_test_path,
-        hive::{Hive, find_hive},
+        hive::{Hive, get_hive_location},
         location,
         test_support::get_clobber_lock,
     };
@@ -401,7 +401,7 @@ mod tests {
     async fn default_values_match() {
         let mut path = get_test_path!();
 
-        let location = find_hive(path.display().to_string()).unwrap();
+        let location = get_hive_location(path.display().to_string()).unwrap();
         let hive = Hive::new_from_path(
             &location,
             SubCommandModifiers::default(),

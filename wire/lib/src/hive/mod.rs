@@ -90,7 +90,7 @@ pub enum HiveLocation {
     Flake(String),
 }
 
-pub fn find_hive(path: String) -> Result<HiveLocation, HiveLocationError> {
+pub fn get_hive_location(path: String) -> Result<HiveLocation, HiveLocationError> {
     let flakeref = FlakeRef::from_str(&path);
 
     let path_to_location = |path: PathBuf| {
@@ -225,7 +225,7 @@ mod tests {
     async fn flake_hive() {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
 
-        let location = find_hive(tmp_dir.path().display().to_string()).unwrap();
+        let location = get_hive_location(tmp_dir.path().display().to_string()).unwrap();
         let hive = Hive::new_from_path(
             &location,
             SubCommandModifiers::default(),
