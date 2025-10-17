@@ -11,7 +11,7 @@
   config = {
     systemd = {
       paths = lib.mapAttrs' (
-        name: value:
+        _name: value:
         lib.nameValuePair "${value.name}-key" {
           description = "Monitor changes to ${value.path}. You should Require ${value.service} instead of this.";
           pathConfig = {
@@ -23,7 +23,7 @@
       ) config.deployment.keys;
 
       services = lib.mapAttrs' (
-        name: value:
+        _name: value:
         lib.nameValuePair "${value.name}-key" {
           description = "Service that requires ${value.path}";
           path = [
