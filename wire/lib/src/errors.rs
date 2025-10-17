@@ -170,7 +170,7 @@ pub enum HiveLocationError {
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("The flakref had an unsupported type: {:#?}", .0)]
-    TypeUnsupported(FlakeRef),
+    TypeUnsupported(Box<FlakeRef>),
 }
 
 #[derive(Debug, Diagnostic, Error)]

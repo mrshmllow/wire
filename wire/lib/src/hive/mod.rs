@@ -122,7 +122,7 @@ pub fn get_hive_location(path: String) -> Result<HiveLocation, HiveLocationError
             | FlakeRef::SourceHut { .. },
         ) => Ok(HiveLocation::Flake(path)),
         Err(err) => Err(HiveLocationError::Malformed(err)),
-        Ok(flakeref) => Err(HiveLocationError::TypeUnsupported(flakeref)),
+        Ok(flakeref) => Err(HiveLocationError::TypeUnsupported(Box::new(flakeref))),
     }
 }
 
