@@ -26,5 +26,11 @@ jobs:
       - uses: ./.github/actions/setup-nix
         with:
           cachixToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - name: Cargo Tests
+      - name: Build Tests
         run: nix run .#cargo-tests -L -vv
+      - name: Cargo Tests
+        run: |
+          nix develop \
+            --print-build-logs \
+            -v \
+            --command result/bin/run-tests
