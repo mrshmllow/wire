@@ -7,7 +7,6 @@ use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tracing::{Level, error, event, instrument, trace};
 
@@ -16,6 +15,7 @@ use crate::commands::{
     ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command,
 };
 use crate::errors::NetworkError;
+use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
 use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
@@ -281,7 +281,7 @@ pub struct StepState {
 pub struct Context<'a> {
     pub name: &'a Name,
     pub node: &'a mut Node,
-    pub hivepath: PathBuf,
+    pub hive_location: Arc<HiveLocation>,
     pub modifiers: SubCommandModifiers,
     pub no_keys: bool,
     pub state: StepState,

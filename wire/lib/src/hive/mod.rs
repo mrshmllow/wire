@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use nix_compat::flakeref::FlakeRef;
 use node::{Name, Node};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info, instrument, trace};
+use tracing::{info, instrument};
 
 use crate::commands::common::evaluate_hive_attribute;
-use crate::errors::HiveInitializationError;
+use crate::errors::{HiveInitializationError, HiveLocationError};
 use crate::{EvalGoal, HiveLibError, SubCommandModifiers};
 pub mod node;
 pub mod steps;
@@ -45,14 +48,12 @@ impl Hive {
 
     #[instrument(skip_all, name = "eval_hive")]
     pub async fn new_from_path(
-        path: &Path,
+        location: &HiveLocation,
         modifiers: SubCommandModifiers,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Hive, HiveLibError> {
-        info!("Searching upwards for hive in {}", path.display());
-
         let output =
-            evaluate_hive_attribute(path, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
+            evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
 
         info!("evaluate_hive_attribute ouputted {output}");
 
@@ -82,25 +83,44 @@ impl Hive {
     }
 }
 
-pub fn find_hive(path: &Path) -> Option<PathBuf> {
-    trace!("Searching for hive in {}", path.display());
-    let filepath_flake = path.join("flake.nix");
+#[derive(Debug, PartialEq, Eq)]
+pub enum HiveLocation {
+    HiveNix(PathBuf),
+    Flake(String),
+}
 
-    if filepath_flake.is_file() {
-        return Some(filepath_flake);
+pub fn find_hive(path: String) -> Result<HiveLocation, HiveLocationError> {
+    let flakeref = FlakeRef::from_str(&path);
+
+    match flakeref {
+        Err(nix_compat::flakeref::FlakeRefError::UrlParseError(_err)) => {
+            Ok(HiveLocation::HiveNix({
+                let path = PathBuf::from(path);
+                match path.file_name().and_then(OsStr::to_str) {
+                    Some("hive.nix") => path.clone(),
+                    Some(_) => path.join("hive.nix"),
+                    None => return Err(HiveLocationError::MalformedPath(path.clone())),
+                }
+            }))
+        }
+        Err(err) => Err(HiveLocationError::Malformed(err)),
+        Ok(FlakeRef::Path { path, .. }) => Ok(HiveLocation::HiveNix(
+            match path.file_name().and_then(OsStr::to_str) {
+                Some("hive.nix") => path.clone(),
+                Some(_) => path.join("hive.nix"),
+                None => return Err(HiveLocationError::MalformedPath(path.clone())),
+            },
+        )),
+        Ok(
+            FlakeRef::Git { .. }
+            | FlakeRef::GitHub { .. }
+            | FlakeRef::GitLab { .. }
+            | FlakeRef::Tarball { .. }
+            | FlakeRef::Mercurial { .. }
+            | FlakeRef::SourceHut { .. },
+        ) => Ok(HiveLocation::Flake(path)),
+        Ok(flakeref) => Err(HiveLocationError::TypeUnsupported(flakeref)),
     }
-    let filepath_hive = path.join("hive.nix");
-
-    if filepath_hive.is_file() {
-        return Some(filepath_hive);
-    }
-
-    if let Some(parent) = path.parent() {
-        return find_hive(parent);
-    }
-
-    error!("No hive found");
-    None
 }
 
 #[cfg(test)]
@@ -121,7 +141,7 @@ mod tests {
     fn test_hive_dot_nix_priority() {
         let path = get_test_path!();
 
-        let hive = find_hive(&path).unwrap();
+        let hive = find_hive(path).unwrap();
 
         assert!(hive.ends_with("flake.nix"));
     }

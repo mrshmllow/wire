@@ -6,6 +6,7 @@
 use std::{num::ParseIntError, path::PathBuf, process::ExitStatus, sync::mpsc::RecvError};
 
 use miette::{Diagnostic, SourceSpan};
+use nix_compat::flakeref::{FlakeRef, FlakeRefError};
 use thiserror::Error;
 use tokio::task::JoinError;
 
@@ -149,6 +150,30 @@ pub enum HiveInitializationError {
 }
 
 #[derive(Debug, Diagnostic, Error)]
+pub enum HiveLocationError {
+    #[diagnostic(
+        code(wire::hive_location::MalformedPath),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("Path was malformed: {}", .0.display())]
+    MalformedPath(PathBuf),
+
+    #[diagnostic(
+        code(wire::hive_location::Malformed),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("--path was malformed")]
+    Malformed(#[source] FlakeRefError),
+
+    #[diagnostic(
+        code(wire::hive_location::TypeUnsupported),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("The flakref had an unsupported type: {:#?}", .0)]
+    TypeUnsupported(FlakeRef),
+}
+
+#[derive(Debug, Diagnostic, Error)]
 pub enum CommandError {
     #[diagnostic(
         code(wire::command::TermAttrs),
@@ -256,6 +281,10 @@ pub enum HiveLibError {
     #[error(transparent)]
     #[diagnostic(transparent)]
     CommandError(CommandError),
+
+    #[error(transparent)]
+    #[diagnostic(transparent)]
+    HiveLocationError(HiveLocationError),
 
     #[error("Failed to apply key {}", .0)]
     KeyError(

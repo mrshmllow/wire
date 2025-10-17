@@ -3,13 +3,12 @@
 
 use futures::{FutureExt, StreamExt};
 use itertools::{Either, Itertools};
-use lib::hive::Hive;
 use lib::hive::node::{Context, GoalExecutor, Name, StepState};
+use lib::hive::{Hive, HiveLocation};
 use lib::{SubCommandModifiers, errors::HiveLibError};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use std::collections::HashSet;
 use std::io::Read;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use thiserror::Error;
 use tracing::{Span, error, info};
@@ -51,12 +50,13 @@ fn read_apply_targets_from_stdin() -> Result<(Vec<String>, Vec<Name>)> {
 // #[instrument(skip_all, fields(goal = %args.goal, on = %args.on.iter().join(", ")))]
 pub async fn apply(
     hive: &mut Hive,
+    location: HiveLocation,
     args: ApplyArgs,
-    path: PathBuf,
     mut modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<()> {
     let header_span = Span::current();
+    let location = Arc::new(location);
 
     // Respect user's --always-build-local arg
     hive.force_always_local(args.always_build_local)?;
@@ -95,8 +95,6 @@ pub async fn apply(
                 || node.tags.iter().any(|tag| tags.contains(tag))
         })
         .map(|node| {
-            let path = path.clone();
-
             info!("Resolved {:?} to include {}", args.on, node.0);
 
             let context = Context {
@@ -105,7 +103,7 @@ pub async fn apply(
                 goal: args.goal.clone().try_into().unwrap(),
                 state: StepState::default(),
                 no_keys: args.no_keys,
-                hivepath: path,
+                hive_location: location.clone(),
                 modifiers,
                 reboot: args.reboot,
                 clobber_lock: clobber_lock.clone(),

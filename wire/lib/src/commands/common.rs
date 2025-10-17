@@ -3,16 +3,16 @@
 
 use std::{
     collections::HashMap,
-    path::Path,
     sync::{Arc, Mutex},
 };
+
 
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
-    errors::{HiveInitializationError, HiveLibError},
+    errors::HiveLibError,
     hive::{
-        find_hive,
+        HiveLocation,
         node::{Name, Node, Push},
     },
 };
@@ -59,39 +59,36 @@ pub async fn push(
     Ok(())
 }
 
-/// Evaluates the hive in path with regards to the given goal,
+/// Evaluates the hive in flakeref with regards to the given goal,
 /// and returns stdout.
 pub async fn evaluate_hive_attribute(
-    path: &Path,
+    location: &HiveLocation,
     goal: &EvalGoal<'_>,
     modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<String, HiveLibError> {
-    let canon_path =
-        find_hive(&path.canonicalize().unwrap()).ok_or(HiveLibError::HiveInitializationError(
-            HiveInitializationError::NoHiveFound(path.to_path_buf()),
-        ))?;
-
     let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
 
-    let attribute = if canon_path.ends_with("flake.nix") {
-        format!(
-            "{}#wire --apply \"hive: {}\"",
-            canon_path.to_str().unwrap(),
-            match goal {
-                EvalGoal::Inspect => "hive.inspect".to_string(),
-                EvalGoal::GetTopLevel(node) => format!("hive.topLevels.{node}"),
-            }
-        )
-    } else {
-        format!(
-            "--file {} {}",
-            &canon_path.to_string_lossy(),
-            match goal {
-                EvalGoal::Inspect => "inspect".to_string(),
-                EvalGoal::GetTopLevel(node) => format!("topLevels.{node}"),
-            }
-        )
+    let attribute = match location {
+        HiveLocation::Flake(uri) => {
+            format!(
+                "{uri}#wire --apply \"hive: {}\"",
+                match goal {
+                    EvalGoal::Inspect => "hive.inspect".to_string(),
+                    EvalGoal::GetTopLevel(node) => format!("hive.topLevels.{node}"),
+                }
+            )
+        }
+        HiveLocation::HiveNix(path) => {
+            format!(
+                "--file {} {}",
+                &path.to_string_lossy(),
+                match goal {
+                    EvalGoal::Inspect => "inspect".to_string(),
+                    EvalGoal::GetTopLevel(node) => format!("topLevels.{node}"),
+                }
+            )
+        }
     };
 
     let command_string = format!(
