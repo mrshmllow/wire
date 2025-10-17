@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--on -` will now read additional apply targets from stdin.
 - `{key.name}-key.{path,service}` systemd units where added.
 - `--path` now supports flakerefs (`github:foo/bar`, `git+file:///...`,
-  `gitlab:foo/bar`, etc).
+  `https://.../main.tar.gz`, etc).
 - `--flake` is now an alias for `--path`.
 
 ### Fixed
 
-- Fix bug where --non-interactive was inversed
+- Fix bug where `--non-interactive` was inversed
 - `./result` links where being created. they will not be created anymore
 - Logging from interactive commands (absence of `--non-interactive`) was
   improved.
