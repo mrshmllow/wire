@@ -26,12 +26,11 @@ jobs:
       - uses: ./.github/actions/setup-nix
         with:
           cachixToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Build Tests
+        run: nix build .#cargo-tests -L -vv
       - name: Cargo Tests
-        run: nix develop --print-build-logs -v --command cargo test
+        run: |
+          nix develop \
+            --print-build-logs \
+            -v \
+            --command result/bin/run-tests
