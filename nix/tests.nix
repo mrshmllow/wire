@@ -27,7 +27,7 @@
       );
     in
     {
-      packages.cargo-test = pkgs.writeShellScriptBin "run-tests" ''
+      packages.cargo-tests = pkgs.writeShellScriptBin "run-tests" ''
         for item in "${tests}"/*; do
             echo "running $item"
             "$item"
