@@ -6,7 +6,7 @@
       url = "github:nix-community/home-manager";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    wire.url = "github:wires-org/wire"; # [!code ++]
+    wire.url = "github:mrshmllow/wire"; # [!code ++]
   };
 
   outputs = {

@@ -16,7 +16,7 @@ export default {
 
     giscusTalk(
       {
-        repo: "wires-org/wire",
+        repo: "mrshmllow/wire",
         repoId: "R_kgDOMQQbzw",
         category: "giscus", // default: `General`
         categoryId: "DIC_kwDOMQQbz84Co4vv",

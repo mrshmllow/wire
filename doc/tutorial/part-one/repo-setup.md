@@ -39,12 +39,12 @@ This has created a pinned version of `nixpkgs` for us to use in our Wire hive.
 
 ## Adding wire as a dependency
 
-We can now need to tell `npins` to use `wires-org/wire` as a dependency.
+We can now need to tell `npins` to use `mrshmllow/wire` as a dependency.
 
 ```sh
-[nix-shell]$ npins add github wires-org wire
+[nix-shell]$ npins add github mrshmllow wire
 [INFO ] Adding 'wire' …
-    repository: https://github.com/wires-org/wire.git
+    repository: https://github.com/mrshmllow/wire.git
     pre_releases: false
     submodules: false
     version: v0.4.0
@@ -65,7 +65,7 @@ nixpkgs: (Nix channel)
     frozen: false
 
 wire: (git release tag)
-    repository: https://github.com/wires-org/wire.git
+    repository: https://github.com/mrshmllow/wire.git
     pre_releases: false
     submodules: false
     version: v0.4.0

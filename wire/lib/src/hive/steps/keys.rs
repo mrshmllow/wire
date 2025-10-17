@@ -304,7 +304,7 @@ impl ExecuteStep for PushKeyAgent {
             None => panic!(
                 "{arg_name} environment variable not set! \n
                 Wire was not built with the ability to deploy keys to this platform. \n
-                Please create an issue: https://github.com/wires-org/wire/issues/new?template=bug_report.md"
+                Please create an issue: https://github.com/mrshmllow/wire/issues/new?template=bug_report.md"
             ),
         };
 

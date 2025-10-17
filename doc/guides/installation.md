@@ -34,7 +34,7 @@ your hive from.
 ## Installation through npins
 
 ```sh
-$ npins add github wires-org wire --at v0.5.0
+$ npins add github mrshmllow wire --at v0.5.0
 ```
 
 ::: code-group

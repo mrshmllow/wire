@@ -1,8 +1,8 @@
 # wire
 
-![Rust Tests Status](https://img.shields.io/github/actions/workflow/status/wires-org/wire/test.yml?branch=main&style=flat-square&label=Rust%20Tests)
-![BuildBot Build & VM Test Status](https://img.shields.io/github/checks-status/wires-org/wire/main?style=flat-square&label=BuildBot%20Build%20%26%20VM%20Tests)
-![Documentation Status](https://img.shields.io/github/actions/workflow/status/wires-org/wire/pages.yml?branch=main&style=flat-square&label=Documentation)
+![Rust Tests Status](https://img.shields.io/github/actions/workflow/status/mrshmllow/wire/test.yml?branch=main&style=flat-square&label=Rust%20Tests)
+![BuildBot Build & VM Test Status](https://img.shields.io/github/checks-status/mrshmllow/wire/main?style=flat-square&label=BuildBot%20Build%20%26%20VM%20Tests)
+![Documentation Status](https://img.shields.io/github/actions/workflow/status/mrshmllow/wire/pages.yml?branch=main&style=flat-square&label=Documentation)
 
 wire is a tool to deploy nixos systems. its usage is inspired by colmena however it is not a fork.
 

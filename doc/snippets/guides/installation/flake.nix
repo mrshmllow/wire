@@ -1,7 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    wire.url = "github:wires-org/wire/v0.5.0";
+    wire.url = "github:mrshmllow/wire/v0.5.0";
     systems.url = "github:nix-systems/default";
   };
 
