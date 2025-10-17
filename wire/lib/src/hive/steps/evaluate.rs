@@ -28,7 +28,7 @@ impl ExecuteStep for Evaluate {
     #[instrument(skip_all, name = "eval")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let output = evaluate_hive_attribute(
-            &ctx.hivepath,
+            &ctx.hive_location,
             &EvalGoal::GetTopLevel(ctx.name),
             ctx.modifiers,
             ctx.clobber_lock.clone(),

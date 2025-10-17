@@ -1,17 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use nix_compat::flakeref::FlakeRef;
 use node::{Name, Node};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
-use std::path::{Path, PathBuf};
+use std::ffi::OsStr;
+use std::fs;
+use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info, instrument, trace};
+use tracing::{info, instrument};
 
 use crate::commands::common::evaluate_hive_attribute;
-use crate::errors::HiveInitializationError;
+use crate::errors::{HiveInitializationError, HiveLocationError};
 use crate::{EvalGoal, HiveLibError, SubCommandModifiers};
 pub mod node;
 pub mod steps;
@@ -45,14 +49,12 @@ impl Hive {
 
     #[instrument(skip_all, name = "eval_hive")]
     pub async fn new_from_path(
-        path: &Path,
+        location: &HiveLocation,
         modifiers: SubCommandModifiers,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Hive, HiveLibError> {
-        info!("Searching upwards for hive in {}", path.display());
-
         let output =
-            evaluate_hive_attribute(path, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
+            evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
 
         info!("evaluate_hive_attribute ouputted {output}");
 
@@ -82,25 +84,46 @@ impl Hive {
     }
 }
 
-pub fn find_hive(path: &Path) -> Option<PathBuf> {
-    trace!("Searching for hive in {}", path.display());
-    let filepath_flake = path.join("flake.nix");
+#[derive(Debug, PartialEq, Eq)]
+pub enum HiveLocation {
+    HiveNix(PathBuf),
+    Flake(String),
+}
 
-    if filepath_flake.is_file() {
-        return Some(filepath_flake);
+pub fn get_hive_location(path: String) -> Result<HiveLocation, HiveLocationError> {
+    let flakeref = FlakeRef::from_str(&path);
+
+    let path_to_location = |path: PathBuf| {
+        Ok(match path.file_name().and_then(OsStr::to_str) {
+            Some("hive.nix") => HiveLocation::HiveNix(path.clone()),
+            Some(_) => {
+                if fs::metadata(path.join("flake.nix")).is_ok() {
+                    HiveLocation::Flake(path.join("flake.nix").display().to_string())
+                } else {
+                    HiveLocation::HiveNix(path.join("hive.nix"))
+                }
+            }
+            None => return Err(HiveLocationError::MalformedPath(path.clone())),
+        })
+    };
+
+    match flakeref {
+        Err(nix_compat::flakeref::FlakeRefError::UrlParseError(_err)) => {
+            let path = PathBuf::from(path);
+            Ok(path_to_location(path)?)
+        }
+        Ok(FlakeRef::Path { path, .. }) => Ok(path_to_location(path)?),
+        Ok(
+            FlakeRef::Git { .. }
+            | FlakeRef::GitHub { .. }
+            | FlakeRef::GitLab { .. }
+            | FlakeRef::Tarball { .. }
+            | FlakeRef::Mercurial { .. }
+            | FlakeRef::SourceHut { .. },
+        ) => Ok(HiveLocation::Flake(path)),
+        Err(err) => Err(HiveLocationError::Malformed(err)),
+        Ok(flakeref) => Err(HiveLocationError::TypeUnsupported(flakeref)),
     }
-    let filepath_hive = path.join("hive.nix");
-
-    if filepath_hive.is_file() {
-        return Some(filepath_hive);
-    }
-
-    if let Some(parent) = path.parent() {
-        return find_hive(parent);
-    }
-
-    error!("No hive found");
-    None
 }
 
 #[cfg(test)]
@@ -111,29 +134,33 @@ mod tests {
         errors::CommandError,
         get_test_path,
         hive::steps::keys::{Key, Source, UploadKeyAt},
+        location,
         test_support::{get_clobber_lock, make_flake_sandbox},
     };
 
     use super::*;
     use std::{assert_matches::assert_matches, env};
 
+    // flake should always come before hive.nix
     #[test]
     fn test_hive_dot_nix_priority() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
 
-        let hive = find_hive(&path).unwrap();
-
-        assert!(hive.ends_with("flake.nix"));
+        assert_matches!(location, HiveLocation::Flake(..));
     }
 
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn test_hive_file() {
-        let mut path = get_test_path!();
+        let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
-            .await
-            .unwrap();
+        let hive = Hive::new_from_path(
+            &location,
+            SubCommandModifiers::default(),
+            get_clobber_lock(),
+        )
+        .await
+        .unwrap();
 
         let node = Node {
             target: node::Target::from_host("192.168.122.96"),
@@ -142,8 +169,6 @@ mod tests {
 
         let mut nodes = HashMap::new();
         nodes.insert(Name("node-a".into()), node);
-
-        path.push("hive.nix");
 
         assert_eq!(
             hive,
@@ -157,11 +182,15 @@ mod tests {
     #[tokio::test]
     #[cfg_attr(feature = "no_web_tests", ignore)]
     async fn non_trivial_hive() {
-        let mut path = get_test_path!();
+        let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock())
-            .await
-            .unwrap();
+        let hive = Hive::new_from_path(
+            &location,
+            SubCommandModifiers::default(),
+            get_clobber_lock(),
+        )
+        .await
+        .unwrap();
 
         let node = Node {
             target: node::Target::from_host("name"),
@@ -182,8 +211,6 @@ mod tests {
         let mut nodes = HashMap::new();
         nodes.insert(Name("node-a".into()), node);
 
-        path.push("hive.nix");
-
         assert_eq!(
             hive,
             Hive {
@@ -198,8 +225,9 @@ mod tests {
     async fn flake_hive() {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
 
+        let location = get_hive_location(tmp_dir.path().display().to_string()).unwrap();
         let hive = Hive::new_from_path(
-            tmp_dir.path(),
+            &location,
             SubCommandModifiers::default(),
             get_clobber_lock(),
         )
@@ -212,10 +240,6 @@ mod tests {
         nodes.insert(Name("node-a".into()), Node::from_host("node-a"));
         // a non-merged node
         nodes.insert(Name("node-b".into()), Node::from_host("node-b"));
-        // omit a node called system-c
-
-        let mut path = tmp_dir.path().to_path_buf();
-        path.push("flake.nix");
 
         assert_eq!(
             hive,
@@ -230,10 +254,10 @@ mod tests {
 
     #[tokio::test]
     async fn no_nixpkgs() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
 
         assert_matches!(
-            Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock()).await,
             Err(HiveLibError::NixEvalError {
                 source: CommandError::CommandFailed {
                     logs,
@@ -247,10 +271,10 @@ mod tests {
 
     #[tokio::test]
     async fn _keys_should_fail() {
-        let path = get_test_path!();
+        let location = location!(get_test_path!());
 
         assert_matches!(
-            Hive::new_from_path(&path, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock()).await,
             Err(HiveLibError::NixEvalError {
                 source: CommandError::CommandFailed {
                     logs,
