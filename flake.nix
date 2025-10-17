@@ -41,7 +41,7 @@
       systems = import systems;
 
       flake = {
-        nixosModules.default = import ./runtime/module.nix;
+        nixosModules.default = import ./runtime/module;
         makeHive = import ./runtime/makeHive.nix;
         hydraJobs =
           let

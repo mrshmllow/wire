@@ -9,6 +9,8 @@ makeHive {
   defaults = {
     deployment.keys = {
       source_string = {
+        # key with different name to attr name
+        name = "source_string_name";
         source = ''
           hello_world_source
         '';

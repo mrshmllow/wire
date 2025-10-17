@@ -2,7 +2,8 @@
 // Copyright 2024-2025 wire Contributors
 
 use std::{
-    fs, io,
+    fs::{self, create_dir},
+    io,
     path::Path,
     process::Command,
     sync::{Arc, Mutex},
@@ -26,13 +27,23 @@ pub fn make_flake_sandbox(path: &Path) -> Result<TempDir, io::Error> {
 
     let root = path.parent().unwrap().parent().unwrap().parent().unwrap();
 
+    create_dir(tmp_dir.as_ref().join("module/"))?;
+
     fs::copy(
         root.join(Path::new("runtime/evaluate.nix")),
         tmp_dir.as_ref().join("evaluate.nix"),
     )?;
     fs::copy(
-        root.join(Path::new("runtime/module.nix")),
-        tmp_dir.as_ref().join("module.nix"),
+        root.join(Path::new("runtime/module/config.nix")),
+        tmp_dir.as_ref().join("module/config.nix"),
+    )?;
+    fs::copy(
+        root.join(Path::new("runtime/module/options.nix")),
+        tmp_dir.as_ref().join("module/options.nix"),
+    )?;
+    fs::copy(
+        root.join(Path::new("runtime/module/default.nix")),
+        tmp_dir.as_ref().join("module/default.nix"),
     )?;
     fs::copy(
         root.join(Path::new("runtime/makeHive.nix")),

@@ -6,7 +6,7 @@
   nixosConfigurations ? { },
 }:
 let
-  module = import ./module.nix;
+  module = import ./module;
 
   mergedHive = {
     meta = { };

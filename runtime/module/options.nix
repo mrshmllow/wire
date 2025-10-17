@@ -4,7 +4,6 @@
 {
   lib,
   name,
-  config,
   ...
 }:
 let
@@ -115,7 +114,18 @@ in
               path = lib.mkOption {
                 internal = true;
                 type = types.path;
-                default = "${config.destDir}/${config.name}";
+                default =
+                  if lib.hasSuffix "/" config.destDir then
+                    "${config.destDir}${config.name}"
+                  else
+                    "${config.destDir}/${config.name}";
+                description = "Path that the key is deployed to.";
+              };
+              service = lib.mkOption {
+                internal = true;
+                type = types.str;
+                default = "${config.name}-key.service";
+                description = "Name of the systemd service that represents this key.";
               };
               group = lib.mkOption {
                 type = types.str;
@@ -181,26 +191,6 @@ in
           destDir = "/etc/arbs/";
         };
       };
-    };
-  };
-
-  config = {
-    deployment = {
-      _keys = lib.mapAttrsToList (
-        _: value:
-        value
-        // {
-          source = {
-            # Attach type to internally tag serde enum
-            t = builtins.replaceStrings [ "path" "string" "list" ] [ "Path" "String" "Command" ] (
-              builtins.typeOf value.source
-            );
-            c = value.source;
-          };
-        }
-      ) config.deployment.keys;
-
-      _hostPlatform = config.nixpkgs.hostPlatform.system;
     };
   };
 }

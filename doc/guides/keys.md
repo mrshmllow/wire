@@ -167,6 +167,12 @@ in wire.makeHive {
 
 You can access the full absolute path of any key with
 `config.deployment.keys.<name>.path` (auto-generated and read-only).
+
+Keys also have a `config.deployment.keys.<name>.service` property
+(auto-generated and read-only), which represent systemd services that you can
+`require`, telling systemd there is a hard-dependency on that key for the
+service to run.
+
 Here's an example with the Tailscale service:
 
 ```nix:line-numbers [hive.nix]
@@ -186,6 +192,11 @@ in wire.makeHive {
     deployment.keys."tailscale.key" = {
       keyCommand = ["gpg" "--decrypt" "${./secrets/tailscale.key.gpg}"];
     };
+
+    # The service will not start unless the key exists.
+    systemd.services.tailscaled-autoconnect.requires = [
+      config.deployment.keys."tailscale.key".service
+    ];
   };
 }
 ```
