@@ -126,7 +126,8 @@ impl WireCommandChip for NonInteractiveChildChip {
                 .error_collection
                 .lock()
                 .await
-                .make_contiguous()
+                .iter()
+                .rev()
                 .join("\n");
 
             return Err(CommandError::CommandFailed {
@@ -140,7 +141,7 @@ impl WireCommandChip for NonInteractiveChildChip {
             });
         }
 
-        let stdout = self.stdout_collection.lock().await.iter().join("\n");
+        let stdout = self.stdout_collection.lock().await.iter().rev().join("\n");
 
         Ok((status, stdout))
     }
