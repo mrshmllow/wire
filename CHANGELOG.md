@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Data integrity of keys have been greatly improved
 - Unknown SSH keys will be immediately rejected unless `--ssh-accept-host` is passed.
 - Logging was improved.
+- `config.nixpkgs.flake.source` is now set by default if `meta.nixpkgs` ends
+  with `-source` at priority 1000 (default).
 
 ### Documented
 

@@ -47,6 +47,8 @@ let
     else
       builtins.abort "makeHive called without meta.nixpkgs specified.";
 
+  isFlake = resolvedNixpkgs.lib.hasSuffix "-source" resolvedNixpkgs.path;
+
   evaluateNode =
     name:
     let
@@ -58,7 +60,10 @@ let
 
         mergedHive.defaults
         mergedHive.${name}
-      ];
+      ]
+      ++ (resolvedNixpkgs.lib.optional isFlake {
+        config.nixpkgs.flake.source = resolvedNixpkgs.lib.mkDefault resolvedNixpkgs.path;
+      });
       system = null;
       specialArgs = {
         inherit name nodes;
