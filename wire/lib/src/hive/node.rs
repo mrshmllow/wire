@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{Level, error, event, instrument, trace};
 
 use crate::SubCommandModifiers;
-use crate::commands::{ChildOutputMode, CommandArguments, WireCommandChip, run_command_with_env};
+use crate::commands::{CommandArguments, WireCommandChip, run_command_with_env};
 use crate::errors::NetworkError;
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
@@ -204,17 +204,8 @@ impl Node {
             store ping --store ssh://{}@{}",
             self.target.user, host
         );
-
         let output = run_command_with_env(
-            &CommandArguments {
-                target: None,
-                output_mode: ChildOutputMode::Nix,
-                modifiers,
-                command_string,
-                keep_stdin_open: false,
-                elevated: false,
-                clobber_lock,
-            },
+            &CommandArguments::new(command_string, modifiers, clobber_lock).nix().log_stdout(),
             HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers))]),
         )?;
 

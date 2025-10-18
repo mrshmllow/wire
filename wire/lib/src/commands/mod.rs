@@ -38,13 +38,58 @@ pub enum Either<L, R> {
 
 #[derive(Debug)]
 pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
-    pub(crate) modifiers: SubCommandModifiers,
-    pub(crate) target: Option<&'t Target>,
-    pub(crate) output_mode: ChildOutputMode,
-    pub(crate) command_string: S,
-    pub(crate) keep_stdin_open: bool,
-    pub(crate) elevated: bool,
-    pub(crate) clobber_lock: Arc<Mutex<()>>,
+    modifiers: SubCommandModifiers,
+    target: Option<&'t Target>,
+    output_mode: ChildOutputMode,
+    command_string: S,
+    keep_stdin_open: bool,
+    elevated: bool,
+    clobber_lock: Arc<Mutex<()>>,
+    log_stdout: bool
+}
+
+impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
+    pub(crate) fn new(
+        command_string: S,
+        modifiers: SubCommandModifiers,
+        clobber_lock: Arc<Mutex<()>>,
+    ) -> Self {
+        Self {
+            command_string,
+            keep_stdin_open: false,
+            elevated: false,
+            log_stdout: false,
+            target: None,
+            output_mode: ChildOutputMode::Raw,
+            modifiers,
+            clobber_lock,
+        }
+    }
+
+    pub(crate) fn on_target(mut self, target: Option<&'a Target>) -> Self {
+        self.target = target;
+        self
+    }
+
+    pub(crate) fn nix(mut self) -> Self {
+        self.output_mode = ChildOutputMode::Nix;
+        self
+    }
+
+    pub(crate) fn keep_stdin_open(mut self) -> Self {
+        self.keep_stdin_open = true;
+        self
+    }
+
+    pub(crate) fn elevated(mut self) -> Self {
+        self.elevated = true;
+        self
+    }
+
+    pub(crate) fn log_stdout(mut self) -> Self {
+        self.log_stdout = true;
+        self
+    }
 }
 
 pub(crate) fn run_command<S: AsRef<str>>(

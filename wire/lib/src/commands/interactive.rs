@@ -69,6 +69,7 @@ struct WatchStdoutArguments {
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     completion_status: Arc<CompletionStatus>,
     span: Span,
+    log_stdout: bool
 }
 
 /// the underlying command began
@@ -154,6 +155,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
             stdout_collection: stdout_collection.clone(),
             completion_status: completion_status.clone(),
             span: Span::current(),
+            log_stdout: arguments.log_stdout
         };
 
         std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
@@ -394,6 +396,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         stdout_collection,
         stderr_collection,
         completion_status,
+        log_stdout,
         ..
     } = arguments;
 
@@ -431,7 +434,10 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
 
                     if began {
                         if let Some(stripped) = line.strip_prefix('#') {
-                            output_mode.trace(&stripped.to_string());
+                            if log_stdout {
+                                output_mode.trace(&stripped.to_string());
+                            }
+
                             let mut queue = stdout_collection.lock().unwrap();
                             queue.push_front(stripped.to_string());
                             continue;
