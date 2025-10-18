@@ -98,7 +98,7 @@ pub fn get_hive_location(path: String) -> Result<HiveLocation, HiveLocationError
             Some("hive.nix") => HiveLocation::HiveNix(path.clone()),
             Some(_) => {
                 if fs::metadata(path.join("flake.nix")).is_ok() {
-                    HiveLocation::Flake(path.join("flake.nix").display().to_string())
+                    HiveLocation::Flake(path.display().to_string())
                 } else {
                     HiveLocation::HiveNix(path.join("hive.nix"))
                 }
