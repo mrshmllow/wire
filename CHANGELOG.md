@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documented
 
-- Added a real tutorial, and seperated many how-to guides.
+- Added a real tutorial, and separated many how-to guides.
   The tutorial leads the user through creating and deploying a Wire Hive.
 
 ## [0.5.0] - 2025-09-18
