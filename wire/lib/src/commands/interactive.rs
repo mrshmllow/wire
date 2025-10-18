@@ -83,7 +83,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: std::collections::HashMap<String, String>,
 ) -> Result<InteractiveChildChip, HiveLibError> {
-    let (start_needle, succeed_needle, failed_needle) = create_needles();
+    let (succeed_needle, failed_needle, start_needle) = create_needles();
 
     if arguments.elevated {
         eprintln!(
