@@ -6,6 +6,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use tracing::instrument;
+
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{CommandArguments, Either, WireCommandChip, run_command, run_command_with_env},
@@ -53,6 +55,7 @@ pub async fn push(
 
 /// Evaluates the hive in flakeref with regards to the given goal,
 /// and returns stdout.
+#[instrument(ret(level = tracing::Level::TRACE), skip_all)]
 pub async fn evaluate_hive_attribute(
     location: &HiveLocation,
     goal: &EvalGoal<'_>,

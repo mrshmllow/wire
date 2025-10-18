@@ -12,7 +12,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use tracing::{info, instrument};
+use tracing::{info, instrument, trace};
 
 use crate::commands::common::evaluate_hive_attribute;
 use crate::errors::{HiveInitializationError, HiveLocationError};
@@ -57,8 +57,6 @@ impl Hive {
 
         let output =
             evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
-
-        info!("evaluate_hive_attribute ouputted {output}");
 
         let hive: Hive = serde_json::from_str(&output).map_err(|err| {
             HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
