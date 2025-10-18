@@ -114,7 +114,8 @@ impl ExecuteStep for SwitchToConfiguration {
                         Some(&ctx.node.target)
                     },
                 )
-                .elevated().log_stdout(),
+                .elevated()
+                .log_stdout(),
         )?;
 
         let result = child.wait_till_success().await;
@@ -134,7 +135,8 @@ impl ExecuteStep for SwitchToConfiguration {
                 warn!("Rebooting {name}!", name = ctx.name);
 
                 let reboot = run_command(
-                    &CommandArguments::new("reboot now", ctx.modifiers, ctx.clobber_lock.clone()).log_stdout()
+                    &CommandArguments::new("reboot now", ctx.modifiers, ctx.clobber_lock.clone())
+                        .log_stdout()
                         .on_target(Some(&ctx.node.target))
                         .elevated(),
                 )?;

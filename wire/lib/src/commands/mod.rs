@@ -45,7 +45,7 @@ pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
     keep_stdin_open: bool,
     elevated: bool,
     clobber_lock: Arc<Mutex<()>>,
-    log_stdout: bool
+    log_stdout: bool,
 }
 
 impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
