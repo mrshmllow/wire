@@ -39,6 +39,9 @@ impl Trace for LogMessage<'_> {
                 return;
             }
 
+            let stripped = strip_ansi_escapes::strip(msg.as_bytes());
+            let msg = String::from_utf8_lossy(&stripped);
+
             match level {
                 VerbosityLevel::Info => event!(tracing_level::INFO, "{msg}"),
                 VerbosityLevel::Warn | VerbosityLevel::Notice => {

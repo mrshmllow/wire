@@ -32,6 +32,7 @@ enum_dispatch = "0.3.13"
 sha2 = { workspace = true }
 base64 = { workspace = true }
 nix-compat = { workspace = true }
+strip-ansi-escapes = "0.2.1"
 
 [dev-dependencies]
 tempdir = "0.3"
