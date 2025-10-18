@@ -94,14 +94,14 @@ pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
         output_mode.clone(),
         error_collection.clone(),
         true,
-        true
+        true,
     ));
     joinset.spawn(handle_io(
         stdout_handle,
         output_mode.clone(),
         stdout_collection.clone(),
         false,
-        arguments.log_stdout
+        arguments.log_stdout,
     ));
 
     Ok(NonInteractiveChildChip {
@@ -158,7 +158,7 @@ pub async fn handle_io<R>(
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
     is_error: bool,
-    should_log: bool
+    should_log: bool,
 ) where
     R: tokio::io::AsyncRead + Unpin,
 {

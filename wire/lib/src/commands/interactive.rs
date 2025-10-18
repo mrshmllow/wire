@@ -69,7 +69,7 @@ struct WatchStdoutArguments {
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     completion_status: Arc<CompletionStatus>,
     span: Span,
-    log_stdout: bool
+    log_stdout: bool,
 }
 
 /// the underlying command began
@@ -155,7 +155,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
             stdout_collection: stdout_collection.clone(),
             completion_status: completion_status.clone(),
             span: Span::current(),
-            log_stdout: arguments.log_stdout
+            log_stdout: arguments.log_stdout,
         };
 
         std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
