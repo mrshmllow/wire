@@ -241,7 +241,7 @@ fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
 
 fn build_command<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
-    command_string: &String
+    command_string: &String,
 ) -> Result<CommandBuilder, HiveLibError> {
     let mut command = if let Some(target) = arguments.target {
         let mut command = create_sync_ssh_command(target, arguments.modifiers)?;
@@ -324,6 +324,7 @@ impl WireCommandChip for InteractiveChildChip {
                 .unwrap()
                 .iter()
                 .rev()
+                .map(|x| x.trim())
                 .join("\n");
 
             return Ok((exit_status, logs));

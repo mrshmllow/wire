@@ -7,6 +7,7 @@ use std::{
 };
 
 use nix_compat::log::{AT_NIX_PREFIX, LogMessage};
+use tracing::debug;
 
 use crate::{
     SubCommandModifiers,
@@ -144,13 +145,21 @@ impl ChildOutputMode {
     fn trace(self, line: &String) -> nix_log::SubcommandLog<'_> {
         let log = match self {
             ChildOutputMode::Nix => {
-                let log = serde_json::from_str::<LogMessage>(
-                    line.strip_prefix(AT_NIX_PREFIX).unwrap_or(line),
-                )
-                .map(SubcommandLog::Internal)
-                .unwrap_or(SubcommandLog::Raw(line.into()));
+                let stripped = line
+                    .find(AT_NIX_PREFIX)
+                    .map(|position| &line[position + AT_NIX_PREFIX.len()..]);
 
-                log
+                if let Some(line) = stripped {
+                    serde_json::from_str::<LogMessage>(line).map_or_else(
+                        |err| {
+                            debug!("failed to parse {line:?}: {err:?}");
+                            SubcommandLog::Raw(line.into())
+                        },
+                        SubcommandLog::Internal,
+                    )
+                } else {
+                    SubcommandLog::Raw(line.into())
+                }
             }
             Self::Raw => SubcommandLog::Raw(line.into()),
         };
