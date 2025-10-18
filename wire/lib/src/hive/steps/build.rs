@@ -7,7 +7,7 @@ use tracing::{info, instrument};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command_with_env},
+    commands::{CommandArguments, Either, WireCommandChip, run_command_with_env},
     hive::node::{Context, ExecuteStep, Goal},
 };
 
@@ -35,19 +35,11 @@ impl ExecuteStep for Build {
         );
 
         let status = run_command_with_env(
-            &CommandArguments {
-                target: if ctx.node.build_remotely {
+            &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone()).on_target(if ctx.node.build_remotely {
                     Some(&ctx.node.target)
                 } else {
                     None
-                },
-                output_mode: ChildOutputMode::Nix,
-                modifiers: ctx.modifiers,
-                command_string,
-                keep_stdin_open: false,
-                elevated: false,
-                clobber_lock: ctx.clobber_lock.clone(),
-            },
+                }).nix().log_stdout(),
             std::collections::HashMap::new(),
         )?
         .wait_till_success()

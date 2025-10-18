@@ -24,7 +24,7 @@ use tracing::{Span, debug, field, instrument};
 
 use crate::HiveLibError;
 use crate::commands::common::push;
-use crate::commands::{ChildOutputMode, CommandArguments, WireCommandChip, run_command};
+use crate::commands::{CommandArguments, WireCommandChip, run_command};
 use crate::errors::KeyError;
 use crate::hive::node::{
     Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, should_apply_locally,
@@ -235,20 +235,19 @@ impl ExecuteStep for Keys {
 
         let command_string = format!("{agent_directory}/bin/key_agent");
 
-        let mut child = run_command(&CommandArguments {
-            target: if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
-            {
-                None
-            } else {
-                Some(&ctx.node.target)
-            },
-            output_mode: ChildOutputMode::Raw,
-            modifiers: ctx.modifiers,
-            command_string,
-            keep_stdin_open: true,
-            elevated: true,
-            clobber_lock: ctx.clobber_lock.clone(),
-        })?;
+        let mut child = run_command(
+            &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+                .on_target(
+                    if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+                    {
+                        None
+                    } else {
+                        Some(&ctx.node.target)
+                    },
+                )
+                .elevated()
+                .keep_stdin_open().log_stdout(),
+        )?;
 
         let mut writer = SimpleLengthDelimWriter::new(async |data| child.write_stdin(data).await);
 

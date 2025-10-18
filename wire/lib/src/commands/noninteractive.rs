@@ -7,6 +7,13 @@ use std::{
     sync::Arc,
 };
 
+use crate::{
+    SubCommandModifiers,
+    commands::{ChildOutputMode, CommandArguments, WireCommandChip},
+    errors::{CommandError, HiveLibError},
+    hive::node::Target,
+    nix_log::{SubcommandLog, get_errorish_message},
+};
 use itertools::Itertools;
 use tokio::{
     io::{AsyncWriteExt, BufReader},
@@ -15,14 +22,6 @@ use tokio::{
     task::JoinSet,
 };
 use tracing::{debug, instrument, trace};
-
-use crate::{
-    SubCommandModifiers,
-    commands::{ChildOutputMode, CommandArguments, WireCommandChip},
-    errors::{CommandError, HiveLibError},
-    hive::node::Target,
-    nix_log::{SubcommandLog, get_errorish_message},
-};
 
 pub(crate) struct NonInteractiveChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
@@ -95,12 +94,14 @@ pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
         output_mode.clone(),
         error_collection.clone(),
         true,
+        true
     ));
     joinset.spawn(handle_io(
         stdout_handle,
         output_mode.clone(),
         stdout_collection.clone(),
         false,
+        arguments.log_stdout
     ));
 
     Ok(NonInteractiveChildChip {
@@ -151,18 +152,24 @@ impl WireCommandChip for NonInteractiveChildChip {
     }
 }
 
+#[instrument(skip_all, name = "log")]
 pub async fn handle_io<R>(
     reader: R,
     output_mode: Arc<ChildOutputMode>,
     collection: Arc<Mutex<VecDeque<String>>>,
     is_error: bool,
+    should_log: bool
 ) where
     R: tokio::io::AsyncRead + Unpin,
 {
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
-        let log = output_mode.trace(&line);
+        let log = if should_log {
+            output_mode.trace(&line)
+        } else {
+            None
+        };
 
         if !is_error {
             let mut queue = collection.lock().await;

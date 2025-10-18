@@ -9,7 +9,7 @@ use std::{
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{
-        ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command,
+        CommandArguments, Either, WireCommandChip, run_command,
         run_command_with_env,
     },
     errors::HiveLibError,
@@ -38,15 +38,7 @@ pub async fn push(
     );
 
     let child = run_command_with_env(
-        &CommandArguments {
-            target: None,
-            output_mode: ChildOutputMode::Nix,
-            modifiers,
-            command_string,
-            keep_stdin_open: false,
-            elevated: false,
-            clobber_lock,
-        },
+        &CommandArguments::new(command_string, modifiers, clobber_lock).nix(),
         HashMap::from([("NIX_SSHOPTS".into(), node.target.create_ssh_opts(modifiers))]),
     )?;
 
@@ -103,15 +95,7 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = run_command(&CommandArguments {
-        target: None,
-        output_mode: ChildOutputMode::Nix,
-        modifiers,
-        command_string,
-        keep_stdin_open: false,
-        elevated: false,
-        clobber_lock,
-    })?;
+    let child = run_command(&CommandArguments::new(command_string, modifiers, clobber_lock).nix())?;
 
     child
         .wait_till_success()

@@ -7,7 +7,7 @@ use tracing::{error, info, instrument, warn};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, CommandArguments, WireCommandChip, run_command},
+    commands::{CommandArguments, WireCommandChip, run_command},
     errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
@@ -49,19 +49,18 @@ async fn set_profile(
 
     let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
-    let child = run_command(&CommandArguments {
-        target: if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-            None
-        } else {
-            Some(&ctx.node.target)
-        },
-        output_mode: ChildOutputMode::Nix,
-        modifiers: ctx.modifiers,
-        command_string,
-        keep_stdin_open: false,
-        elevated: true,
-        clobber_lock: ctx.clobber_lock.clone(),
-    })?;
+    let child = run_command(
+        &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+            .nix()
+            .on_target(
+                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                    None
+                } else {
+                    Some(&ctx.node.target)
+                },
+            )
+            .elevated(),
+    )?;
 
     let _ = child
         .wait_till_success()
@@ -105,20 +104,18 @@ impl ExecuteStep for SwitchToConfiguration {
             }
         );
 
-        let child = run_command(&CommandArguments {
-            target: if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
-            {
-                None
-            } else {
-                Some(&ctx.node.target)
-            },
-            output_mode: ChildOutputMode::Raw,
-            modifiers: ctx.modifiers,
-            command_string,
-            keep_stdin_open: false,
-            elevated: true,
-            clobber_lock: ctx.clobber_lock.clone(),
-        })?;
+        let child = run_command(
+            &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+                .on_target(
+                    if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+                    {
+                        None
+                    } else {
+                        Some(&ctx.node.target)
+                    },
+                )
+                .elevated().log_stdout(),
+        )?;
 
         let result = child.wait_till_success().await;
 
@@ -136,15 +133,11 @@ impl ExecuteStep for SwitchToConfiguration {
 
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot = run_command(&CommandArguments {
-                    target: Some(&ctx.node.target),
-                    output_mode: ChildOutputMode::Nix,
-                    modifiers: ctx.modifiers,
-                    command_string: "reboot now",
-                    keep_stdin_open: false,
-                    elevated: true,
-                    clobber_lock: ctx.clobber_lock.clone(),
-                })?;
+                let reboot = run_command(
+                    &CommandArguments::new("reboot now", ctx.modifiers, ctx.clobber_lock.clone()).log_stdout()
+                        .on_target(Some(&ctx.node.target))
+                        .elevated(),
+                )?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected
