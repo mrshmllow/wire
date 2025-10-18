@@ -6,7 +6,7 @@ use nix::{
     poll::{PollFd, PollFlags, PollTimeout, poll},
     unistd::{pipe as posix_pipe, read as posix_read, write as posix_write},
 };
-use portable_pty::{NativePtySystem, PtySize};
+use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
 use std::fmt::Debug;
@@ -113,7 +113,6 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
         })
     }
 
-    #[allow(clippy::too_many_lines)]
     #[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
     fn run_command_with_env<S: AsRef<str> + Debug>(
         &mut self,
@@ -129,23 +128,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
 
         let pty_system = NativePtySystem::default();
         let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();
-
-        if let Some(fd) = pty_pair.master.as_raw_fd() {
-            // convert raw fd to a BorrowedFd
-            // safe as `fd` is dropped well before `pty_pair.master`
-            let fd = unsafe { std::os::unix::io::BorrowedFd::borrow_raw(fd) };
-            let mut termios = tcgetattr(fd)
-                .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
-
-            termios.local_flags &= !LocalFlags::ECHO;
-            // Key agent does not work well without canonical mode
-            termios.local_flags &= !LocalFlags::ICANON;
-            // Actually quit
-            termios.local_flags &= !LocalFlags::ISIG;
-
-            tcsetattr(fd, SetArg::TCSANOW, &termios)
-                .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
-        }
+        setup_master(&pty_pair)?;
 
         let command_string = &format!(
             "echo '{start}' && {command} {flags} {IO_SUBS} && echo '{succeed}' || echo '{failed}'",
@@ -161,26 +144,7 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
 
         debug!("{command_string}");
 
-        let mut command = if let Some(target) = self.target {
-            let mut command = create_sync_ssh_command(target, self.modifiers)?;
-
-            // force ssh to use our pesudo terminal
-            command.arg("-tt");
-
-            command
-        } else {
-            let mut command = portable_pty::CommandBuilder::new("sh");
-
-            command.arg("-c");
-
-            command
-        };
-
-        if arguments.elevated {
-            command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
-        } else {
-            command.arg(command_string);
-        }
+        let mut command = build_command(&arguments.command_string, self.target, arguments.elevated, self.modifiers)?;
 
         // give command all env vars
         for (key, value) in envs {
@@ -274,6 +238,54 @@ impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
             stdout_handle,
         })
     }
+}
+
+fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
+    if let Some(fd) = pty_pair.master.as_raw_fd() {
+        // convert raw fd to a BorrowedFd
+        // safe as `fd` is dropped well before `pty_pair.master`
+        let fd = unsafe { std::os::unix::io::BorrowedFd::borrow_raw(fd) };
+        let mut termios = tcgetattr(fd)
+            .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
+
+        termios.local_flags &= !LocalFlags::ECHO;
+        // Key agent does not work well without canonical mode
+        termios.local_flags &= !LocalFlags::ICANON;
+        // Actually quit
+        termios.local_flags &= !LocalFlags::ISIG;
+
+        tcsetattr(fd, SetArg::TCSANOW, &termios)
+            .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
+    }
+
+    Ok(())
+
+}
+
+fn build_command<S: AsRef<str>>(original_command: &S, target: Option<&Target>, elevated: bool, modifiers: SubCommandModifiers) -> Result<CommandBuilder, HiveLibError> {
+    let mut command = if let Some(target) = target {
+        let mut command = create_sync_ssh_command(target, modifiers)?;
+
+        // force ssh to use our pesudo terminal
+        command.arg("-tt");
+
+        command
+    } else {
+        let mut command = portable_pty::CommandBuilder::new("sh");
+
+        command.arg("-c");
+
+        command
+    };
+
+    if elevated {
+        command.arg(format!("sudo -u root -- sh -c '{}'", original_command.as_ref()));
+    } else {
+        command.arg(original_command.as_ref());
+    }
+
+    Ok(command)
+
 }
 
 impl CompletionStatus {
