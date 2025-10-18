@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use itertools::Itertools;
 use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
 use nix::{
     poll::{PollFd, PollFlags, PollTimeout, poll},
@@ -319,16 +320,14 @@ impl WireCommandChip for InteractiveChildChip {
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         if let Some(true) = success {
-            let mut collection = self.stdout_collection.lock().unwrap();
-            let logs = collection.make_contiguous().join("\n");
+            let logs = self.stdout_collection.lock().unwrap().iter().rev().join("\n");
 
             return Ok((exit_status, logs));
         }
 
         debug!("child did not succeed");
 
-        let mut collection = self.stderr_collection.lock().unwrap();
-        let logs = collection.make_contiguous().join("\n");
+        let logs = self.stderr_collection.lock().unwrap().iter().rev().join("\n");
 
         Err(CommandError::CommandFailed {
             command_ran: self.original_command,
