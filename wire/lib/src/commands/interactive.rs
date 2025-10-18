@@ -320,14 +320,26 @@ impl WireCommandChip for InteractiveChildChip {
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         if let Some(true) = success {
-            let logs = self.stdout_collection.lock().unwrap().iter().rev().join("\n");
+            let logs = self
+                .stdout_collection
+                .lock()
+                .unwrap()
+                .iter()
+                .rev()
+                .join("\n");
 
             return Ok((exit_status, logs));
         }
 
         debug!("child did not succeed");
 
-        let logs = self.stderr_collection.lock().unwrap().iter().rev().join("\n");
+        let logs = self
+            .stderr_collection
+            .lock()
+            .unwrap()
+            .iter()
+            .rev()
+            .join("\n");
 
         Err(CommandError::CommandFailed {
             command_ran: self.original_command,

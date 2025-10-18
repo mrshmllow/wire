@@ -122,13 +122,7 @@ impl WireCommandChip for NonInteractiveChildChip {
         let _ = self.joinset.join_all().await;
 
         if !status.success() {
-            let logs = self
-                .error_collection
-                .lock()
-                .await
-                .iter()
-                .rev()
-                .join("\n");
+            let logs = self.error_collection.lock().await.iter().rev().join("\n");
 
             return Err(CommandError::CommandFailed {
                 command_ran: self.original_command,
