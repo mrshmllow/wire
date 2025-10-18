@@ -11,8 +11,8 @@ use nix_compat::log::{AT_NIX_PREFIX, LogMessage};
 use crate::{
     SubCommandModifiers,
     commands::{
-        interactive::{InteractiveChildChip, InteractiveCommand},
-        noninteractive::{NonInteractiveChildChip, NonInteractiveCommand},
+        interactive::{InteractiveChildChip, interactive_command_with_env},
+        noninteractive::{NonInteractiveChildChip, non_interactive_command_with_env},
     },
     errors::{CommandError, HiveLibError},
     hive::node::Target,
@@ -37,50 +37,35 @@ pub enum Either<L, R> {
 }
 
 #[derive(Debug)]
-pub(crate) struct CommandArguments<S: AsRef<str>> {
+pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
+    pub(crate) modifiers: SubCommandModifiers,
+    pub(crate) target: Option<&'t Target>,
+    pub(crate) output_mode: ChildOutputMode,
     pub(crate) command_string: S,
     pub(crate) keep_stdin_open: bool,
     pub(crate) elevated: bool,
     pub(crate) clobber_lock: Arc<Mutex<()>>,
 }
 
-pub(crate) async fn get_command(
-    target: Option<&'_ Target>,
-    output_mode: ChildOutputMode,
-    modifiers: SubCommandModifiers,
-) -> Result<Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>>, HiveLibError> {
-    if modifiers.non_interactive {
-        return Ok(Either::Right(
-            NonInteractiveCommand::spawn_new(target, output_mode, modifiers).await?,
-        ));
-    }
-
-    return Ok(Either::Left(
-        InteractiveCommand::spawn_new(target, output_mode, modifiers).await?,
-    ));
+pub(crate) fn run_command<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
+) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
+    run_command_with_env(arguments, HashMap::new())
 }
 
-pub(crate) trait WireCommand<'target>: Sized {
-    type ChildChip;
-
-    async fn spawn_new(
-        target: Option<&'target Target>,
-        output_mode: ChildOutputMode,
-        modifiers: SubCommandModifiers,
-    ) -> Result<Self, HiveLibError>;
-
-    fn run_command<S: AsRef<str> + std::fmt::Debug>(
-        &mut self,
-        command_arugments: CommandArguments<S>,
-    ) -> Result<Self::ChildChip, HiveLibError> {
-        self.run_command_with_env(command_arugments, std::collections::HashMap::new())
+pub(crate) fn run_command_with_env<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
+    envs: HashMap<String, String>,
+) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
+    // use the non interactive command runner when forced or when there is simply no reason
+    // for user input to be taken (local, and not elevated)
+    if arguments.modifiers.non_interactive || (!arguments.elevated && arguments.target.is_none()) {
+        return Ok(Either::Right(non_interactive_command_with_env(
+            arguments, envs,
+        )?));
     }
 
-    fn run_command_with_env<S: AsRef<str> + std::fmt::Debug>(
-        &mut self,
-        command_arugments: CommandArguments<S>,
-        args: HashMap<String, String>,
-    ) -> Result<Self::ChildChip, HiveLibError>;
+    Ok(Either::Left(interactive_command_with_env(arguments, envs)?))
 }
 
 pub(crate) trait WireCommandChip {
@@ -88,34 +73,6 @@ pub(crate) trait WireCommandChip {
 
     async fn wait_till_success(self) -> Result<Self::ExitStatus, CommandError>;
     async fn write_stdin(&mut self, data: Vec<u8>) -> Result<(), HiveLibError>;
-}
-
-impl WireCommand<'_> for Either<InteractiveCommand<'_>, NonInteractiveCommand<'_>> {
-    type ChildChip = Either<InteractiveChildChip, NonInteractiveChildChip>;
-
-    /// How'd you get here?
-    async fn spawn_new(
-        _target: Option<&'_ Target>,
-        _output_mode: ChildOutputMode,
-        _modifiers: SubCommandModifiers,
-    ) -> Result<Self, HiveLibError> {
-        unimplemented!()
-    }
-
-    fn run_command_with_env<S: AsRef<str> + std::fmt::Debug>(
-        &mut self,
-        command_arugments: CommandArguments<S>,
-        envs: HashMap<String, String>,
-    ) -> Result<Self::ChildChip, HiveLibError> {
-        match self {
-            Self::Left(left) => left
-                .run_command_with_env(command_arugments, envs)
-                .map(Either::Left),
-            Self::Right(right) => right
-                .run_command_with_env(command_arugments, envs)
-                .map(Either::Right),
-        }
-    }
 }
 
 type ExitStatus = Either<(portable_pty::ExitStatus, String), (std::process::ExitStatus, String)>;
@@ -134,14 +91,6 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
         match self {
             Self::Left(left) => left.wait_till_success().await.map(Either::Left),
             Self::Right(right) => right.wait_till_success().await.map(Either::Right),
-        }
-    }
-}
-
-impl ExitStatus {
-    fn get_stdout(&self) -> &String {
-        match self {
-            Self::Left((_, stdout)) | Self::Right((_, stdout)) => stdout,
         }
     }
 }

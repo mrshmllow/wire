@@ -11,9 +11,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{Level, error, event, instrument, trace};
 
 use crate::SubCommandModifiers;
-use crate::commands::{
-    ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command,
-};
+use crate::commands::{ChildOutputMode, CommandArguments, WireCommandChip, run_command_with_env};
 use crate::errors::NetworkError;
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
@@ -207,9 +205,11 @@ impl Node {
             self.target.user, host
         );
 
-        let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
-        let output = command.run_command_with_env(
-            CommandArguments {
+        let output = run_command_with_env(
+            &CommandArguments {
+                target: None,
+                output_mode: ChildOutputMode::Nix,
+                modifiers,
                 command_string,
                 keep_stdin_open: false,
                 elevated: false,

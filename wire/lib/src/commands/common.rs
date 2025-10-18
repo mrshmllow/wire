@@ -8,7 +8,9 @@ use std::{
 
 use crate::{
     EvalGoal, SubCommandModifiers,
-    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
+    commands::{
+        ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command, run_command_with_env
+    },
     errors::HiveLibError,
     hive::{
         HiveLocation,
@@ -23,8 +25,6 @@ pub async fn push(
     modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<(), HiveLibError> {
-    let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
-
     let command_string = format!(
         "nix --extra-experimental-features nix-command \
         copy --substitute-on-destination --to ssh://{user}@{host} {path}",
@@ -36,8 +36,11 @@ pub async fn push(
         }
     );
 
-    let child = command.run_command_with_env(
-        CommandArguments {
+    let child = run_command_with_env(
+        &CommandArguments {
+            target: None,
+            output_mode: ChildOutputMode::Nix,
+            modifiers,
             command_string,
             keep_stdin_open: false,
             elevated: false,
@@ -66,8 +69,6 @@ pub async fn evaluate_hive_attribute(
     modifiers: SubCommandModifiers,
     clobber_lock: Arc<Mutex<()>>,
 ) -> Result<String, HiveLibError> {
-    let mut command = get_command(None, ChildOutputMode::Nix, modifiers).await?;
-
     let attribute = match location {
         HiveLocation::Flake(uri) => {
             format!(
@@ -101,16 +102,23 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = command.run_command(CommandArguments {
-        command_string,
-        keep_stdin_open: false,
-        elevated: false,
-        clobber_lock,
-    })?;
+    let child = run_command(
+        &CommandArguments {
+            target: None,
+            output_mode: ChildOutputMode::Nix,
+            modifiers,
+            command_string,
+            keep_stdin_open: false,
+            elevated: false,
+            clobber_lock,
+        }
+    )?;
 
     child
         .wait_till_success()
         .await
         .map_err(|source| HiveLibError::NixEvalError { attribute, source })
-        .map(|x| x.get_stdout().clone())
+        .map(|x| match x {
+            Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout
+        })
 }

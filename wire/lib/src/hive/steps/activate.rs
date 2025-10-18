@@ -7,7 +7,7 @@ use tracing::{error, info, instrument, warn};
 
 use crate::{
     HiveLibError,
-    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command},
+    commands::{ChildOutputMode, CommandArguments, WireCommandChip, run_command},
     errors::{ActivationError, NetworkError},
     hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
 };
@@ -47,19 +47,16 @@ async fn set_profile(
 ) -> Result<(), HiveLibError> {
     info!("Setting profiles in anticipation for switch-to-configuration {goal}");
 
-    let mut command = get_command(
-        if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+    let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
+
+    let child = run_command(&CommandArguments {
+        target: if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
             None
         } else {
             Some(&ctx.node.target)
         },
-        ChildOutputMode::Nix,
-        ctx.modifiers,
-    )
-    .await?;
-    let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
-
-    let child = command.run_command(CommandArguments {
+        output_mode: ChildOutputMode::Nix,
+        modifiers: ctx.modifiers,
         command_string,
         keep_stdin_open: false,
         elevated: true,
@@ -98,17 +95,6 @@ impl ExecuteStep for SwitchToConfiguration {
 
         info!("Running switch-to-configuration {goal}");
 
-        let mut command = get_command(
-            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                None
-            } else {
-                Some(&ctx.node.target)
-            },
-            ChildOutputMode::Raw,
-            ctx.modifiers,
-        )
-        .await?;
-
         let command_string = format!(
             "{built_path}/bin/switch-to-configuration {}",
             match goal {
@@ -119,7 +105,15 @@ impl ExecuteStep for SwitchToConfiguration {
             }
         );
 
-        let child = command.run_command(CommandArguments {
+        let child = run_command(&CommandArguments {
+            target: if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+            {
+                None
+            } else {
+                Some(&ctx.node.target)
+            },
+            output_mode: ChildOutputMode::Raw,
+            modifiers: ctx.modifiers,
             command_string,
             keep_stdin_open: false,
             elevated: true,
@@ -140,13 +134,12 @@ impl ExecuteStep for SwitchToConfiguration {
                     return Ok(());
                 }
 
-                let mut command =
-                    get_command(Some(&ctx.node.target), ChildOutputMode::Nix, ctx.modifiers)
-                        .await?;
-
                 warn!("Rebooting {name}!", name = ctx.name);
 
-                let reboot = command.run_command(CommandArguments {
+                let reboot = run_command(&CommandArguments {
+                    target: Some(&ctx.node.target),
+                    output_mode: ChildOutputMode::Nix,
+                    modifiers: ctx.modifiers,
                     command_string: "reboot now",
                     keep_stdin_open: false,
                     elevated: true,

@@ -24,9 +24,7 @@ use tracing::{Span, debug, field, instrument};
 
 use crate::HiveLibError;
 use crate::commands::common::push;
-use crate::commands::{
-    ChildOutputMode, CommandArguments, WireCommand, WireCommandChip, get_command,
-};
+use crate::commands::{ChildOutputMode, CommandArguments, WireCommandChip, run_command};
 use crate::errors::KeyError;
 use crate::hive::node::{
     Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, should_apply_locally,
@@ -235,19 +233,17 @@ impl ExecuteStep for Keys {
             return Ok(());
         }
 
-        let mut command = get_command(
-            if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+        let command_string = format!("{agent_directory}/bin/key_agent");
+
+        let mut child = run_command(&CommandArguments {
+            target: if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+            {
                 None
             } else {
                 Some(&ctx.node.target)
             },
-            ChildOutputMode::Raw,
-            ctx.modifiers,
-        )
-        .await?;
-        let command_string = format!("{agent_directory}/bin/key_agent");
-
-        let mut child = command.run_command(CommandArguments {
+            output_mode: ChildOutputMode::Raw,
+            modifiers: ctx.modifiers,
             command_string,
             keep_stdin_open: true,
             elevated: true,

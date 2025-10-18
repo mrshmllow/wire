@@ -9,7 +9,6 @@ use nix::{
 use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
-use std::fmt::Debug;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Condvar, Mutex};
 use std::thread::JoinHandle;
@@ -27,7 +26,7 @@ use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
 use crate::nix_log::{SubcommandLog, get_errorish_message};
 use crate::{
-    commands::{ChildOutputMode, WireCommand, WireCommandChip},
+    commands::{ChildOutputMode, WireCommandChip},
     errors::HiveLibError,
     hive::node::Target,
 };
@@ -35,16 +34,6 @@ use crate::{
 type MasterWriter = Box<dyn Write + Send>;
 type MasterReader = Box<dyn Read + Send>;
 type Child = Box<dyn portable_pty::Child + Send + Sync>;
-
-#[derive(Debug)]
-pub(crate) struct InteractiveCommand<'t> {
-    target: Option<&'t Target>,
-    output_mode: Arc<ChildOutputMode>,
-    succeed_needle: Arc<String>,
-    failed_needle: Arc<String>,
-    start_needle: Arc<String>,
-    modifiers: SubCommandModifiers,
-}
 
 pub(crate) struct InteractiveChildChip {
     child: Child,
@@ -75,7 +64,7 @@ struct WatchStdoutArguments {
     succeed_needle: Arc<String>,
     failed_needle: Arc<String>,
     start_needle: Arc<String>,
-    output_mode: Arc<ChildOutputMode>,
+    output_mode: ChildOutputMode,
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
     completion_status: Arc<CompletionStatus>,
@@ -89,155 +78,141 @@ const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 /// substitutes STDOUT with #$line. stdout is far less common than stderr.
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
-impl<'t> WireCommand<'t> for InteractiveCommand<'t> {
-    type ChildChip = InteractiveChildChip;
+#[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
+    arguments: &CommandArguments<S>,
+    envs: std::collections::HashMap<String, String>,
+) -> Result<InteractiveChildChip, HiveLibError> {
+    let (start_needle, succeed_needle, failed_needle) = create_needles();
 
-    async fn spawn_new(
-        target: Option<&'t Target>,
-        output_mode: ChildOutputMode,
-        modifiers: SubCommandModifiers,
-    ) -> Result<InteractiveCommand<'t>, HiveLibError> {
-        let output_mode = Arc::new(output_mode);
-        let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
-        let succeed_needle = Arc::new(format!("{tmp_prefix}_WIRE_QUIT"));
-        let failed_needle = Arc::new(format!("{tmp_prefix}_WIRE_FAIL"));
-        let start_needle = Arc::new(format!("{tmp_prefix}_WIRE_START"));
-
-        Ok(Self {
-            target,
-            output_mode,
-            succeed_needle,
-            failed_needle,
-            start_needle,
-            modifiers,
-        })
+    if arguments.elevated {
+        eprintln!(
+            "Please authenticate for \"sudo {}\"",
+            arguments.command_string.as_ref(),
+        );
     }
 
-    #[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
-    fn run_command_with_env<S: AsRef<str> + Debug>(
-        &mut self,
-        arguments: CommandArguments<S>,
-        envs: std::collections::HashMap<String, String>,
-    ) -> Result<Self::ChildChip, HiveLibError> {
-        if arguments.elevated {
-            eprintln!(
-                "Please authenticate for \"sudo {}\"",
-                arguments.command_string.as_ref(),
-            );
+    let pty_system = NativePtySystem::default();
+    let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();
+    setup_master(&pty_pair)?;
+
+    let command_string = &format!(
+        "echo '{start}' && {command} {flags} {IO_SUBS} && echo '{succeed}' || echo '{failed}'",
+        start = start_needle,
+        succeed = succeed_needle,
+        failed = failed_needle,
+        command = arguments.command_string.as_ref(),
+        flags = match arguments.output_mode {
+            ChildOutputMode::Nix => "--log-format internal-json",
+            ChildOutputMode::Raw => "",
         }
+    );
 
-        let pty_system = NativePtySystem::default();
-        let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();
-        setup_master(&pty_pair)?;
+    debug!("{command_string}");
 
-        let command_string = &format!(
-            "echo '{start}' && {command} {flags} {IO_SUBS} && echo '{succeed}' || echo '{failed}'",
-            start = self.start_needle,
-            succeed = self.succeed_needle,
-            failed = self.failed_needle,
-            command = arguments.command_string.as_ref(),
-            flags = match *self.output_mode {
-                ChildOutputMode::Nix => "--log-format internal-json",
-                ChildOutputMode::Raw => "",
-            }
-        );
+    let mut command = build_command(arguments)?;
 
-        debug!("{command_string}");
+    // give command all env vars
+    for (key, value) in envs {
+        command.env(key, value);
+    }
 
-        let mut command = build_command(&arguments.command_string, self.target, arguments.elevated, self.modifiers)?;
+    let clobber_guard = arguments.clobber_lock.lock().unwrap();
+    let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
+    let child = pty_pair
+        .slave
+        .spawn_command(command)
+        .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
 
-        // give command all env vars
-        for (key, value) in envs {
-            command.env(key, value);
-        }
+    // Release any handles owned by the slave: we don't need it now
+    // that we've spawned the child.
+    drop(pty_pair.slave);
 
-        let clobber_guard = arguments.clobber_lock.lock().unwrap();
-        let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
-        let child = pty_pair
-            .slave
-            .spawn_command(command)
-            .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
+    let reader = pty_pair
+        .master
+        .try_clone_reader()
+        .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
+    let master_writer = pty_pair
+        .master
+        .take_writer()
+        .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
 
-        // Release any handles owned by the slave: we don't need it now
-        // that we've spawned the child.
-        drop(pty_pair.slave);
+    let stderr_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+    let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+    let (began_tx, began_rx) = mpsc::channel::<()>();
+    let completion_status = Arc::new(CompletionStatus::new());
 
-        let reader = pty_pair
-            .master
-            .try_clone_reader()
-            .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
-        let master_writer = pty_pair
-            .master
-            .take_writer()
-            .map_err(|x| HiveLibError::CommandError(CommandError::PortablePty(x)))?;
-
-        let stderr_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
-        let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
-        let (began_tx, began_rx) = mpsc::channel::<()>();
-        let completion_status = Arc::new(CompletionStatus::new());
-
-        let stdout_handle = {
-            let arguments = WatchStdoutArguments {
-                began_tx,
-                reader,
-                succeed_needle: self.succeed_needle.clone(),
-                failed_needle: self.failed_needle.clone(),
-                start_needle: self.start_needle.clone(),
-                output_mode: self.output_mode.clone(),
-                stderr_collection: stderr_collection.clone(),
-                stdout_collection: stdout_collection.clone(),
-                completion_status: completion_status.clone(),
-                span: Span::current(),
-            };
-
-            std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
+    let stdout_handle = {
+        let arguments = WatchStdoutArguments {
+            began_tx,
+            reader,
+            succeed_needle: succeed_needle.clone(),
+            failed_needle: failed_needle.clone(),
+            start_needle: start_needle.clone(),
+            output_mode: arguments.output_mode,
+            stderr_collection: stderr_collection.clone(),
+            stdout_collection: stdout_collection.clone(),
+            completion_status: completion_status.clone(),
+            span: Span::current(),
         };
 
-        let (write_stdin_pipe_r, write_stdin_pipe_w) =
-            posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
-        let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
-            posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
+        std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
+    };
 
-        std::thread::spawn(move || {
-            watch_stdin_from_user(
-                &cancel_stdin_pipe_r,
-                master_writer,
-                &write_stdin_pipe_r,
-                Span::current(),
-            )
-        });
+    let (write_stdin_pipe_r, write_stdin_pipe_w) =
+        posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
+    let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
+        posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
-        info!("Setup threads");
+    std::thread::spawn(move || {
+        watch_stdin_from_user(
+            &cancel_stdin_pipe_r,
+            master_writer,
+            &write_stdin_pipe_r,
+            Span::current(),
+        )
+    });
 
-        let () = began_rx
-            .recv()
-            .map_err(|x| HiveLibError::CommandError(CommandError::RecvError(x)))?;
+    info!("Setup threads");
 
-        drop(clobber_guard);
+    let () = began_rx
+        .recv()
+        .map_err(|x| HiveLibError::CommandError(CommandError::RecvError(x)))?;
 
-        if arguments.keep_stdin_open {
-            trace!("Sending THREAD_BEGAN_SIGNAL");
+    drop(clobber_guard);
 
-            posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
-                .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
-        } else {
-            trace!("Sending THREAD_QUIT_SIGNAL");
+    if arguments.keep_stdin_open {
+        trace!("Sending THREAD_BEGAN_SIGNAL");
 
-            posix_write(&cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
-                .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
-        }
+        posix_write(&cancel_stdin_pipe_w, THREAD_BEGAN_SIGNAL)
+            .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
+    } else {
+        trace!("Sending THREAD_QUIT_SIGNAL");
 
-        Ok(InteractiveChildChip {
-            child,
-            cancel_stdin_pipe_w,
-            write_stdin_pipe_w,
-            stderr_collection,
-            stdout_collection,
-            original_command: arguments.command_string.as_ref().to_string(),
-            completion_status,
-            stdout_handle,
-        })
+        posix_write(&cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL)
+            .map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
     }
+
+    Ok(InteractiveChildChip {
+        child,
+        cancel_stdin_pipe_w,
+        write_stdin_pipe_w,
+        stderr_collection,
+        stdout_collection,
+        original_command: arguments.command_string.as_ref().to_string(),
+        completion_status,
+        stdout_handle,
+    })
+}
+
+fn create_needles() -> (Arc<String>, Arc<String>, Arc<String>) {
+    let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
+
+    (
+        Arc::new(format!("{tmp_prefix}_WIRE_QUIT")),
+        Arc::new(format!("{tmp_prefix}_WIRE_FAIL")),
+        Arc::new(format!("{tmp_prefix}_WIRE_START")),
+    )
 }
 
 fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
@@ -245,8 +220,8 @@ fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
         // convert raw fd to a BorrowedFd
         // safe as `fd` is dropped well before `pty_pair.master`
         let fd = unsafe { std::os::unix::io::BorrowedFd::borrow_raw(fd) };
-        let mut termios = tcgetattr(fd)
-            .map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
+        let mut termios =
+            tcgetattr(fd).map_err(|x| HiveLibError::CommandError(CommandError::TermAttrs(x)))?;
 
         termios.local_flags &= !LocalFlags::ECHO;
         // Key agent does not work well without canonical mode
@@ -259,12 +234,13 @@ fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
     }
 
     Ok(())
-
 }
 
-fn build_command<S: AsRef<str>>(original_command: &S, target: Option<&Target>, elevated: bool, modifiers: SubCommandModifiers) -> Result<CommandBuilder, HiveLibError> {
-    let mut command = if let Some(target) = target {
-        let mut command = create_sync_ssh_command(target, modifiers)?;
+fn build_command<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
+) -> Result<CommandBuilder, HiveLibError> {
+    let mut command = if let Some(target) = arguments.target {
+        let mut command = create_sync_ssh_command(target, arguments.modifiers)?;
 
         // force ssh to use our pesudo terminal
         command.arg("-tt");
@@ -278,14 +254,16 @@ fn build_command<S: AsRef<str>>(original_command: &S, target: Option<&Target>, e
         command
     };
 
-    if elevated {
-        command.arg(format!("sudo -u root -- sh -c '{}'", original_command.as_ref()));
+    if arguments.elevated {
+        command.arg(format!(
+            "sudo -u root -- sh -c '{}'",
+            arguments.command_string.as_ref()
+        ));
     } else {
-        command.arg(original_command.as_ref());
+        command.arg(arguments.command_string.as_ref());
     }
 
     Ok(command)
-
 }
 
 impl CompletionStatus {
