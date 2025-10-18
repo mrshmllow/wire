@@ -14,21 +14,15 @@ use tokio::{
     sync::Mutex,
     task::JoinSet,
 };
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::{
     SubCommandModifiers,
-    commands::{ChildOutputMode, CommandArguments, WireCommand, WireCommandChip},
+    commands::{ChildOutputMode, CommandArguments, WireCommandChip},
     errors::{CommandError, HiveLibError},
     hive::node::Target,
     nix_log::{SubcommandLog, get_errorish_message},
 };
-
-pub(crate) struct NonInteractiveCommand<'t> {
-    target: Option<&'t Target>,
-    output_mode: Arc<ChildOutputMode>,
-    modifiers: SubCommandModifiers,
-}
 
 pub(crate) struct NonInteractiveChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
@@ -39,103 +33,84 @@ pub(crate) struct NonInteractiveChildChip {
     stdin: ChildStdin,
 }
 
-impl<'t> WireCommand<'t> for NonInteractiveCommand<'t> {
-    type ChildChip = NonInteractiveChildChip;
+#[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
+    arguments: &CommandArguments<S>,
+    envs: HashMap<String, String>,
+) -> Result<NonInteractiveChildChip, HiveLibError> {
+    let mut command = if let Some(target) = arguments.target {
+        create_sync_ssh_command(target, arguments.modifiers)?
+    } else {
+        let mut command = Command::new("sh");
 
-    /// If target is Some, then the command will be ran remotely.
-    /// Otherwise, the command is ran locally.
-    async fn spawn_new(
-        target: Option<&'t Target>,
-        output_mode: ChildOutputMode,
-        modifiers: SubCommandModifiers,
-    ) -> Result<Self, crate::errors::HiveLibError> {
-        let output_mode = Arc::new(output_mode);
+        command.arg("-c");
 
-        Ok(Self {
-            target,
-            output_mode,
-            modifiers,
-        })
-    }
+        command
+    };
 
-    fn run_command_with_env<S: AsRef<str>>(
-        &mut self,
-        arguments: CommandArguments<S>,
-        envs: HashMap<String, String>,
-    ) -> Result<Self::ChildChip, HiveLibError> {
-        let mut command = if let Some(target) = self.target {
-            create_sync_ssh_command(target, self.modifiers)?
-        } else {
-            let mut command = Command::new("sh");
+    let command_string = format!(
+        "{command_string}{extra}",
+        command_string = arguments.command_string.as_ref(),
+        extra = match arguments.output_mode {
+            ChildOutputMode::Raw => "",
+            ChildOutputMode::Nix => " --log-format internal-json",
+        }
+    );
 
-            command.arg("-c");
+    let command_string = if arguments.elevated {
+        format!("sudo -u root -- sh -c '{command_string}'")
+    } else {
+        command_string
+    };
 
-            command
-        };
+    debug!("{command_string}");
 
-        let command_string = format!(
-            "{command_string}{extra}",
-            command_string = arguments.command_string.as_ref(),
-            extra = match *self.output_mode {
-                ChildOutputMode::Raw => "",
-                ChildOutputMode::Nix => " --log-format internal-json",
-            }
-        );
+    command.arg(&command_string);
+    command.stdin(std::process::Stdio::piped());
+    command.stderr(std::process::Stdio::piped());
+    command.stdout(std::process::Stdio::piped());
+    command.kill_on_drop(true);
+    // command.env_clear();
+    command.envs(envs);
 
-        let command_string = if arguments.elevated {
-            format!("sudo -u root -- sh -c '{command_string}'")
-        } else {
-            command_string
-        };
+    let mut child = command.spawn().unwrap();
+    let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+    let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
+    let stdin = child.stdin.take().unwrap();
 
-        debug!("{command_string}");
+    let stdout_handle = child
+        .stdout
+        .take()
+        .ok_or(HiveLibError::CommandError(CommandError::NoHandle))?;
+    let stderr_handle = child
+        .stderr
+        .take()
+        .ok_or(HiveLibError::CommandError(CommandError::NoHandle))?;
 
-        command.arg(&command_string);
-        command.stdin(std::process::Stdio::piped());
-        command.stderr(std::process::Stdio::piped());
-        command.stdout(std::process::Stdio::piped());
-        command.kill_on_drop(true);
-        // command.env_clear();
-        command.envs(envs);
+    let mut joinset = JoinSet::new();
+    let output_mode = Arc::new(arguments.output_mode);
 
-        let mut child = command.spawn().unwrap();
-        let error_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
-        let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
-        let stdin = child.stdin.take().unwrap();
+    joinset.spawn(handle_io(
+        stderr_handle,
+        output_mode.clone(),
+        error_collection.clone(),
+        true,
+    ));
+    joinset.spawn(handle_io(
+        stdout_handle,
+        output_mode.clone(),
+        stdout_collection.clone(),
+        false,
+    ));
 
-        let stdout_handle = child
-            .stdout
-            .take()
-            .ok_or(HiveLibError::CommandError(CommandError::NoHandle))?;
-        let stderr_handle = child
-            .stderr
-            .take()
-            .ok_or(HiveLibError::CommandError(CommandError::NoHandle))?;
-
-        let mut joinset = JoinSet::new();
-
-        joinset.spawn(handle_io(
-            stderr_handle,
-            self.output_mode.clone(),
-            error_collection.clone(),
-            true,
-        ));
-        joinset.spawn(handle_io(
-            stdout_handle,
-            self.output_mode.clone(),
-            stdout_collection.clone(),
-            false,
-        ));
-
-        Ok(NonInteractiveChildChip {
-            error_collection,
-            stdout_collection,
-            child,
-            joinset,
-            original_command: arguments.command_string.as_ref().to_string(),
-            stdin,
-        })
-    }
+    Ok(NonInteractiveChildChip {
+        error_collection,
+        stdout_collection,
+        child,
+        joinset,
+        original_command: arguments.command_string.as_ref().to_string(),
+        stdin,
+    })
 }
 
 impl WireCommandChip for NonInteractiveChildChip {

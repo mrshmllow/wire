@@ -8,8 +8,7 @@ use tracing::{info, instrument};
 use crate::{
     HiveLibError,
     commands::{
-        ChildOutputMode, CommandArguments, WireCommand, WireCommandChip,
-        noninteractive::NonInteractiveCommand,
+        ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command_with_env
     },
     hive::node::{Context, ExecuteStep, Goal},
 };
@@ -37,30 +36,32 @@ impl ExecuteStep for Build {
             build --print-build-logs --no-link --print-out-paths {top_level}"
         );
 
-        let mut command = NonInteractiveCommand::spawn_new(
-            if ctx.node.build_remotely {
-                Some(&ctx.node.target)
-            } else {
-                None
-            },
-            ChildOutputMode::Nix,
-            ctx.modifiers,
-        )
-        .await?;
-
-        let (_, stdout) = command
-            .run_command(CommandArguments {
+        let status = run_command_with_env(
+            &CommandArguments {
+                target: if ctx.node.build_remotely {
+                    Some(&ctx.node.target)
+                } else {
+                    None
+                },
+                output_mode: ChildOutputMode::Nix,
+                modifiers: ctx.modifiers,
                 command_string,
                 keep_stdin_open: false,
                 elevated: false,
                 clobber_lock: ctx.clobber_lock.clone(),
-            })?
-            .wait_till_success()
-            .await
-            .map_err(|source| HiveLibError::NixBuildError {
-                name: ctx.name.clone(),
-                source,
-            })?;
+            },
+            std::collections::HashMap::new(),
+        )?
+        .wait_till_success()
+        .await
+        .map_err(|source| HiveLibError::NixBuildError {
+            name: ctx.name.clone(),
+            source,
+        })?;
+
+        let stdout = match status {
+            Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout
+        };
 
         info!("Built output: {stdout:?}");
         ctx.state.build = Some(stdout);
