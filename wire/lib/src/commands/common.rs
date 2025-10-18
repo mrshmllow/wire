@@ -9,7 +9,8 @@ use std::{
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{
-        ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command, run_command_with_env
+        ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command,
+        run_command_with_env,
     },
     errors::HiveLibError,
     hive::{
@@ -102,23 +103,21 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = run_command(
-        &CommandArguments {
-            target: None,
-            output_mode: ChildOutputMode::Nix,
-            modifiers,
-            command_string,
-            keep_stdin_open: false,
-            elevated: false,
-            clobber_lock,
-        }
-    )?;
+    let child = run_command(&CommandArguments {
+        target: None,
+        output_mode: ChildOutputMode::Nix,
+        modifiers,
+        command_string,
+        keep_stdin_open: false,
+        elevated: false,
+        clobber_lock,
+    })?;
 
     child
         .wait_till_success()
         .await
         .map_err(|source| HiveLibError::NixEvalError { attribute, source })
         .map(|x| match x {
-            Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout
+            Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout,
         })
 }

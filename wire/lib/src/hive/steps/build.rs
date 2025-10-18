@@ -7,9 +7,7 @@ use tracing::{info, instrument};
 
 use crate::{
     HiveLibError,
-    commands::{
-        ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command_with_env
-    },
+    commands::{ChildOutputMode, CommandArguments, Either, WireCommandChip, run_command_with_env},
     hive::node::{Context, ExecuteStep, Goal},
 };
 
@@ -60,7 +58,7 @@ impl ExecuteStep for Build {
         })?;
 
         let stdout = match status {
-            Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout
+            Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout,
         };
 
         info!("Built output: {stdout:?}");
