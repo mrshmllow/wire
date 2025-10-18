@@ -21,7 +21,7 @@ use tokio::{
     sync::Mutex,
     task::JoinSet,
 };
-use tracing::{debug, instrument, trace};
+use tracing::{Instrument, debug, instrument, trace};
 
 pub(crate) struct NonInteractiveChildChip {
     error_collection: Arc<Mutex<VecDeque<String>>>,
@@ -95,14 +95,14 @@ pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
         error_collection.clone(),
         true,
         true,
-    ));
+    ).in_current_span());
     joinset.spawn(handle_io(
         stdout_handle,
         output_mode.clone(),
         stdout_collection.clone(),
         false,
         arguments.log_stdout,
-    ));
+    ).in_current_span());
 
     Ok(NonInteractiveChildChip {
         error_collection,

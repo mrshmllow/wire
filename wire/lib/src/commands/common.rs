@@ -6,6 +6,8 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use tracing::instrument;
+
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{CommandArguments, Either, WireCommandChip, run_command, run_command_with_env},
