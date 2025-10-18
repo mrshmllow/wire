@@ -32,7 +32,7 @@ pub(crate) struct NonInteractiveChildChip {
     stdin: ChildStdin,
 }
 
-#[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+#[instrument(level = "debug", skip_all, name = "run", fields(elevated = %arguments.elevated))]
 pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: HashMap<String, String>,

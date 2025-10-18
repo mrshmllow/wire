@@ -80,7 +80,7 @@ const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 /// substitutes STDOUT with #$line. stdout is far less common than stderr.
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
-#[instrument(level = "trace", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+#[instrument(level = "debug", skip_all, name = "run", fields(elevated = %arguments.elevated))]
 pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: std::collections::HashMap<String, String>,
