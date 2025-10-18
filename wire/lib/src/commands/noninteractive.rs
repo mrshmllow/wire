@@ -161,7 +161,7 @@ pub async fn handle_io<R>(
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
         let log = if should_log {
-            output_mode.trace(&line)
+            Some(output_mode.trace(&line))
         } else {
             None
         };

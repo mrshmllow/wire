@@ -53,6 +53,8 @@ impl Hive {
         modifiers: SubCommandModifiers,
         clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Hive, HiveLibError> {
+        info!("evaluating hive {location:?}");
+
         let output =
             evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
 

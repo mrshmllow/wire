@@ -32,27 +32,56 @@ pub fn get_errorish_message<'a>(message: &'a LogMessage<'a>) -> Option<&'a Cow<'
     None
 }
 
+fn nix_level_to_tracing(level: &VerbosityLevel) -> tracing_level {
+    match level {
+        VerbosityLevel::Info => tracing_level::INFO,
+        VerbosityLevel::Warn | VerbosityLevel::Notice => tracing_level::WARN,
+        VerbosityLevel::Error => tracing_level::ERROR,
+        VerbosityLevel::Debug => tracing_level::DEBUG,
+        VerbosityLevel::Vomit | VerbosityLevel::Talkative | VerbosityLevel::Chatty => tracing_level::TRACE,
+    }
+}
+
 impl Trace for LogMessage<'_> {
     fn trace(&self) {
-        if let LogMessage::Msg { level, msg } = &self {
-            if msg.is_empty() {
-                return;
-            }
-
-            let stripped = strip_ansi_escapes::strip(msg.as_bytes());
-            let msg = String::from_utf8_lossy(&stripped);
-
-            match level {
-                VerbosityLevel::Info => event!(tracing_level::INFO, "{msg}"),
-                VerbosityLevel::Warn | VerbosityLevel::Notice => {
-                    event!(tracing_level::WARN, "{msg}");
+        match self {
+            LogMessage::Msg { level, msg } => {
+                if msg.is_empty() {
+                    return;
                 }
-                VerbosityLevel::Error => event!(tracing_level::ERROR, "{msg}"),
-                VerbosityLevel::Debug => event!(tracing_level::DEBUG, "{msg}"),
-                VerbosityLevel::Vomit | VerbosityLevel::Talkative | VerbosityLevel::Chatty => {
-                    event!(tracing_level::TRACE, "{msg}");
+
+                let stripped = strip_ansi_escapes::strip(msg.as_bytes());
+                let msg = String::from_utf8_lossy(&stripped);
+
+                match nix_level_to_tracing(level) {
+                    tracing_level::INFO => event!(tracing_level::INFO, "{msg}"),
+                    tracing_level::WARN => event!(tracing_level::WARN, "{msg}"),
+                    tracing_level::ERROR => event!(tracing_level::ERROR, "{msg}"),
+                    tracing_level::DEBUG => event!(tracing_level::DEBUG, "{msg}"),
+                    tracing_level::TRACE => event!(tracing_level::TRACE, "{msg}"),
                 }
-            }
+            },
+            LogMessage::Start { text, level, .. } => {
+                if text.is_empty() {
+                    return;
+                }
+
+                match nix_level_to_tracing(level) {
+                    tracing_level::INFO => event!(tracing_level::INFO, "{text}"),
+                    tracing_level::WARN => event!(tracing_level::WARN, "{text}"),
+                    tracing_level::ERROR => event!(tracing_level::ERROR, "{text}"),
+                    tracing_level::DEBUG => event!(tracing_level::DEBUG, "{text}"),
+                    tracing_level::TRACE => event!(tracing_level::TRACE, "{text}"),
+                }
+            },
+            LogMessage::SetPhase { phase } => {
+                if phase.is_empty() {
+                    return;
+                }
+
+                event!(tracing_level::INFO, set_phase = phase);
+            },
+            _ => {}
         }
     }
 }

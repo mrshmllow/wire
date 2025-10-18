@@ -141,7 +141,7 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
 }
 
 impl ChildOutputMode {
-    fn trace(self, line: &String) -> Option<nix_log::SubcommandLog<'_>> {
+    fn trace(self, line: &String) -> nix_log::SubcommandLog<'_> {
         let log = match self {
             ChildOutputMode::Nix => {
                 let log = serde_json::from_str::<LogMessage>(
@@ -150,10 +150,6 @@ impl ChildOutputMode {
                 .map(SubcommandLog::Internal)
                 .unwrap_or(SubcommandLog::Raw(line.into()));
 
-                if !matches!(log, SubcommandLog::Internal(LogMessage::Msg { .. })) {
-                    return None;
-                }
-
                 log
             }
             Self::Raw => SubcommandLog::Raw(line.into()),
@@ -161,6 +157,6 @@ impl ChildOutputMode {
 
         log.trace();
 
-        Some(log)
+        log
     }
 }

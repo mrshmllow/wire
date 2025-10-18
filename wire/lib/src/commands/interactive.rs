@@ -457,7 +457,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         let log = output_mode.trace(&line);
                         let mut queue = stderr_collection.lock().unwrap();
 
-                        if let Some(SubcommandLog::Internal(log)) = log {
+                        if let SubcommandLog::Internal(log) = log {
                             if let Some(message) = get_errorish_message(&log) {
                                 // add at most 10 message to the front, drop the rest.
                                 queue.push_front(message.to_string());
