@@ -80,7 +80,7 @@ const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 /// substitutes STDOUT with #$line. stdout is far less common than stderr.
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
-#[instrument(level = "debug", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+#[instrument(level = "debug", skip_all, name = "run-int", fields(elevated = %arguments.elevated))]
 pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: std::collections::HashMap<String, String>,
@@ -112,7 +112,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
 
     debug!("{command_string}");
 
-    let mut command = build_command(arguments)?;
+    let mut command = build_command(arguments, command_string)?;
 
     // give command all env vars
     for (key, value) in envs {
@@ -241,6 +241,7 @@ fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
 
 fn build_command<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
+    command_string: &String
 ) -> Result<CommandBuilder, HiveLibError> {
     let mut command = if let Some(target) = arguments.target {
         let mut command = create_sync_ssh_command(target, arguments.modifiers)?;
@@ -258,12 +259,9 @@ fn build_command<S: AsRef<str>>(
     };
 
     if arguments.elevated {
-        command.arg(format!(
-            "sudo -u root -- sh -c '{}'",
-            arguments.command_string.as_ref()
-        ));
+        command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
     } else {
-        command.arg(arguments.command_string.as_ref());
+        command.arg(command_string);
     }
 
     Ok(command)
