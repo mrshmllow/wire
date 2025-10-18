@@ -6,7 +6,7 @@ use std::{
     borrow::Cow,
     fmt::{Debug, Display},
 };
-use tracing::{Level as tracing_level, event, info};
+use tracing::{Level as tracing_level, event, warn};
 
 // static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
 
@@ -99,7 +99,7 @@ impl Trace for SubcommandLog<'_> {
                 //     &DIGEST_RE.replace_all(&line.to_string(), "…"),
                 // );
             }
-            SubcommandLog::Raw(line) => info!("{line}"),
+            SubcommandLog::Raw(line) => warn!("{line}"),
         }
     }
 }
