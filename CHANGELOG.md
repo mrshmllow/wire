@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `./result` links where being created. they will not be created anymore
 - Logging from interactive commands (absence of `--non-interactive`) was
   improved.
+- Passing `sources.nixpkgs` directly from npins to `meta.nixpkgs` has
+  been fixed.
 
 ### Changed
 

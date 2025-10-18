@@ -33,11 +33,17 @@ let
 
   resolvedNixpkgs =
     if mergedHive.meta ? "nixpkgs" then
-      # support '<nixpkgs>' and 'import <nixpkgs> {}'
+      # support `<nixpkgs>`
       if builtins.isPath mergedHive.meta.nixpkgs then
         import mergedHive.meta.nixpkgs { }
-      else
+      # support npins sources passed directly
+      else if mergedHive.meta.nixpkgs ? "outPath" then
+        import mergedHive.meta.nixpkgs { }
+      # support `import <nixpkgs> { }`
+      else if builtins.isAttrs mergedHive.meta.nixpkgs then
         mergedHive.meta.nixpkgs
+      else
+        builtins.abort "meta.nixpkgs was not a path, { outPath, .. }, or attrset. Was type: ${builtins.typeOf mergedHive.meta.nixpkgs}"
     else
       builtins.abort "makeHive called without meta.nixpkgs specified.";
 
