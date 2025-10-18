@@ -12,7 +12,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
-use tracing::{info, instrument, trace};
+use tracing::{info, instrument};
 
 use crate::commands::common::evaluate_hive_attribute;
 use crate::errors::{HiveInitializationError, HiveLocationError};
