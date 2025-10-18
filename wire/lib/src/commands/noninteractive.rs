@@ -89,20 +89,26 @@ pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
     let mut joinset = JoinSet::new();
     let output_mode = Arc::new(arguments.output_mode);
 
-    joinset.spawn(handle_io(
-        stderr_handle,
-        output_mode.clone(),
-        error_collection.clone(),
-        true,
-        true,
-    ).in_current_span());
-    joinset.spawn(handle_io(
-        stdout_handle,
-        output_mode.clone(),
-        stdout_collection.clone(),
-        false,
-        arguments.log_stdout,
-    ).in_current_span());
+    joinset.spawn(
+        handle_io(
+            stderr_handle,
+            output_mode.clone(),
+            error_collection.clone(),
+            true,
+            true,
+        )
+        .in_current_span(),
+    );
+    joinset.spawn(
+        handle_io(
+            stdout_handle,
+            output_mode.clone(),
+            stdout_collection.clone(),
+            false,
+            arguments.log_stdout,
+        )
+        .in_current_span(),
+    );
 
     Ok(NonInteractiveChildChip {
         error_collection,

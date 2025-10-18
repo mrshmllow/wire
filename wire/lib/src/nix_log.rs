@@ -38,7 +38,9 @@ fn nix_level_to_tracing(level: &VerbosityLevel) -> tracing_level {
         VerbosityLevel::Warn | VerbosityLevel::Notice => tracing_level::WARN,
         VerbosityLevel::Error => tracing_level::ERROR,
         VerbosityLevel::Debug => tracing_level::DEBUG,
-        VerbosityLevel::Vomit | VerbosityLevel::Talkative | VerbosityLevel::Chatty => tracing_level::TRACE,
+        VerbosityLevel::Vomit | VerbosityLevel::Talkative | VerbosityLevel::Chatty => {
+            tracing_level::TRACE
+        }
     }
 }
 
@@ -60,7 +62,7 @@ impl Trace for LogMessage<'_> {
                     tracing_level::DEBUG => event!(tracing_level::DEBUG, "{msg}"),
                     tracing_level::TRACE => event!(tracing_level::TRACE, "{msg}"),
                 }
-            },
+            }
             LogMessage::Start { text, level, .. } => {
                 if text.is_empty() {
                     return;
@@ -73,14 +75,14 @@ impl Trace for LogMessage<'_> {
                     tracing_level::DEBUG => event!(tracing_level::DEBUG, "{text}"),
                     tracing_level::TRACE => event!(tracing_level::TRACE, "{text}"),
                 }
-            },
+            }
             LogMessage::SetPhase { phase } => {
                 if phase.is_empty() {
                     return;
                 }
 
                 event!(tracing_level::INFO, set_phase = phase);
-            },
+            }
             _ => {}
         }
     }
