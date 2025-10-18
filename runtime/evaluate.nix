@@ -8,19 +8,20 @@
 let
   module = import ./module;
 
-  mergedHive = {
-    meta = { };
+  mergedHive =
+    {
+      meta = { };
 
-    defaults = { };
-  }
-  // hive
-  # Map nixosConfigurations into nodes
-  // (builtins.mapAttrs (name: value: {
-    imports =
-      value._module.args.modules
-      # Include any custom stuff within `colmena`
-      ++ [ hive.${name} or { } ];
-  }) nixosConfigurations);
+      defaults = { };
+    }
+    // hive
+    # Map nixosConfigurations into nodes
+    // (builtins.mapAttrs (name: value: {
+      imports =
+        value._module.args.modules
+        # Include any custom stuff within `colmena`
+        ++ [ hive.${name} or { } ];
+    }) nixosConfigurations);
 
   nodeNames = builtins.filter (
     name:
@@ -41,23 +42,28 @@ let
     else
       builtins.abort "makeHive called without meta.nixpkgs specified.";
 
+  isFlake = resolvedNixpkgs.lib.hasSuffix "-source" resolvedNixpkgs.path;
+
   evaluateNode =
     name:
     let
       evalConfig = import (resolvedNixpkgs.path + "/nixos/lib/eval-config.nix");
     in
     evalConfig {
-      modules = [
-        module
+      modules =
+        [
+          module
 
-        mergedHive.defaults
-        mergedHive.${name}
-      ];
+          mergedHive.defaults
+          mergedHive.${name}
+        ]
+        ++ (resolvedNixpkgs.lib.optional isFlake {
+          config.nixpkgs.flake.source = resolvedNixpkgs.lib.mkDefault resolvedNixpkgs.path;
+        });
       system = null;
       specialArgs = {
         inherit name nodes;
-      }
-      // mergedHive.meta.specialArgs or { };
+      } // mergedHive.meta.specialArgs or { };
     };
   nodes = builtins.listToAttrs (
     map (name: {
