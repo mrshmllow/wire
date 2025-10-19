@@ -8,6 +8,7 @@
     clippy::missing_panics_doc
 )]
 #![feature(assert_matches)]
+#![feature(iter_intersperse)]
 
 use std::io::IsTerminal;
 

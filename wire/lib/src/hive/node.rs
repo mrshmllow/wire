@@ -6,15 +6,19 @@ use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
 use std::fmt::Display;
+use std::io::ErrorKind;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tracing::{Level, error, event, instrument, trace};
+use tracing::{Level, error, event, instrument, trace, warn};
 
 use crate::SubCommandModifiers;
 use crate::commands::{CommandArguments, WireCommandChip, run_command_with_env};
 use crate::errors::NetworkError;
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
+use crate::hive::steps::cleanup::CleanUp;
 use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
 use crate::hive::steps::ping::Ping;
@@ -22,6 +26,8 @@ use crate::hive::steps::push::{PushBuildOutput, PushEvaluatedOutput};
 
 use super::HiveLibError;
 use super::steps::activate::SwitchToConfiguration;
+
+const CONTROL_PERSIST: &str = "600s";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
@@ -37,41 +43,27 @@ pub struct Target {
 }
 
 impl Target {
-    pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers) -> String {
-        format!(
-            "-p {} {} {}",
-            self.port,
-            if modifiers.ssh_accept_host {
-                "-o StrictHostKeyChecking=no"
-            } else {
-                "-o StrictHostKeyChecking=yes"
-            },
-            if modifiers.non_interactive {
-                // make nix refuse to auth with interactivity
-                "-o PasswordAuthentication=no -o KbdInteractiveAuthentication=no".to_string()
-            } else {
-                String::new()
-            }
-        )
+    #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
+    pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers, master: bool) -> Result<String, HiveLibError> {
+        Ok(self.create_ssh_args(modifiers, false, master)?.join(" "))
     }
 
+    #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
     pub fn create_ssh_args(
         &self,
         modifiers: SubCommandModifiers,
-        non_elevated_forced: bool,
+        non_interactive_forced: bool,
+        master: bool
     ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
             self.user.to_string(),
-            self.get_preferred_host()?.to_string(),
             "-p".to_string(),
             self.port.to_string(),
         ];
-
-        vector.extend([
-            "-o".to_string(),
+        let mut options = vec![
             format!(
-                "StrictHostKeyChecking {}",
+                "StrictHostKeyChecking={}",
                 if modifiers.ssh_accept_host {
                     "no"
                 } else {
@@ -79,18 +71,47 @@ impl Target {
                 }
             )
             .to_string(),
-        ]);
+        ];
 
-        if modifiers.non_interactive || non_elevated_forced {
-            vector.extend(["-o".to_string(), "PasswordAuthentication=no".to_string()]);
-            vector.extend([
-                "-o".to_string(),
-                "KbdInteractiveAuthentication=no".to_string(),
+        if modifiers.non_interactive || non_interactive_forced {
+            options.extend(["PasswordAuthentication=no".to_string()]);
+            options.extend(["KbdInteractiveAuthentication=no".to_string()]);
+        }
+
+        if let Some(control_path) = get_control_path() {
+            options.extend([
+                format!("ControlMaster={}", if master {
+                    "yes"
+                } else {
+                    "no"
+                }), format!("ControlPath={control_path}"), format!("ControlPersist={CONTROL_PERSIST}")
             ]);
         }
 
+        vector.push("-o".to_string());
+        vector.extend(options.into_iter().intersperse("-o".to_string()));
+
         Ok(vector)
     }
+}
+
+fn get_control_path() -> Option<String> {
+    if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
+        let control_path = PathBuf::from(runtime_dir).join("wire");
+
+        match std::fs::create_dir(&control_path) {
+            Err(err) if err.kind() != ErrorKind::AlreadyExists => {
+                error!("not using `ControlMaster`, failed to create path {control_path:?}: {err:?}");
+                return None;
+            }
+            _ => (),
+        }
+
+        return Some(control_path.join("%C").display().to_string());
+    }
+
+    warn!("XDG_RUNTIME_DIR could not be found, disabling SSH `ControlMaster`");
+    None
 }
 
 #[cfg(test)]
@@ -208,7 +229,7 @@ impl Node {
             &CommandArguments::new(command_string, modifiers, clobber_lock)
                 .nix()
                 .log_stdout(),
-            HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers))]),
+            HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers, true)?)]),
         )?;
 
         output.wait_till_success().await.map_err(|source| {
@@ -294,6 +315,7 @@ enum Step {
     Build,
     PushBuildOutput,
     SwitchToConfiguration,
+    CleanUp
 }
 
 impl Display for Step {
@@ -307,6 +329,7 @@ impl Display for Step {
             Self::Build(step) => step.fmt(f),
             Self::PushBuildOutput(step) => step.fmt(f),
             Self::SwitchToConfiguration(step) => step.fmt(f),
+            Self::CleanUp(step) => step.fmt(f),
         }
     }
 }
@@ -336,6 +359,7 @@ impl<'a> GoalExecutor<'a> {
                 Step::Keys(Keys {
                     filter: UploadKeyAt::PostActivation,
                 }),
+                Step::CleanUp(CleanUp),
             ],
             context,
         }
@@ -446,7 +470,8 @@ mod tests {
                 Keys {
                     filter: UploadKeyAt::PostActivation
                 }
-                .into()
+                .into(),
+                CleanUp.into()
             ]
         );
     }
@@ -472,6 +497,7 @@ mod tests {
                     filter: UploadKeyAt::NoFilter
                 }
                 .into(),
+                CleanUp.into()
             ]
         );
     }
@@ -495,6 +521,7 @@ mod tests {
                 crate::hive::steps::evaluate::Evaluate.into(),
                 crate::hive::steps::build::Build.into(),
                 crate::hive::steps::push::PushBuildOutput.into(),
+                CleanUp.into()
             ]
         );
     }
@@ -517,6 +544,7 @@ mod tests {
                 Ping.into(),
                 crate::hive::steps::evaluate::Evaluate.into(),
                 crate::hive::steps::push::PushEvaluatedOutput.into(),
+                CleanUp.into()
             ]
         );
     }
@@ -549,7 +577,8 @@ mod tests {
                 Keys {
                     filter: UploadKeyAt::PostActivation
                 }
-                .into()
+                .into(),
+                CleanUp.into()
             ]
         );
     }

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--path` now supports flakerefs (`github:foo/bar`, `git+file:///...`,
   `https://.../main.tar.gz`, etc).
 - `--flake` is now an alias for `--path`.
+- Wire will now attempt to use SSH `ControlMaster` by default.
 
 ### Fixed
 
