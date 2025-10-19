@@ -38,7 +38,10 @@ pub async fn push(
 
     let child = run_command_with_env(
         &CommandArguments::new(command_string, modifiers, clobber_lock).nix(),
-        HashMap::from([("NIX_SSHOPTS".into(), node.target.create_ssh_opts(modifiers, false)?)]),
+        HashMap::from([(
+            "NIX_SSHOPTS".into(),
+            node.target.create_ssh_opts(modifiers, false)?,
+        )]),
     )?;
 
     child

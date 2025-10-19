@@ -44,7 +44,11 @@ pub struct Target {
 
 impl Target {
     #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
-    pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers, master: bool) -> Result<String, HiveLibError> {
+    pub fn create_ssh_opts(
+        &self,
+        modifiers: SubCommandModifiers,
+        master: bool,
+    ) -> Result<String, HiveLibError> {
         Ok(self.create_ssh_args(modifiers, false, master)?.join(" "))
     }
 
@@ -53,7 +57,7 @@ impl Target {
         &self,
         modifiers: SubCommandModifiers,
         non_interactive_forced: bool,
-        master: bool
+        master: bool,
     ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
@@ -80,11 +84,9 @@ impl Target {
 
         if let Some(control_path) = get_control_path() {
             options.extend([
-                format!("ControlMaster={}", if master {
-                    "yes"
-                } else {
-                    "no"
-                }), format!("ControlPath={control_path}"), format!("ControlPersist={CONTROL_PERSIST}")
+                format!("ControlMaster={}", if master { "yes" } else { "no" }),
+                format!("ControlPath={control_path}"),
+                format!("ControlPersist={CONTROL_PERSIST}"),
             ]);
         }
 
@@ -101,7 +103,9 @@ fn get_control_path() -> Option<String> {
 
         match std::fs::create_dir(&control_path) {
             Err(err) if err.kind() != ErrorKind::AlreadyExists => {
-                error!("not using `ControlMaster`, failed to create path {control_path:?}: {err:?}");
+                error!(
+                    "not using `ControlMaster`, failed to create path {control_path:?}: {err:?}"
+                );
                 return None;
             }
             _ => (),
@@ -229,7 +233,10 @@ impl Node {
             &CommandArguments::new(command_string, modifiers, clobber_lock)
                 .nix()
                 .log_stdout(),
-            HashMap::from([("NIX_SSHOPTS".into(), self.target.create_ssh_opts(modifiers, true)?)]),
+            HashMap::from([(
+                "NIX_SSHOPTS".into(),
+                self.target.create_ssh_opts(modifiers, true)?,
+            )]),
         )?;
 
         output.wait_till_success().await.map_err(|source| {
@@ -315,7 +322,7 @@ enum Step {
     Build,
     PushBuildOutput,
     SwitchToConfiguration,
-    CleanUp
+    CleanUp,
 }
 
 impl Display for Step {
