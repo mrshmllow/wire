@@ -85,9 +85,11 @@ impl ExecuteStep for SwitchToConfiguration {
             unreachable!("Cannot reach as guarded by should_execute")
         };
 
-        if !matches!(
+        if matches!(
             goal,
-            SwitchToConfigurationGoal::DryActivate | SwitchToConfigurationGoal::Boot
+            // switch profile if switch or boot
+            // https://github.com/NixOS/nixpkgs/blob/a2c92aa34735a04010671e3378e2aa2d109b2a72/pkgs/by-name/ni/nixos-rebuild-ng/src/nixos_rebuild/services.py#L224
+            SwitchToConfigurationGoal::Switch | SwitchToConfigurationGoal::Boot
         ) {
             set_profile(*goal, built_path, ctx).await?;
         }
