@@ -15,6 +15,9 @@
 
     # testing inputs
     nixpkgs_current_stable.url = "github:NixOS/nixpkgs/nixos-25.05";
+
+    # benchmarking
+    colmena_benchmarking.url = "github:zhaofengli/colmena/v0.4.0";
   };
   outputs =
     {
@@ -38,6 +41,7 @@
         ./wire/key_agent
         ./doc
         ./tests/nix
+        ./bench/run.nix
       ];
       systems = import systems;
 
