@@ -3,11 +3,15 @@
 
 use std::{
     collections::HashMap,
+    str::from_utf8,
     sync::{Arc, LazyLock, Mutex},
 };
 
-use aho_corasick::AhoCorasick;
-use nix_compat::log::{AT_NIX_PREFIX, LogMessage};
+use aho_corasick::{AhoCorasick, PatternID};
+use gjson::Value;
+use nix_compat::log::{AT_NIX_PREFIX, VerbosityLevel};
+use num_enum::TryFromPrimitive;
+use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     SubCommandModifiers,
@@ -17,7 +21,6 @@ use crate::{
     },
     errors::{CommandError, HiveLibError},
     hive::node::Target,
-    nix_log::{self, SubcommandLog, Trace},
 };
 
 pub(crate) mod common;
@@ -149,32 +152,88 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
     }
 }
 
+fn trace_gjson_str<'a>(log: &'a Value<'a>, msg: &'a str) -> Option<String> {
+    if msg.is_empty() {
+        return None;
+    }
+
+    let level = log.get("level");
+
+    if !level.exists() {
+        return None;
+    }
+
+    let level = match VerbosityLevel::try_from_primitive(level.u64()) {
+        Ok(level) => level,
+        Err(err) => {
+            error!("nix log `level` did not match to a VerbosityLevel: {err:?}");
+            return None;
+        }
+    };
+
+    let msg = strip_ansi_escapes::strip_str(msg);
+
+    match level {
+        VerbosityLevel::Info => info!("{msg}"),
+        VerbosityLevel::Warn | VerbosityLevel::Notice => warn!("{msg}"),
+        VerbosityLevel::Error => error!("{msg}"),
+        VerbosityLevel::Debug => debug!("{msg}"),
+        VerbosityLevel::Vomit | VerbosityLevel::Talkative | VerbosityLevel::Chatty => {
+            trace!("{msg}");
+        }
+    }
+
+    if matches!(
+        level,
+        VerbosityLevel::Error | VerbosityLevel::Warn | VerbosityLevel::Notice
+    ) {
+        return Some(msg);
+    }
+
+    None
+}
+
 impl ChildOutputMode {
     /// this function is by far the biggest hotspot in the whole tree
-    fn trace_slice(self, line: &mut [u8]) -> nix_log::SubcommandLog<'_> {
-        let log = match self {
-            Self::Raw => SubcommandLog::Raw(String::from_utf8_lossy(line).to_string()),
+    /// Returns a string if this log is notable to be stored as an error message
+    fn trace_slice(self, line: &mut [u8]) -> Option<String> {
+        let slice = match self {
+            Self::Raw => {
+                warn!("{}", String::from_utf8_lossy(line));
+                return None;
+            }
             Self::Nix => {
-                let line = AHO_CORASICK.find(&line).map(|x| &mut line[x.end()..]);
+                let position = AHO_CORASICK.find(&line).map(|x| &mut line[x.end()..]);
 
-                if let Some(line) = line {
-                    let log =
-                        serde_json::from_slice::<LogMessage>(line).map(SubcommandLog::Internal);
-
-                    match log {
-                        Ok(log) => return log,
-                        Err(err) => {
-                            return SubcommandLog::Raw(format!("parsing log failed: {err:?}"));
-                        }
-                    }
+                if let Some(json_buf) = position {
+                    json_buf
+                } else {
+                    // usually happens when ssh is outputting something
+                    warn!("{}", String::from_utf8_lossy(line));
+                    return None;
                 }
-
-                SubcommandLog::Raw("line did not have a needle".to_string())
             }
         };
 
-        log.trace();
+        let Ok(str) = from_utf8(slice) else {
+            error!("nix log was not valid utf8!");
+            return None;
+        };
 
-        log
+        let log = gjson::parse(str);
+
+        let text = log.get("text");
+
+        if text.exists() {
+            return trace_gjson_str(&log, text.str());
+        }
+
+        let text = log.get("msg");
+
+        if text.exists() {
+            return trace_gjson_str(&log, text.str());
+        }
+
+        None
     }
 }

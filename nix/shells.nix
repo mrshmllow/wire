@@ -22,6 +22,7 @@
           pkgs.pnpm
           pkgs.nodejs
           pkgs.perf
+          pkgs.hyperfine
         ];
 
         PROTOC = lib.getExe pkgs.protobuf;

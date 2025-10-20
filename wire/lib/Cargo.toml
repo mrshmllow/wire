@@ -34,6 +34,8 @@ base64 = { workspace = true }
 nix-compat = { workspace = true }
 strip-ansi-escapes = "0.2.1"
 aho-corasick = "1.1.3"
+num_enum = "0.7.5"
+gjson = "0.8.1"
 
 [dev-dependencies]
 tempdir = "0.3"

@@ -12,7 +12,6 @@ use crate::{
     commands::{ChildOutputMode, CommandArguments, WireCommandChip},
     errors::{CommandError, HiveLibError},
     hive::node::Target,
-    nix_log::{SubcommandLog, get_errorish_message},
 };
 use itertools::Itertools;
 use tokio::{
@@ -177,13 +176,11 @@ pub async fn handle_io<R>(
         if !is_error {
             let mut queue = collection.lock().await;
             queue.push_front(String::from_utf8_lossy(&line).to_string());
-        } else if let Some(SubcommandLog::Internal(log)) = log {
-            if let Some(message) = get_errorish_message(&log) {
-                let mut queue = collection.lock().await;
-                queue.push_front(message.to_string());
-                // add at most 10 message to the front, drop the rest.
-                queue.truncate(10);
-            }
+        } else if let Some(error_msg) = log.flatten() {
+            let mut queue = collection.lock().await;
+            queue.push_front(error_msg);
+            // add at most 10 message to the front, drop the rest.
+            queue.truncate(10);
         }
     }
 

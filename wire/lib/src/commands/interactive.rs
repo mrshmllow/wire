@@ -25,7 +25,6 @@ use crate::SubCommandModifiers;
 use crate::commands::CommandArguments;
 use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
-use crate::nix_log::{SubcommandLog, get_errorish_message};
 use crate::{
     commands::{ChildOutputMode, WireCommandChip},
     errors::HiveLibError,
@@ -461,14 +460,13 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         }
 
                         let log = output_mode.trace_slice(&mut line);
-                        let mut queue = stderr_collection.lock().unwrap();
 
-                        if let SubcommandLog::Internal(log) = log {
-                            if let Some(message) = get_errorish_message(&log) {
-                                // add at most 10 message to the front, drop the rest.
-                                queue.push_front(message.to_string());
-                                queue.truncate(10);
-                            }
+                        if let Some(error_msg) = log {
+                            let mut queue = stderr_collection.lock().unwrap();
+
+                            // add at most 10 message to the front, drop the rest.
+                            queue.push_front(error_msg);
+                            queue.truncate(10);
                         }
                     } else {
                         stdout

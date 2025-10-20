@@ -16,7 +16,6 @@ use crate::{errors::HiveLibError, hive::node::Name};
 
 pub mod commands;
 pub mod hive;
-mod nix_log;
 
 #[cfg(test)]
 mod test_macros;
