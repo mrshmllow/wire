@@ -40,6 +40,6 @@ visibility = "0.1.1"
 
 [build-dependencies]
 miette = { workspace = true }
-syn = "2.0.106"
+syn = "2.0.107"
 proc-macro2 = "1.0.101"
 itertools = "0.14.0"
