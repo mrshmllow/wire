@@ -166,15 +166,17 @@ pub async fn handle_io<R>(
     let mut io_reader = tokio::io::AsyncBufReadExt::lines(BufReader::new(reader));
 
     while let Some(line) = io_reader.next_line().await.unwrap() {
+        let mut line = line.into_bytes();
+
         let log = if should_log {
-            Some(output_mode.trace(&line))
+            Some(output_mode.trace_slice(&mut line))
         } else {
             None
         };
 
         if !is_error {
             let mut queue = collection.lock().await;
-            queue.push_front(line);
+            queue.push_front(String::from_utf8_lossy(&line).to_string());
         } else if let Some(SubcommandLog::Internal(log)) = log {
             if let Some(message) = get_errorish_message(&log) {
                 let mut queue = collection.lock().await;

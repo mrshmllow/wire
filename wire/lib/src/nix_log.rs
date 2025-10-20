@@ -8,12 +8,10 @@ use std::{
 };
 use tracing::{Level as tracing_level, event, warn};
 
-// static DIGEST_RE: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"[0-9a-z]{32}").unwrap());
-
 #[derive(Debug)]
 pub enum SubcommandLog<'a> {
     Internal(LogMessage<'a>),
-    Raw(Cow<'a, str>),
+    Raw(String),
 }
 
 pub(crate) trait Trace {
@@ -93,13 +91,14 @@ impl Trace for SubcommandLog<'_> {
         match self {
             SubcommandLog::Internal(line) => {
                 line.trace();
-
-                // tracing_indicatif::span_ext::IndicatifSpanExt::pb_set_message(
-                //     &Span::current(),
-                //     &DIGEST_RE.replace_all(&line.to_string(), "…"),
-                // );
             }
-            SubcommandLog::Raw(line) => warn!("{line}"),
+            SubcommandLog::Raw(line) => {
+                if line.is_empty() {
+                    return;
+                }
+
+                warn!("{line}");
+            }
         }
     }
 }

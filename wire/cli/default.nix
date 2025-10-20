@@ -23,7 +23,9 @@
           pname = "wire";
           cargoExtraArgs = "-p wire";
           doCheck = true;
-          nativeBuildInputs = [ pkgs.installShellFiles ];
+          nativeBuildInputs = [
+            pkgs.installShellFiles
+          ];
           postInstall = ''
             installShellCompletion --cmd wire \
                 --bash <($out/bin/wire completions bash) \
@@ -34,6 +36,12 @@
 
         wire-unwrapped-dev = self'.packages.wire-unwrapped.overrideAttrs {
           CARGO_PROFILE = "dev";
+        };
+
+        wire-unwrapped-perf = buildRustProgram {
+          name = "wire";
+          pname = "wire";
+          cargoExtraArgs = "-p wire --features dhat-heap";
         };
 
         wire = pkgs.symlinkJoin {
@@ -66,6 +74,10 @@
 
         wire-small-dev = self'.packages.wire-small.overrideAttrs {
           paths = [ self'.packages.wire-unwrapped-dev ];
+        };
+
+        wire-small-perf = self'.packages.wire-small.overrideAttrs {
+          paths = [ self'.packages.wire-unwrapped-perf ];
         };
 
         wire-dignostics-md = self'.packages.wire-unwrapped.overrideAttrs {

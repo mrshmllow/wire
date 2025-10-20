@@ -62,9 +62,9 @@ struct CompletionStatus {
 struct WatchStdoutArguments {
     began_tx: Sender<()>,
     reader: MasterReader,
-    succeed_needle: Arc<String>,
-    failed_needle: Arc<String>,
-    start_needle: Arc<String>,
+    succeed_needle: Arc<Vec<u8>>,
+    failed_needle: Arc<Vec<u8>>,
+    start_needle: Arc<Vec<u8>>,
     output_mode: ChildOutputMode,
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
@@ -76,6 +76,8 @@ struct WatchStdoutArguments {
 /// the underlying command began
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
+
+const NEEDLE_LENGTH: usize = 9;
 
 /// substitutes STDOUT with #$line. stdout is far less common than stderr.
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
@@ -100,9 +102,9 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
 
     let command_string = &format!(
         "echo '{start}' && {command} {flags} {IO_SUBS} && echo '{succeed}' || echo '{failed}'",
-        start = start_needle,
-        succeed = succeed_needle,
-        failed = failed_needle,
+        start = String::from_utf8_lossy(&start_needle),
+        succeed = String::from_utf8_lossy(&succeed_needle),
+        failed = String::from_utf8_lossy(&failed_needle),
         command = arguments.command_string.as_ref(),
         flags = match arguments.output_mode {
             ChildOutputMode::Nix => "--log-format internal-json",
@@ -208,13 +210,13 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     })
 }
 
-fn create_needles() -> (Arc<String>, Arc<String>, Arc<String>) {
+fn create_needles() -> (Arc<Vec<u8>>, Arc<Vec<u8>>, Arc<Vec<u8>>) {
     let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
 
     (
-        Arc::new(format!("{tmp_prefix}_WIRE_QUIT")),
-        Arc::new(format!("{tmp_prefix}_WIRE_FAIL")),
-        Arc::new(format!("{tmp_prefix}_WIRE_START")),
+        Arc::new(format!("{tmp_prefix}_W_Q").as_bytes().to_vec()),
+        Arc::new(format!("{tmp_prefix}_W_F").as_bytes().to_vec()),
+        Arc::new(format!("{tmp_prefix}_W_S").as_bytes().to_vec()),
     )
 }
 
@@ -420,41 +422,45 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         match reader.read(&mut buffer) {
             Ok(0) => break 'outer,
             Ok(n) => {
-                let new_data = String::from_utf8_lossy(&buffer[..n]);
-                log_buffer.process(&new_data);
+                log_buffer.process_slice(&buffer[..n]);
 
-                for line in log_buffer.take_lines() {
-                    if line.contains(start_needle.as_ref()) {
-                        debug!("{start_needle} was found, switching mode...");
+                while let Some(mut line) = log_buffer.next_line() {
+                    let mut windows = line.windows(NEEDLE_LENGTH);
+
+                    if windows.any(|window| window == *start_needle) {
+                        debug!("start needle was found, switching mode...");
                         let _ = began_tx.send(());
                         began = true;
                         continue;
                     }
 
-                    if line.contains(succeed_needle.as_ref()) {
-                        debug!("{succeed_needle} was found, marking child as succeeding.");
+                    if windows.any(|window| window == *succeed_needle) {
+                        debug!("succeed needle was found, marking child as succeeding.");
                         completion_status.mark_completed(true);
                         break 'outer;
                     }
 
-                    if line.contains(failed_needle.as_ref()) {
-                        debug!("{failed_needle} was found, elevated child did not succeed.");
+                    if windows.any(|window| window == *failed_needle) {
+                        debug!("failed needle was found, elevated child did not succeed.");
                         completion_status.mark_completed(false);
                         break 'outer;
                     }
 
                     if began {
-                        if let Some(stripped) = line.strip_prefix('#') {
+                        if line.starts_with(b"#") {
+                            let stripped = &mut line[1..];
+
                             if log_stdout {
-                                output_mode.trace(&stripped.to_string());
+                                output_mode.trace_slice(stripped);
                             }
 
                             let mut queue = stdout_collection.lock().unwrap();
-                            queue.push_front(stripped.to_string());
+                            // clone
+                            queue.push_front(String::from_utf8_lossy(stripped).to_string());
                             continue;
                         }
 
-                        let log = output_mode.trace(&line);
+                        let log = output_mode.trace_slice(&mut line);
                         let mut queue = stderr_collection.lock().unwrap();
 
                         if let SubcommandLog::Internal(log) = log {
@@ -466,7 +472,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         }
                     } else {
                         stdout
-                            .write_all(new_data.as_bytes())
+                            .write_all(&line)
                             .map_err(CommandError::WritingClientStdout)?;
                         stdout.flush().map_err(CommandError::WritingClientStdout)?;
                     }

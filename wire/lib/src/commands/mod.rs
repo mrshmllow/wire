@@ -3,11 +3,11 @@
 
 use std::{
     collections::HashMap,
-    sync::{Arc, Mutex},
+    sync::{Arc, LazyLock, Mutex},
 };
 
+use aho_corasick::AhoCorasick;
 use nix_compat::log::{AT_NIX_PREFIX, LogMessage};
-use tracing::debug;
 
 use crate::{
     SubCommandModifiers,
@@ -48,6 +48,14 @@ pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
     clobber_lock: Arc<Mutex<()>>,
     log_stdout: bool,
 }
+
+static AHO_CORASICK: LazyLock<AhoCorasick> = LazyLock::new(|| {
+    AhoCorasick::builder()
+        .ascii_case_insensitive(false)
+        .match_kind(aho_corasick::MatchKind::LeftmostFirst)
+        .build([AT_NIX_PREFIX])
+        .unwrap()
+});
 
 impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
     pub(crate) fn new(
@@ -142,26 +150,27 @@ impl WireCommandChip for Either<InteractiveChildChip, NonInteractiveChildChip> {
 }
 
 impl ChildOutputMode {
-    fn trace(self, line: &String) -> nix_log::SubcommandLog<'_> {
+    /// this function is by far the biggest hotspot in the whole tree
+    fn trace_slice(self, line: &mut [u8]) -> nix_log::SubcommandLog<'_> {
         let log = match self {
-            ChildOutputMode::Nix => {
-                let stripped = line
-                    .find(AT_NIX_PREFIX)
-                    .map(|position| &line[position + AT_NIX_PREFIX.len()..]);
+            Self::Raw => SubcommandLog::Raw(String::from_utf8_lossy(line).to_string()),
+            Self::Nix => {
+                let line = AHO_CORASICK.find(&line).map(|x| &mut line[x.end()..]);
 
-                if let Some(line) = stripped {
-                    serde_json::from_str::<LogMessage>(line).map_or_else(
-                        |err| {
-                            debug!("failed to parse {line:?}: {err:?}");
-                            SubcommandLog::Raw(line.into())
-                        },
-                        SubcommandLog::Internal,
-                    )
-                } else {
-                    SubcommandLog::Raw(line.into())
+                if let Some(line) = line {
+                    let log =
+                        serde_json::from_slice::<LogMessage>(line).map(SubcommandLog::Internal);
+
+                    match log {
+                        Ok(log) => return log,
+                        Err(err) => {
+                            return SubcommandLog::Raw(format!("parsing log failed: {err:?}"));
+                        }
+                    }
                 }
+
+                SubcommandLog::Raw("line did not have a needle".to_string())
             }
-            Self::Raw => SubcommandLog::Raw(line.into()),
         };
 
         log.trace();
