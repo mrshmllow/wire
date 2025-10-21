@@ -20,7 +20,7 @@ use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 use tokio::{fs::File, io::AsyncRead};
 use tokio_util::codec::LengthDelimitedCodec;
-use tracing::{Span, debug, field, instrument};
+use tracing::{debug, instrument};
 
 use crate::HiveLibError;
 use crate::commands::common::push;
@@ -201,10 +201,8 @@ impl ExecuteStep for Keys {
         )
     }
 
-    #[instrument(skip_all, name = "keys", fields(filter = field::Empty))]
+    #[instrument(skip_all, name = "keys")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        Span::current().record("filter", format!("{:?}", self.filter));
-
         let agent_directory = ctx.state.key_agent_directory.as_ref().unwrap();
 
         let futures = ctx
