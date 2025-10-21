@@ -85,22 +85,9 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: std::collections::HashMap<String, String>,
 ) -> Result<InteractiveChildChip, HiveLibError> {
-    let (succeed_needle, failed_needle, start_needle) = create_needles();
+    print_authenticate_warning(arguments)?;
 
-    if arguments.elevated {
-        eprintln!(
-            "{} | Authenticate for \"sudo {}\":",
-            arguments
-                .target
-                .map_or(Ok("localhost (!)".to_string()), |target| Ok(format!(
-                    "{}@{}:{}",
-                    target.user,
-                    target.get_preferred_host()?,
-                    target.port
-                )))?,
-            arguments.command_string.as_ref()
-        );
-    }
+    let (succeed_needle, failed_needle, start_needle) = create_needles();
 
     let pty_system = NativePtySystem::default();
     let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();
@@ -214,6 +201,29 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
         completion_status,
         stdout_handle,
     })
+}
+
+fn print_authenticate_warning<S: AsRef<str>>(
+    arguments: &CommandArguments<S>,
+) -> Result<(), HiveLibError> {
+    if !arguments.elevated {
+        return Ok(());
+    }
+
+    eprintln!(
+        "{} | Authenticate for \"sudo {}\":",
+        arguments
+            .target
+            .map_or(Ok("localhost (!)".to_string()), |target| Ok(format!(
+                "{}@{}:{}",
+                target.user,
+                target.get_preferred_host()?,
+                target.port
+            )))?,
+        arguments.command_string.as_ref()
+    );
+
+    Ok(())
 }
 
 type Needles = (Arc<Vec<u8>>, Arc<Vec<u8>>, Arc<Vec<u8>>);
