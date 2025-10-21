@@ -41,7 +41,8 @@
         wire-unwrapped-perf = buildRustProgram {
           name = "wire";
           pname = "wire";
-          cargoExtraArgs = "-p wire --features dhat-heap";
+          CARGO_PROFILE = "profiling";
+          cargoExtraArgs = "-p wire";
         };
 
         wire = pkgs.symlinkJoin {

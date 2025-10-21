@@ -18,6 +18,7 @@
             src = toSource {
               root = ../.;
               fileset = unions [
+                ../.cargo
                 ../wire
                 ../Cargo.toml
                 ../Cargo.lock
