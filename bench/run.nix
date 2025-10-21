@@ -37,13 +37,13 @@
           wire_args="apply test --path ./wire -vv --ssh-accept-host -p 10"
           colmena_args="apply test --config ./colmena/hive.nix -v -p 10"
 
-          # ${lib.getExe pkgs.hyperfine} --warmup 1 --show-output --runs 1 \
-          #   --export-markdown stats.md \
-          #   --export-json run.json \
-          #   "${lib.getExe self'.packages.wire-small} $wire_args" -n "wire@HEAD" \
-          #   "$wire_main/bin/wire $wire_args" -n "wire@main" \
-          #   "${lib.getExe' inputs.colmena_benchmarking.packages.x86_64-linux.colmena "colmena"} $colmena_args" \
-          #       -n "colmena@pinned"
+          ${lib.getExe pkgs.hyperfine} --warmup 1 --show-output --runs 1 \
+            --export-markdown stats.md \
+            --export-json run.json \
+            "${lib.getExe self'.packages.wire-small} $wire_args" -n "wire@HEAD" \
+            "$wire_main/bin/wire $wire_args" -n "wire@main" \
+            "${lib.getExe' inputs.colmena_benchmarking.packages.x86_64-linux.colmena "colmena"} $colmena_args" \
+                -n "colmena@pinned"
         '';
       };
     };
