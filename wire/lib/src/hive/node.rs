@@ -5,15 +5,16 @@
 use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
+use tokio::sync::oneshot;
 use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use tracing::{Level, error, event, instrument, trace, warn};
+use std::sync::{Arc};
+use tracing::{Instrument, Level, debug, error, event, instrument, trace, warn};
 
-use crate::SubCommandModifiers;
+use crate::commands::common::evaluate_hive_attribute;
 use crate::commands::{CommandArguments, WireCommandChip, run_command_with_env};
 use crate::errors::NetworkError;
 use crate::hive::HiveLocation;
@@ -23,6 +24,7 @@ use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
 use crate::hive::steps::ping::Ping;
 use crate::hive::steps::push::{PushBuildOutput, PushEvaluatedOutput};
+use crate::{EvalGoal, SubCommandModifiers};
 
 use super::HiveLibError;
 use super::steps::activate::SwitchToConfiguration;
@@ -220,7 +222,7 @@ impl Node {
     pub async fn ping(
         &self,
         modifiers: SubCommandModifiers,
-        clobber_lock: Arc<Mutex<()>>,
+        clobber_lock: Arc<std::sync::Mutex<()>>,
     ) -> Result<(), HiveLibError> {
         let host = self.target.get_preferred_host()?;
 
@@ -260,7 +262,7 @@ pub enum Push<'a> {
     Path(&'a String),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Derivation(String);
 
 impl Display for Derivation {
@@ -295,6 +297,7 @@ pub(crate) trait ExecuteStep: Send + Sync + Display + std::fmt::Debug {
 #[derive(Default)]
 pub struct StepState {
     pub evaluation: Option<Derivation>,
+    pub evaluation_rx: Option<oneshot::Receiver<Result<Derivation, HiveLibError>>>,
     pub build: Option<String>,
     pub key_agent_directory: Option<String>,
 }
@@ -308,7 +311,7 @@ pub struct Context<'a> {
     pub state: StepState,
     pub goal: Goal,
     pub reboot: bool,
-    pub clobber_lock: Arc<Mutex<()>>,
+    pub clobber_lock: Arc<std::sync::Mutex<()>>,
 }
 
 #[enum_dispatch(ExecuteStep)]
@@ -372,8 +375,43 @@ impl<'a> GoalExecutor<'a> {
         }
     }
 
+    #[instrument(skip_all, name = "eval")]
+    async fn evaluate_task(
+        tx: oneshot::Sender<Result<Derivation, HiveLibError>>,
+        hive_location: Arc<HiveLocation>,
+        name: Name,
+        modifiers: SubCommandModifiers,
+        clobber_lock: Arc<std::sync::Mutex<()>>,
+    ) {
+        let output = evaluate_hive_attribute(
+            &hive_location,
+            &EvalGoal::GetTopLevel(&name),
+            modifiers,
+            clobber_lock.clone(),
+        )
+        .await
+        .map(|output| serde_json::from_str::<Derivation>(&output).expect("failed to parse derivation"));
+
+        debug!(output = ?output, done = true);
+
+        let _ = tx.send(output);
+    }
+
     #[instrument(skip_all, fields(goal = %self.context.goal, node = %self.context.name))]
     pub async fn execute(mut self) -> Result<(), HiveLibError> {
+        let (tx, rx) = oneshot::channel();
+        self.context.state.evaluation_rx = Some(rx);
+
+        if !matches!(self.context.goal, Goal::Keys) {
+            tokio::spawn(GoalExecutor::evaluate_task(
+                tx,
+                self.context.hive_location.clone(),
+                self.context.name.clone(),
+                self.context.modifiers,
+                self.context.clobber_lock.clone(),
+            ).in_current_span());
+        }
+
         let steps = self
             .steps
             .iter()
