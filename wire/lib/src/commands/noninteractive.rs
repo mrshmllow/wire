@@ -179,8 +179,8 @@ pub async fn handle_io<R>(
         } else if let Some(error_msg) = log.flatten() {
             let mut queue = collection.lock().await;
             queue.push_front(error_msg);
-            // add at most 50 message to the front, drop the rest.
-            queue.truncate(50);
+            // add at most 20 message to the front, drop the rest.
+            queue.truncate(20);
         }
     }
 

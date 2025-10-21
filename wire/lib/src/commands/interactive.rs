@@ -89,8 +89,9 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
 
     if arguments.elevated {
         eprintln!(
-            "Please authenticate for \"sudo {}\"",
-            arguments.command_string.as_ref(),
+            "{} | Authenticate for \"sudo {}\":",
+            arguments.target.map_or(Ok("localhost (!)".to_string()), |target| Ok(format!("{}@{}:{}", target.user, target.get_preferred_host()?, target.port)))?,
+            arguments.command_string.as_ref()
         );
     }
 
@@ -478,9 +479,9 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         if let Some(error_msg) = log {
                             let mut queue = stderr_collection.lock().unwrap();
 
-                            // add at most 50 message to the front, drop the rest.
+                            // add at most 20 message to the front, drop the rest.
                             queue.push_front(error_msg);
-                            queue.truncate(50);
+                            queue.truncate(20);
                         }
                     } else {
                         stdout
