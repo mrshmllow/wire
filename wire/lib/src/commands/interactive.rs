@@ -90,7 +90,14 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     if arguments.elevated {
         eprintln!(
             "{} | Authenticate for \"sudo {}\":",
-            arguments.target.map_or(Ok("localhost (!)".to_string()), |target| Ok(format!("{}@{}:{}", target.user, target.get_preferred_host()?, target.port)))?,
+            arguments
+                .target
+                .map_or(Ok("localhost (!)".to_string()), |target| Ok(format!(
+                    "{}@{}:{}",
+                    target.user,
+                    target.get_preferred_host()?,
+                    target.port
+                )))?,
             arguments.command_string.as_ref()
         );
     }
