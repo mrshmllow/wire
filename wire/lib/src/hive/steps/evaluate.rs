@@ -6,8 +6,7 @@ use std::fmt::Display;
 use tracing::instrument;
 
 use crate::{
-    EvalGoal, HiveLibError,
-    commands::common::evaluate_hive_attribute,
+    HiveLibError,
     hive::node::{Context, ExecuteStep, Goal},
 };
 
@@ -27,15 +26,9 @@ impl ExecuteStep for Evaluate {
 
     #[instrument(skip_all, name = "eval")]
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let output = evaluate_hive_attribute(
-            &ctx.hive_location,
-            &EvalGoal::GetTopLevel(ctx.name),
-            ctx.modifiers,
-            ctx.clobber_lock.clone(),
-        )
-        .await?;
+        let rx = ctx.state.evaluation_rx.take().unwrap();
 
-        ctx.state.evaluation = serde_json::from_str(&output).expect("failed to parse derivation");
+        ctx.state.evaluation = Some(rx.await.unwrap()?);
 
         Ok(())
     }
