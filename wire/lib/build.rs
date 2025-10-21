@@ -126,11 +126,11 @@ impl DerviedError {
             return Err(miette!("Not a doc string"));
         }
 
-        if let Expr::Lit(lit) = list.value {
-            if let Lit::Str(str) = lit.lit {
-                self.doc_string
-                    .push_str(&format!("{}\n\n", &str.value()[1..]));
-            }
+        if let Expr::Lit(lit) = list.value
+            && let Lit::Str(str) = lit.lit
+        {
+            self.doc_string
+                .push_str(&format!("{}\n\n", &str.value()[1..]));
         }
 
         Ok(())
