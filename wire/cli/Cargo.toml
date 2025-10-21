@@ -18,7 +18,7 @@ lib = { path = "../lib" }
 serde_json = { workspace = true }
 miette = { workspace = true }
 thiserror = { workspace = true }
-indicatif = "0.18.0"
+indicatif = "0.18.1"
 enum-display-derive = "0.1.1"
 im = { workspace = true }
 futures = "0.3.31"
