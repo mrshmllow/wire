@@ -7,7 +7,7 @@ use std::{
     sync::{Arc, LazyLock, Mutex},
 };
 
-use aho_corasick::{AhoCorasick, PatternID};
+use aho_corasick::AhoCorasick;
 use gjson::Value;
 use nix_compat::log::{AT_NIX_PREFIX, VerbosityLevel};
 use num_enum::TryFromPrimitive;

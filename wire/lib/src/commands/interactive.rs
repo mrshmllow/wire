@@ -525,51 +525,50 @@ fn watch_stdin_from_user(
             Ok(0) => {} // timeout, impossible
             Ok(_) => {
                 // The user stdin pipe can be removed
-                if all_fds.get(USER_POSITION).is_some() {
-                    if let Some(events) = all_fds[USER_POSITION].revents() {
-                        if events.contains(PollFlags::POLLIN) {
-                            trace!("Got stdin from user...");
-                            let n = posix_read(user_stdin_fd, &mut buffer)
-                                .map_err(CommandError::PosixPipe)?;
-                            master_writer
-                                .write_all(&buffer[..n])
-                                .map_err(CommandError::WritingMasterStdout)?;
-                            master_writer
-                                .flush()
-                                .map_err(CommandError::WritingMasterStdout)?;
-                        }
-                    }
+                if all_fds.get(USER_POSITION).is_some()
+                    && let Some(events) = all_fds[USER_POSITION].revents()
+                    && events.contains(PollFlags::POLLIN)
+                {
+                    trace!("Got stdin from user...");
+                    let n =
+                        posix_read(user_stdin_fd, &mut buffer).map_err(CommandError::PosixPipe)?;
+                    master_writer
+                        .write_all(&buffer[..n])
+                        .map_err(CommandError::WritingMasterStdout)?;
+                    master_writer
+                        .flush()
+                        .map_err(CommandError::WritingMasterStdout)?;
                 }
 
-                if let Some(events) = all_fds[WRITER_POSITION].revents() {
-                    if events.contains(PollFlags::POLLIN) {
-                        trace!("Got stdin from writer...");
-                        let n = posix_read(write_pipe_r, &mut buffer)
-                            .map_err(CommandError::PosixPipe)?;
-                        master_writer
-                            .write_all(&buffer[..n])
-                            .map_err(CommandError::WritingMasterStdout)?;
-                        master_writer
-                            .flush()
-                            .map_err(CommandError::WritingMasterStdout)?;
-                    }
+                if let Some(events) = all_fds[WRITER_POSITION].revents()
+                    && events.contains(PollFlags::POLLIN)
+                {
+                    trace!("Got stdin from writer...");
+                    let n =
+                        posix_read(write_pipe_r, &mut buffer).map_err(CommandError::PosixPipe)?;
+                    master_writer
+                        .write_all(&buffer[..n])
+                        .map_err(CommandError::WritingMasterStdout)?;
+                    master_writer
+                        .flush()
+                        .map_err(CommandError::WritingMasterStdout)?;
                 }
 
-                if let Some(events) = all_fds[SIGNAL_POSITION].revents() {
-                    if events.contains(PollFlags::POLLIN) {
-                        let n = posix_read(cancel_pipe_r_fd, &mut cancel_pipe_buf)
-                            .map_err(CommandError::PosixPipe)?;
-                        let message = &cancel_pipe_buf[..n];
+                if let Some(events) = all_fds[SIGNAL_POSITION].revents()
+                    && events.contains(PollFlags::POLLIN)
+                {
+                    let n = posix_read(cancel_pipe_r_fd, &mut cancel_pipe_buf)
+                        .map_err(CommandError::PosixPipe)?;
+                    let message = &cancel_pipe_buf[..n];
 
-                        trace!("Got byte from signal pipe: {message:?}");
+                    trace!("Got byte from signal pipe: {message:?}");
 
-                        if message == THREAD_QUIT_SIGNAL {
-                            return Ok(());
-                        }
+                    if message == THREAD_QUIT_SIGNAL {
+                        return Ok(());
+                    }
 
-                        if message == THREAD_BEGAN_SIGNAL {
-                            all_fds.remove(USER_POSITION);
-                        }
+                    if message == THREAD_BEGAN_SIGNAL {
+                        all_fds.remove(USER_POSITION);
                     }
                 }
             }

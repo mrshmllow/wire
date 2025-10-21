@@ -1,7 +1,7 @@
 [workspace]
 members = ["wire/key_agent", "wire/lib", "wire/cli"]
 resolver = "2"
-package.edition = "2021"
+package.edition = "2024"
 package.version = "0.6.0"
 
 [workspace.metadata.crane]
