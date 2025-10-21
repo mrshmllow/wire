@@ -5,13 +5,13 @@
 use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
-use tokio::sync::oneshot;
 use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
 use std::io::ErrorKind;
 use std::path::PathBuf;
-use std::sync::{Arc};
+use std::sync::Arc;
+use tokio::sync::oneshot;
 use tracing::{Instrument, Level, debug, error, event, instrument, trace, warn};
 
 use crate::commands::common::evaluate_hive_attribute;
@@ -390,7 +390,9 @@ impl<'a> GoalExecutor<'a> {
             clobber_lock.clone(),
         )
         .await
-        .map(|output| serde_json::from_str::<Derivation>(&output).expect("failed to parse derivation"));
+        .map(|output| {
+            serde_json::from_str::<Derivation>(&output).expect("failed to parse derivation")
+        });
 
         debug!(output = ?output, done = true);
 
@@ -403,13 +405,16 @@ impl<'a> GoalExecutor<'a> {
         self.context.state.evaluation_rx = Some(rx);
 
         if !matches!(self.context.goal, Goal::Keys) {
-            tokio::spawn(GoalExecutor::evaluate_task(
-                tx,
-                self.context.hive_location.clone(),
-                self.context.name.clone(),
-                self.context.modifiers,
-                self.context.clobber_lock.clone(),
-            ).in_current_span());
+            tokio::spawn(
+                GoalExecutor::evaluate_task(
+                    tx,
+                    self.context.hive_location.clone(),
+                    self.context.name.clone(),
+                    self.context.modifiers,
+                    self.context.clobber_lock.clone(),
+                )
+                .in_current_span(),
+            );
         }
 
         let steps = self
