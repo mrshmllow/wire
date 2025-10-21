@@ -199,8 +199,10 @@ impl ChildOutputMode {
     fn trace_slice(self, line: &mut [u8]) -> Option<String> {
         let slice = match self {
             Self::Raw => {
-                warn!("{}", String::from_utf8_lossy(line));
-                return None;
+                let string = String::from_utf8_lossy(line);
+                let stripped = strip_ansi_escapes::strip_str(&string);
+                warn!("{stripped}");
+                return Some(string.to_string());
             }
             Self::Nix => {
                 let position = AHO_CORASICK.find(&line).map(|x| &mut line[x.end()..]);

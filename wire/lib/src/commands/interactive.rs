@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use aho_corasick::{AhoCorasick, PatternID};
 use itertools::Itertools;
 use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
 use nix::{
@@ -76,12 +77,10 @@ struct WatchStdoutArguments {
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 
-const NEEDLE_LENGTH: usize = 9;
-
 /// substitutes STDOUT with #$line. stdout is far less common than stderr.
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
-#[instrument(level = "debug", skip_all, name = "run-int", fields(elevated = %arguments.elevated))]
+#[instrument(skip_all, name = "run-int", fields(elevated = %arguments.elevated))]
 pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: std::collections::HashMap<String, String>,
@@ -209,7 +208,9 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     })
 }
 
-fn create_needles() -> (Arc<Vec<u8>>, Arc<Vec<u8>>, Arc<Vec<u8>>) {
+type Needles = (Arc<Vec<u8>>, Arc<Vec<u8>>, Arc<Vec<u8>>);
+
+fn create_needles() -> Needles {
     let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
 
     (
@@ -412,6 +413,16 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         ..
     } = arguments;
 
+    let aho_corasick = AhoCorasick::builder()
+        .ascii_case_insensitive(false)
+        .match_kind(aho_corasick::MatchKind::LeftmostFirst)
+        .build([
+            start_needle.as_ref(),
+            succeed_needle.as_ref(),
+            failed_needle.as_ref(),
+        ])
+        .unwrap();
+
     let mut buffer = [0u8; 1024];
     let mut stdout = std::io::stdout();
     let mut began = false;
@@ -424,22 +435,25 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                 log_buffer.process_slice(&buffer[..n]);
 
                 while let Some(mut line) = log_buffer.next_line() {
-                    let mut windows = line.windows(NEEDLE_LENGTH);
+                    let searched = aho_corasick
+                        .find_iter(&line)
+                        .map(|x| x.pattern())
+                        .collect::<Vec<_>>();
 
-                    if windows.any(|window| window == *start_needle) {
+                    if searched.iter().any(|x| x == &PatternID::must(0)) {
                         debug!("start needle was found, switching mode...");
                         let _ = began_tx.send(());
                         began = true;
                         continue;
                     }
 
-                    if windows.any(|window| window == *succeed_needle) {
+                    if searched.iter().any(|x| x == &PatternID::must(1)) {
                         debug!("succeed needle was found, marking child as succeeding.");
                         completion_status.mark_completed(true);
                         break 'outer;
                     }
 
-                    if windows.any(|window| window == *failed_needle) {
+                    if searched.iter().any(|x| x == &PatternID::must(2)) {
                         debug!("failed needle was found, elevated child did not succeed.");
                         completion_status.mark_completed(false);
                         break 'outer;
@@ -464,9 +478,9 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         if let Some(error_msg) = log {
                             let mut queue = stderr_collection.lock().unwrap();
 
-                            // add at most 10 message to the front, drop the rest.
+                            // add at most 50 message to the front, drop the rest.
                             queue.push_front(error_msg);
-                            queue.truncate(10);
+                            queue.truncate(50);
                         }
                     } else {
                         stdout

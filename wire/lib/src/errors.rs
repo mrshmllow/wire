@@ -255,7 +255,7 @@ pub enum CommandError {
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("`nix` commands are filtered, run with -vvv to view all"),
     )]
-    #[error("{command_ran} failed (reason: {reason}) with {code} (last 20 lines):\n{logs}")]
+    #[error("{command_ran} failed (reason: {reason}) with {code} (last 50 lines):\n{logs}")]
     CommandFailed {
         command_ran: String,
         logs: String,

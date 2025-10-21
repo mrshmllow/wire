@@ -185,7 +185,9 @@ impl ExecuteStep for SwitchToConfiguration {
                 }
 
                 if wait_for_ping(ctx).await.is_ok() {
-                    return Ok(());
+                    return Err(HiveLibError::ActivationError(
+                        ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), error),
+                    ));
                 }
 
                 error!(

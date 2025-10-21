@@ -31,7 +31,7 @@ pub(crate) struct NonInteractiveChildChip {
     stdin: ChildStdin,
 }
 
-#[instrument(level = "debug", skip_all, name = "run", fields(elevated = %arguments.elevated))]
+#[instrument(skip_all, name = "run", fields(elevated = %arguments.elevated))]
 pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: HashMap<String, String>,
@@ -179,8 +179,8 @@ pub async fn handle_io<R>(
         } else if let Some(error_msg) = log.flatten() {
             let mut queue = collection.lock().await;
             queue.push_front(error_msg);
-            // add at most 10 message to the front, drop the rest.
-            queue.truncate(10);
+            // add at most 50 message to the front, drop the rest.
+            queue.truncate(50);
         }
     }
 
