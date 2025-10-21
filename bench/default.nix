@@ -23,6 +23,8 @@ let
           index:
           nixpkgs.lib.nameValuePair "key-${builtins.toString index}" {
             keyFile = ./key.txt;
+            # 80% of keys pre activation, 20% post activation.
+            uploadAt = if index <= (200 * 0.8) then "pre-activation" else "post-activation";
           }
         ) (nixpkgs.lib.range 0 200)
       );
