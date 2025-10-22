@@ -555,7 +555,7 @@ fn handle_rawmode_data(
         .find_iter(&raw_mode_buffer)
         .any(|x| x.pattern() == PatternID::must(0))
     {
-        println!("start needle was found, switching mode...");
+        debug!("start needle was found, switching mode...");
         let _ = began_tx.send(());
         return Ok(true);
     }
