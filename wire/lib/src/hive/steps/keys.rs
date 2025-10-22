@@ -26,9 +26,7 @@ use crate::HiveLibError;
 use crate::commands::common::push;
 use crate::commands::{CommandArguments, WireCommandChip, run_command};
 use crate::errors::KeyError;
-use crate::hive::node::{
-    Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal, should_apply_locally,
-};
+use crate::hive::node::{Context, ExecuteStep, Goal, Push, SwitchToConfigurationGoal};
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 #[serde(tag = "t", content = "c")]
@@ -235,14 +233,11 @@ impl ExecuteStep for Keys {
 
         let mut child = run_command(
             &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
-                .on_target(
-                    if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
-                    {
-                        None
-                    } else {
-                        Some(&ctx.node.target)
-                    },
-                )
+                .on_target(if ctx.should_apply_locally {
+                    None
+                } else {
+                    Some(&ctx.node.target)
+                })
                 .elevated()
                 .keep_stdin_open()
                 .log_stdout(),
@@ -302,15 +297,8 @@ impl ExecuteStep for PushKeyAgent {
             ),
         };
 
-        if !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-            push(
-                ctx.node,
-                ctx.name,
-                Push::Path(&agent_directory),
-                ctx.modifiers,
-                ctx.clobber_lock.clone(),
-            )
-            .await?;
+        if !ctx.should_apply_locally {
+            push(ctx, Push::Path(&agent_directory)).await?;
         }
 
         ctx.state.key_agent_directory = Some(agent_directory);

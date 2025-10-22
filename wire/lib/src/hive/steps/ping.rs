@@ -7,7 +7,7 @@ use tracing::{Level, event, instrument};
 
 use crate::{
     HiveLibError,
-    hive::node::{Context, ExecuteStep, should_apply_locally},
+    hive::node::{Context, ExecuteStep},
 };
 
 #[derive(Debug, PartialEq)]
@@ -21,7 +21,7 @@ impl Display for Ping {
 
 impl ExecuteStep for Ping {
     fn should_execute(&self, ctx: &Context) -> bool {
-        !should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+        !ctx.should_apply_locally
     }
 
     #[instrument(skip_all, name = "ping")]

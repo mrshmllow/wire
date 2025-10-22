@@ -9,7 +9,7 @@ use crate::{
     HiveLibError,
     commands::{CommandArguments, WireCommandChip, run_command},
     errors::{ActivationError, NetworkError},
-    hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal, should_apply_locally},
+    hive::node::{Context, ExecuteStep, Goal, SwitchToConfigurationGoal},
 };
 
 #[derive(Debug, PartialEq)]
@@ -52,13 +52,11 @@ async fn set_profile(
     let child = run_command(
         &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
             .nix()
-            .on_target(
-                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
-                    None
-                } else {
-                    Some(&ctx.node.target)
-                },
-            )
+            .on_target(if ctx.should_apply_locally {
+                None
+            } else {
+                Some(&ctx.node.target)
+            })
             .elevated(),
     )?;
 
@@ -108,14 +106,11 @@ impl ExecuteStep for SwitchToConfiguration {
 
         let child = run_command(
             &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
-                .on_target(
-                    if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
-                    {
-                        None
-                    } else {
-                        Some(&ctx.node.target)
-                    },
-                )
+                .on_target(if ctx.should_apply_locally {
+                    None
+                } else {
+                    Some(&ctx.node.target)
+                })
                 .elevated()
                 .log_stdout(),
         )?;
@@ -128,7 +123,7 @@ impl ExecuteStep for SwitchToConfiguration {
                     return Ok(());
                 }
 
-                if should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string()) {
+                if ctx.should_apply_locally {
                     error!("Refusing to reboot local machine!");
 
                     return Ok(());
@@ -177,7 +172,7 @@ impl ExecuteStep for SwitchToConfiguration {
                 // Bail if the command couldn't of broken the system
                 // and don't try to regain connection to localhost
                 if matches!(goal, SwitchToConfigurationGoal::DryActivate)
-                    || should_apply_locally(ctx.node.allow_local_deployment, &ctx.name.to_string())
+                    || ctx.should_apply_locally
                 {
                     return Err(HiveLibError::ActivationError(
                         ActivationError::SwitchToConfigurationError(*goal, ctx.name.clone(), error),

@@ -21,8 +21,8 @@ impl Display for CleanUp {
 }
 
 impl ExecuteStep for CleanUp {
-    fn should_execute(&self, _ctx: &Context) -> bool {
-        true
+    fn should_execute(&self, ctx: &Context) -> bool {
+        !ctx.should_apply_locally
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {

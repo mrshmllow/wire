@@ -3,7 +3,7 @@
 
 use futures::{FutureExt, StreamExt};
 use itertools::{Either, Itertools};
-use lib::hive::node::{Context, GoalExecutor, Name, StepState};
+use lib::hive::node::{Context, GoalExecutor, Name, StepState, should_apply_locally};
 use lib::hive::{Hive, HiveLocation};
 use lib::{SubCommandModifiers, errors::HiveLibError};
 use miette::{Diagnostic, IntoDiagnostic, Result};
@@ -94,12 +94,14 @@ pub async fn apply(
                 || names.contains(name)
                 || node.tags.iter().any(|tag| tags.contains(tag))
         })
-        .map(|node| {
-            info!("Resolved {:?} to include {}", args.on, node.0);
+        .map(|(name, node)| {
+            info!("Resolved {:?} to include {}", args.on, name);
+
+            let should_apply_locally = should_apply_locally(node.allow_local_deployment, &name.0);
 
             let context = Context {
-                node: node.1,
-                name: node.0,
+                node,
+                name,
                 goal: args.goal.clone().try_into().unwrap(),
                 state: StepState::default(),
                 no_keys: args.no_keys,
@@ -107,11 +109,12 @@ pub async fn apply(
                 modifiers,
                 reboot: args.reboot,
                 clobber_lock: clobber_lock.clone(),
+                should_apply_locally,
             };
 
             GoalExecutor::new(context)
                 .execute()
-                .map(move |result| (node.0, result))
+                .map(move |result| (name, result))
         })
         .peekable();
 

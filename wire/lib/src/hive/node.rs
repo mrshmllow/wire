@@ -150,6 +150,7 @@ impl<'a> Context<'a> {
             state: StepState::default(),
             goal: Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch),
             reboot: false,
+            should_apply_locally: false,
             clobber_lock: get_clobber_lock(),
         }
     }
@@ -311,6 +312,7 @@ pub struct Context<'a> {
     pub state: StepState,
     pub goal: Goal,
     pub reboot: bool,
+    pub should_apply_locally: bool,
     pub clobber_lock: Arc<std::sync::Mutex<()>>,
 }
 
