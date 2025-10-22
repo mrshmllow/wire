@@ -446,6 +446,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     let mut began = false;
     let mut log_buffer = LogBuffer::new();
     let mut raw_mode_buffer = Vec::new();
+    let mut belled = false;
 
     'outer: loop {
         match reader.read(&mut buffer) {
@@ -461,7 +462,19 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         &began_tx,
                     )? {
                         began = true;
+                        continue;
                     }
+
+                    if belled {
+                        continue;
+                    }
+
+                    stderr
+                        .write(b"\x07")
+                        .map_err(CommandError::WritingClientStderr)?;
+                    stderr.flush().map_err(CommandError::WritingClientStderr)?;
+
+                    belled = true;
 
                     continue;
                 }
