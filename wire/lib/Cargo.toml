@@ -11,11 +11,8 @@ tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 im = { workspace = true }
-serde-query = "0.2.0"
 thiserror = "2.0.17"
-regex = "1.12.2"
 derive_more = { version = "2.0.1", features = ["display"] }
 key_agent = { path = "../key_agent" }
 futures = "0.3.31"
@@ -39,7 +36,6 @@ gjson = "0.8.1"
 
 [dev-dependencies]
 tempdir = "0.3"
-visibility = "0.1.1"
 
 [build-dependencies]
 miette = { workspace = true }
