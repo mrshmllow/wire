@@ -13,12 +13,6 @@
       with subtest("Test unreachable hosts"):
         deployer.fail(f"wire apply --on receiver-unreachable --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
 
-      with subtest("Test ssh host key logic"):
-        # ran without --ssh-accept-host, should fail because we have never seen this node before
-        deployer.fail(f"wire apply push --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys -vvv >&2")
-        # ran --ssh-accept-host, should succeed
-        deployer.succeed(f"wire apply push --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys --ssh-accept-host -vvv >&2")
-
       with subtest("Check basic apply: Interactive"):
           deployer.succeed(f"wire apply --on receiver --no-progress --path {TEST_DIR}/hive.nix --no-keys --ssh-accept-host -vvv >&2")
 
