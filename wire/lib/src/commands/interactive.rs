@@ -442,14 +442,30 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         .unwrap();
 
     let mut buffer = [0u8; 1024];
-    let mut stdout = std::io::stdout();
+    let mut stderr = std::io::stderr();
     let mut began = false;
     let mut log_buffer = LogBuffer::new();
+    let mut raw_mode_buffer = Vec::new();
 
     'outer: loop {
         match reader.read(&mut buffer) {
             Ok(0) => break 'outer,
             Ok(n) => {
+                if !began {
+                    if handle_rawmode_data(
+                        &mut stderr,
+                        &buffer,
+                        n,
+                        &mut raw_mode_buffer,
+                        &aho_corasick,
+                        &began_tx,
+                    )? {
+                        began = true;
+                    }
+
+                    continue;
+                }
+
                 log_buffer.process_slice(&buffer[..n]);
 
                 while let Some(mut line) = log_buffer.next_line() {
@@ -457,13 +473,6 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         .find_iter(&line)
                         .map(|x| x.pattern())
                         .collect::<Vec<_>>();
-
-                    if searched.iter().any(|x| x == &PatternID::must(0)) {
-                        debug!("start needle was found, switching mode...");
-                        let _ = began_tx.send(());
-                        began = true;
-                        continue;
-                    }
 
                     if searched.iter().any(|x| x == &PatternID::must(1)) {
                         debug!("succeed needle was found, marking child as succeeding.");
@@ -477,34 +486,26 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         break 'outer;
                     }
 
-                    if began {
-                        if line.starts_with(b"#") {
-                            let stripped = &mut line[1..];
+                    if line.starts_with(b"#") {
+                        let stripped = &mut line[1..];
 
-                            if log_stdout {
-                                output_mode.trace_slice(stripped);
-                            }
-
-                            let mut queue = stdout_collection.lock().unwrap();
-                            // clone
-                            queue.push_front(String::from_utf8_lossy(stripped).to_string());
-                            continue;
+                        if log_stdout {
+                            output_mode.trace_slice(stripped);
                         }
 
-                        let log = output_mode.trace_slice(&mut line);
+                        let mut queue = stdout_collection.lock().unwrap();
+                        queue.push_front(String::from_utf8_lossy(stripped).to_string());
+                        continue;
+                    }
 
-                        if let Some(error_msg) = log {
-                            let mut queue = stderr_collection.lock().unwrap();
+                    let log = output_mode.trace_slice(&mut line);
 
-                            // add at most 20 message to the front, drop the rest.
-                            queue.push_front(error_msg);
-                            queue.truncate(20);
-                        }
-                    } else {
-                        stdout
-                            .write_all(&line)
-                            .map_err(CommandError::WritingClientStdout)?;
-                        stdout.flush().map_err(CommandError::WritingClientStdout)?;
+                    if let Some(error_msg) = log {
+                        let mut queue = stderr_collection.lock().unwrap();
+
+                        // add at most 20 message to the front, drop the rest.
+                        queue.push_front(error_msg);
+                        queue.truncate(20);
                     }
                 }
             }
@@ -525,6 +526,34 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     debug!("stdout: goodbye");
 
     Ok(())
+}
+
+fn handle_rawmode_data(
+    stderr: &mut std::io::Stderr,
+    buffer: &[u8],
+    n: usize,
+    raw_mode_buffer: &mut Vec<u8>,
+    aho_corasick: &AhoCorasick,
+    began_tx: &Sender<()>,
+) -> Result<bool, CommandError> {
+    raw_mode_buffer.extend_from_slice(&buffer[..n]);
+
+    if aho_corasick
+        .find_iter(&raw_mode_buffer)
+        .any(|x| x.pattern() == PatternID::must(0))
+    {
+        println!("start needle was found, switching mode...");
+        let _ = began_tx.send(());
+        return Ok(true);
+    }
+
+    stderr
+        .write_all(&buffer[..n])
+        .map_err(CommandError::WritingClientStderr)?;
+
+    stderr.flush().map_err(CommandError::WritingClientStderr)?;
+
+    Ok(false)
 }
 
 /// Exits on any data written to `cancel_pipe_r`

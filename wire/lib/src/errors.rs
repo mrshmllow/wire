@@ -224,8 +224,8 @@ pub enum CommandError {
         code(wire::command::WritingClientStdout),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
-    #[error("Failed to write to client stdout.")]
-    WritingClientStdout(#[source] std::io::Error),
+    #[error("Failed to write to client stderr.")]
+    WritingClientStderr(#[source] std::io::Error),
 
     #[diagnostic(
         code(wire::command::WritingMasterStdin),
