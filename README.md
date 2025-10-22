@@ -23,6 +23,8 @@ wire
 │  └── a [vitepress](https://vitepress.dev/) site
 ├── runtime
 │  └── Nix files used during runtime to evaluate nodes
+├── bench
+│  └── A little tool to benchmark wire against a large hive
 └──tests
    └── Directories used during cargo & NixOS VM testing
 ```
