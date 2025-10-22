@@ -34,6 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Logging was improved.
 - `config.nixpkgs.flake.source` is now set by default if `meta.nixpkgs` ends
   with `-source` at priority 1000 (default).
+- Evaluation has been sped up by doing it in parallel with other steps until
+  the .drv is required
 
 ### Documented
 
