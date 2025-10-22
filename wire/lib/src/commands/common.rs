@@ -53,11 +53,6 @@ pub async fn push(context: &Context<'_>, push: Push<'_>) -> Result<(), HiveLibEr
             name: context.name.clone(),
             path: push.to_string(),
             error: Box::new(error),
-            help: if context.should_apply_locally {
-                Some(format!("Remote push failed, but this node matches our local hostname ({0}). Perhaps you want to apply this node locally? Use `--always-build-local {0}` to override deployment.buildOnTarget", {context.name.to_string()}))
-            } else {
-                None
-            }
         })?;
 
     Ok(())

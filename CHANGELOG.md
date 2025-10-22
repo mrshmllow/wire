@@ -36,6 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `-source` at priority 1000 (default).
 - Evaluation has been sped up by doing it in parallel with other steps until
   the .drv is required
+- A node which is going to be applied locally will now never `push` or
+  `cleanup`.
 
 ### Documented
 

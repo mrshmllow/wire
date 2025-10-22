@@ -31,6 +31,7 @@ impl Display for PushBuildOutput {
 impl ExecuteStep for PushEvaluatedOutput {
     fn should_execute(&self, ctx: &Context) -> bool {
         !matches!(ctx.goal, Goal::Keys)
+            && !ctx.should_apply_locally
             && (ctx.node.build_remotely | matches!(ctx.goal, Goal::Push))
     }
 
