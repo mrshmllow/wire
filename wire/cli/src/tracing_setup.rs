@@ -12,7 +12,7 @@ use lib::STDIN_CLOBBER_LOCK;
 use tracing::{Level, Subscriber};
 use tracing_log::AsTrace;
 use tracing_subscriber::{
-    Layer, Registry,
+    Layer,
     fmt::{
         FormatEvent, FormatFields,
         format::{self, Format, Full},
