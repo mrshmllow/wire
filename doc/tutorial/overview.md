@@ -28,15 +28,21 @@ Ready? Skip to [Nix Setup](./part-one/nix-setup).
 
 ## Why Wire?
 
-| Features                 | Wire               | Colmena            |
-| ------------------------ | ------------------ | ------------------ |
-| Node Tagging             | :white_check_mark: | :white_check_mark: |
-| Secret Management        | :white_check_mark: | :white_check_mark: |
-| Parallel Evaluation      | :white_check_mark: | :white_check_mark: |
-| Node Tagging             | :white_check_mark: | :white_check_mark: |
-| Remote Builds            | :white_check_mark: | :white_check_mark: |
-| Pipeline Support         | :white_check_mark: | :x:[^2]            |
-| Non-Root Deployments[^4] | :white_check_mark: | :x:[^3]            |
+### Features
+
+| Features                           | Wire               | Colmena            |
+| ---------------------------------- | ------------------ | ------------------ |
+| Node Tagging                       | :white_check_mark: | :white_check_mark: |
+| Secret Management                  | :white_check_mark: | :white_check_mark: |
+| Parallel Evaluation                | :white_check_mark: | :white_check_mark: |
+| Node Tagging                       | :white_check_mark: | :white_check_mark: |
+| Remote Builds                      | :white_check_mark: | :white_check_mark: |
+| Key Services                       | :white_check_mark: | :white_check_mark: |
+| Pipeline Support                   | :white_check_mark: | :x:[^2]            |
+| Non-Root Deployments[^4]           | :white_check_mark: | :x:[^3]            |
+| `--flake` accepts flakerefs        | :white_check_mark: | :x:                |
+| REPL & Eval expressions            | :x:                | :white_check_mark: |
+| Adhoc remote command execution[^5] | :x:                | :white_check_mark: |
 
 [^2]: You need to write custom nix code to use Colmena hive metadata inside environments like CI pipelines, bash scripting, etc., which requires a knowledge of its internals. Recently it agained the [eval feature](https://colmena.cli.rs/unstable/features/eval.html) which has improved the situation since wire was first started.
 
@@ -46,3 +52,15 @@ Ready? Skip to [Nix Setup](./part-one/nix-setup).
     You may deploy with _any_ user who can login through SSH, whether they be
     `wheel` or not. You may need to enter your password multiple times for the various elevated
     steps wire needs to perform.
+
+[^5]: Wire lacks an equivalent to `colmena exec`.
+
+### Speed
+
+Wire is about >2x faster than colmena deploying [identical large
+hives](https://github.com/mrshmllow/wire/blob/main/bench/run.nix).
+
+| Command | Mean [s] | Min [s] | Max [s] | Relative |
+|:---|---:|---:|---:|---:|
+| `colmena@pinned` | 301.977 ± 17.026 | 288.432 | 321.090 | 2.51 ± 0.35 |
+| `wire@HEAD` | 120.123 ± 15.044 | 110.539 | 137.462 | 1.00 |
