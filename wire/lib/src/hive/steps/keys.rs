@@ -232,7 +232,7 @@ impl ExecuteStep for Keys {
         let command_string = format!("{agent_directory}/bin/key_agent");
 
         let mut child = run_command(
-            &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+            &CommandArguments::new(command_string, ctx.modifiers)
                 .on_target(if ctx.should_apply_locally {
                     None
                 } else {

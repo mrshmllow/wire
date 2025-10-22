@@ -51,12 +51,10 @@ impl Hive {
     pub async fn new_from_path(
         location: &HiveLocation,
         modifiers: SubCommandModifiers,
-        clobber_lock: Arc<Mutex<()>>,
     ) -> Result<Hive, HiveLibError> {
         info!("evaluating hive {location:?}");
 
-        let output =
-            evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers, clobber_lock).await?;
+        let output = evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers).await?;
 
         let hive: Hive = serde_json::from_str(&output).map_err(|err| {
             HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
@@ -135,7 +133,7 @@ mod tests {
         get_test_path,
         hive::steps::keys::{Key, Source, UploadKeyAt},
         location,
-        test_support::{get_clobber_lock, make_flake_sandbox},
+        test_support::make_flake_sandbox,
     };
 
     use super::*;
@@ -154,13 +152,9 @@ mod tests {
     async fn test_hive_file() {
         let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(
-            &location,
-            SubCommandModifiers::default(),
-            get_clobber_lock(),
-        )
-        .await
-        .unwrap();
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default())
+            .await
+            .unwrap();
 
         let node = Node {
             target: node::Target::from_host("192.168.122.96"),
@@ -184,13 +178,9 @@ mod tests {
     async fn non_trivial_hive() {
         let location = location!(get_test_path!());
 
-        let hive = Hive::new_from_path(
-            &location,
-            SubCommandModifiers::default(),
-            get_clobber_lock(),
-        )
-        .await
-        .unwrap();
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default())
+            .await
+            .unwrap();
 
         let node = Node {
             target: node::Target::from_host("name"),
@@ -226,13 +216,9 @@ mod tests {
         let tmp_dir = make_flake_sandbox(&get_test_path!()).unwrap();
 
         let location = get_hive_location(tmp_dir.path().display().to_string()).unwrap();
-        let hive = Hive::new_from_path(
-            &location,
-            SubCommandModifiers::default(),
-            get_clobber_lock(),
-        )
-        .await
-        .unwrap();
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default())
+            .await
+            .unwrap();
 
         let mut nodes = HashMap::new();
 
@@ -257,7 +243,7 @@ mod tests {
         let location = location!(get_test_path!());
 
         assert_matches!(
-            Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Hive::new_from_path(&location, SubCommandModifiers::default()).await,
             Err(HiveLibError::NixEvalError {
                 source: CommandError::CommandFailed {
                     logs,
@@ -274,7 +260,7 @@ mod tests {
         let location = location!(get_test_path!());
 
         assert_matches!(
-            Hive::new_from_path(&location, SubCommandModifiers::default(), get_clobber_lock()).await,
+            Hive::new_from_path(&location, SubCommandModifiers::default()).await,
             Err(HiveLibError::NixEvalError {
                 source: CommandError::CommandFailed {
                     logs,

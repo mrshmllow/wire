@@ -23,12 +23,12 @@ impl Display for SwitchToConfiguration {
 
 pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
     let host = ctx.node.target.get_preferred_host()?;
-    let mut result = ctx.node.ping(ctx.modifiers, ctx.clobber_lock.clone()).await;
+    let mut result = ctx.node.ping(ctx.modifiers).await;
 
     for num in 0..2 {
         warn!("Trying to ping {host} (attempt {}/3)", num + 1);
 
-        result = ctx.node.ping(ctx.modifiers, ctx.clobber_lock.clone()).await;
+        result = ctx.node.ping(ctx.modifiers).await;
 
         if result.is_ok() {
             info!("Regained connection to {} via {host}", ctx.name);
@@ -50,7 +50,7 @@ async fn set_profile(
     let command_string = format!("nix-env -p /nix/var/nix/profiles/system/ --set {built_path}");
 
     let child = run_command(
-        &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+        &CommandArguments::new(command_string, ctx.modifiers)
             .nix()
             .on_target(if ctx.should_apply_locally {
                 None
@@ -105,7 +105,7 @@ impl ExecuteStep for SwitchToConfiguration {
         );
 
         let child = run_command(
-            &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+            &CommandArguments::new(command_string, ctx.modifiers)
                 .on_target(if ctx.should_apply_locally {
                     None
                 } else {
@@ -132,7 +132,7 @@ impl ExecuteStep for SwitchToConfiguration {
                 warn!("Rebooting {name}!", name = ctx.name);
 
                 let reboot = run_command(
-                    &CommandArguments::new("reboot now", ctx.modifiers, ctx.clobber_lock.clone())
+                    &CommandArguments::new("reboot now", ctx.modifiers)
                         .log_stdout()
                         .on_target(Some(&ctx.node.target))
                         .elevated(),

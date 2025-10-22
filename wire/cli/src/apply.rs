@@ -53,7 +53,6 @@ pub async fn apply(
     location: HiveLocation,
     args: ApplyArgs,
     mut modifiers: SubCommandModifiers,
-    clobber_lock: Arc<Mutex<()>>,
 ) -> Result<()> {
     let header_span = Span::current();
     let location = Arc::new(location);
@@ -108,7 +107,6 @@ pub async fn apply(
                 hive_location: location.clone(),
                 modifiers,
                 reboot: args.reboot,
-                clobber_lock: clobber_lock.clone(),
                 should_apply_locally,
             };
 

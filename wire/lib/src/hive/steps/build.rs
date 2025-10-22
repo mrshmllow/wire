@@ -35,7 +35,7 @@ impl ExecuteStep for Build {
         );
 
         let status = run_command_with_env(
-            &CommandArguments::new(command_string, ctx.modifiers, ctx.clobber_lock.clone())
+            &CommandArguments::new(command_string, ctx.modifiers)
                 .on_target(if ctx.node.build_remotely {
                     Some(&ctx.node.target)
                 } else {

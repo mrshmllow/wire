@@ -33,12 +33,7 @@ impl ExecuteStep for Ping {
                 host = ctx.node.target.get_preferred_host()?.to_string()
             );
 
-            if ctx
-                .node
-                .ping(ctx.modifiers, ctx.clobber_lock.clone())
-                .await
-                .is_ok()
-            {
+            if ctx.node.ping(ctx.modifiers).await.is_ok() {
                 event!(
                     Level::INFO,
                     status = "success",

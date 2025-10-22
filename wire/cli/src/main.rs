@@ -13,6 +13,7 @@ use crate::tracing_setup::setup_logging;
 use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
+use lib::STDIN_CLOBBER_LOCK;
 use lib::hive::Hive;
 use lib::hive::get_hive_location;
 use miette::IntoDiagnostic;
@@ -35,12 +36,11 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 async fn main() -> Result<()> {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
-    let clobber_lock = Arc::new(Mutex::new(()));
 
     let args = Cli::parse();
 
     let modifiers = args.to_subcommand_modifiers();
-    setup_logging(args.verbose, clobber_lock.clone());
+    setup_logging(args.verbose);
 
     #[cfg(debug_assertions)]
     if args.markdown_help {
@@ -56,11 +56,11 @@ async fn main() -> Result<()> {
 
     match args.command {
         cli::Commands::Apply(apply_args) => {
-            let mut hive = Hive::new_from_path(&location, modifiers, clobber_lock.clone()).await?;
-            apply::apply(&mut hive, location, apply_args, modifiers, clobber_lock).await?;
+            let mut hive = Hive::new_from_path(&location, modifiers).await?;
+            apply::apply(&mut hive, location, apply_args, modifiers).await?;
         }
         cli::Commands::Inspect { online: _, json } => println!("{}", {
-            let hive = Hive::new_from_path(&location, modifiers, clobber_lock).await?;
+            let hive = Hive::new_from_path(&location, modifiers).await?;
             if json {
                 serde_json::to_string(&hive).into_diagnostic()?
             } else {

@@ -139,8 +139,6 @@ impl<'a> Context<'a> {
         name: &'a Name,
         node: &'a mut Node,
     ) -> Self {
-        use crate::test_support::get_clobber_lock;
-
         Context {
             name,
             node,
@@ -151,7 +149,6 @@ impl<'a> Context<'a> {
             goal: Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch),
             reboot: false,
             should_apply_locally: false,
-            clobber_lock: get_clobber_lock(),
         }
     }
 }
@@ -220,11 +217,7 @@ impl Node {
         }
     }
 
-    pub async fn ping(
-        &self,
-        modifiers: SubCommandModifiers,
-        clobber_lock: Arc<std::sync::Mutex<()>>,
-    ) -> Result<(), HiveLibError> {
+    pub async fn ping(&self, modifiers: SubCommandModifiers) -> Result<(), HiveLibError> {
         let host = self.target.get_preferred_host()?;
 
         let command_string = format!(
@@ -233,7 +226,7 @@ impl Node {
             self.target.user, host
         );
         let output = run_command_with_env(
-            &CommandArguments::new(command_string, modifiers, clobber_lock)
+            &CommandArguments::new(command_string, modifiers)
                 .nix()
                 .log_stdout(),
             HashMap::from([(
@@ -313,7 +306,6 @@ pub struct Context<'a> {
     pub goal: Goal,
     pub reboot: bool,
     pub should_apply_locally: bool,
-    pub clobber_lock: Arc<std::sync::Mutex<()>>,
 }
 
 #[enum_dispatch(ExecuteStep)]
@@ -383,18 +375,13 @@ impl<'a> GoalExecutor<'a> {
         hive_location: Arc<HiveLocation>,
         name: Name,
         modifiers: SubCommandModifiers,
-        clobber_lock: Arc<std::sync::Mutex<()>>,
     ) {
-        let output = evaluate_hive_attribute(
-            &hive_location,
-            &EvalGoal::GetTopLevel(&name),
-            modifiers,
-            clobber_lock.clone(),
-        )
-        .await
-        .map(|output| {
-            serde_json::from_str::<Derivation>(&output).expect("failed to parse derivation")
-        });
+        let output =
+            evaluate_hive_attribute(&hive_location, &EvalGoal::GetTopLevel(&name), modifiers)
+                .await
+                .map(|output| {
+                    serde_json::from_str::<Derivation>(&output).expect("failed to parse derivation")
+                });
 
         debug!(output = ?output, done = true);
 
@@ -413,7 +400,6 @@ impl<'a> GoalExecutor<'a> {
                     self.context.hive_location.clone(),
                     self.context.name.clone(),
                     self.context.modifiers,
-                    self.context.clobber_lock.clone(),
                 )
                 .in_current_span(),
             );
@@ -452,7 +438,6 @@ mod tests {
         function_name, get_test_path,
         hive::{Hive, get_hive_location},
         location,
-        test_support::get_clobber_lock,
     };
     use std::path::PathBuf;
     use std::{collections::HashMap, env};
@@ -471,13 +456,9 @@ mod tests {
         let mut path = get_test_path!();
 
         let location = get_hive_location(path.display().to_string()).unwrap();
-        let hive = Hive::new_from_path(
-            &location,
-            SubCommandModifiers::default(),
-            get_clobber_lock(),
-        )
-        .await
-        .unwrap();
+        let hive = Hive::new_from_path(&location, SubCommandModifiers::default())
+            .await
+            .unwrap();
 
         let node = Node::default();
 

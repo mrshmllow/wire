@@ -8,19 +8,18 @@ use std::{
 };
 
 use clap_verbosity_flag::{Verbosity, WarnLevel};
+use lib::STDIN_CLOBBER_LOCK;
 use tracing_log::AsTrace;
 use tracing_subscriber::{Layer, Registry, layer::SubscriberExt, util::SubscriberInitExt};
 
 struct NonClobberingWriter {
-    clobber_lock: Arc<Mutex<()>>,
     queue: VecDeque<Vec<u8>>,
     stderr: Stderr,
 }
 
 impl NonClobberingWriter {
-    fn new(clobber_lock: Arc<Mutex<()>>) -> Self {
+    fn new() -> Self {
         NonClobberingWriter {
-            clobber_lock,
             queue: VecDeque::with_capacity(100),
             stderr: stderr(),
         }
@@ -39,7 +38,7 @@ impl NonClobberingWriter {
 
 impl Write for NonClobberingWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match self.clobber_lock.clone().try_lock() {
+        match STDIN_CLOBBER_LOCK.clone().try_lock() {
             Ok(_) => {
                 self.dump_previous().map(|()| 0)?;
 
@@ -63,14 +62,14 @@ impl Write for NonClobberingWriter {
     }
 }
 
-pub fn setup_logging(verbosity: Verbosity<WarnLevel>, clobber_lock: Arc<Mutex<()>>) {
+pub fn setup_logging(verbosity: Verbosity<WarnLevel>) {
     let filter = verbosity.log_level_filter().as_trace();
     let registry = tracing_subscriber::registry();
 
     let layer = tracing_subscriber::fmt::layer::<Registry>()
         .without_time()
         .with_target(false)
-        .with_writer(move || NonClobberingWriter::new(clobber_lock.clone()))
+        .with_writer(move || NonClobberingWriter::new())
         .with_filter(filter);
 
     registry.with(layer).init();

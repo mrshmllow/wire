@@ -48,7 +48,6 @@ pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
     command_string: S,
     keep_stdin_open: bool,
     elevated: bool,
-    clobber_lock: Arc<Mutex<()>>,
     log_stdout: bool,
 }
 
@@ -61,11 +60,7 @@ static AHO_CORASICK: LazyLock<AhoCorasick> = LazyLock::new(|| {
 });
 
 impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
-    pub(crate) fn new(
-        command_string: S,
-        modifiers: SubCommandModifiers,
-        clobber_lock: Arc<Mutex<()>>,
-    ) -> Self {
+    pub(crate) fn new(command_string: S, modifiers: SubCommandModifiers) -> Self {
         Self {
             command_string,
             keep_stdin_open: false,
@@ -74,7 +69,6 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
             target: None,
             output_mode: ChildOutputMode::Raw,
             modifiers,
-            clobber_lock,
         }
     }
 

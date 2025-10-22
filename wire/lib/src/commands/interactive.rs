@@ -22,10 +22,10 @@ use std::{
 use tracing::instrument;
 use tracing::{Span, debug, error, info, trace, warn};
 
-use crate::SubCommandModifiers;
 use crate::commands::CommandArguments;
 use crate::commands::interactive_logbuffer::LogBuffer;
 use crate::errors::CommandError;
+use crate::{STDIN_CLOBBER_LOCK, SubCommandModifiers};
 use crate::{
     commands::{ChildOutputMode, WireCommandChip},
     errors::HiveLibError,
@@ -114,7 +114,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
         command.env(key, value);
     }
 
-    let clobber_guard = arguments.clobber_lock.lock().unwrap();
+    let clobber_guard = STDIN_CLOBBER_LOCK.lock().unwrap();
     let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
     let child = pty_pair
         .slave

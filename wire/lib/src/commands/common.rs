@@ -31,12 +31,7 @@ pub async fn push(context: &Context<'_>, push: Push<'_>) -> Result<(), HiveLibEr
     );
 
     let child = run_command_with_env(
-        &CommandArguments::new(
-            command_string,
-            context.modifiers,
-            context.clobber_lock.clone(),
-        )
-        .nix(),
+        &CommandArguments::new(command_string, context.modifiers).nix(),
         HashMap::from([(
             "NIX_SSHOPTS".into(),
             context
@@ -65,7 +60,6 @@ pub async fn evaluate_hive_attribute(
     location: &HiveLocation,
     goal: &EvalGoal<'_>,
     modifiers: SubCommandModifiers,
-    clobber_lock: Arc<Mutex<()>>,
 ) -> Result<String, HiveLibError> {
     let attribute = match location {
         HiveLocation::Flake(uri) => {
@@ -100,7 +94,7 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = run_command(&CommandArguments::new(command_string, modifiers, clobber_lock).nix())?;
+    let child = run_command(&CommandArguments::new(command_string, modifiers).nix())?;
 
     child
         .wait_till_success()

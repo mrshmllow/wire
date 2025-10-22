@@ -10,7 +10,10 @@
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 
-use std::io::IsTerminal;
+use std::{
+    io::IsTerminal,
+    sync::{Arc, LazyLock, Mutex},
+};
 
 use crate::{errors::HiveLibError, hive::node::Name};
 
@@ -46,3 +49,6 @@ pub enum EvalGoal<'a> {
     Inspect,
     GetTopLevel(&'a Name),
 }
+
+pub static STDIN_CLOBBER_LOCK: LazyLock<Arc<Mutex<()>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(())));
