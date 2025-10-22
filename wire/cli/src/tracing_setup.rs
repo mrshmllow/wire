@@ -4,7 +4,7 @@
 use std::{
     collections::VecDeque,
     io::{self, Stderr, Write, stderr},
-    sync::{Arc, Mutex, TryLockError},
+    sync::TryLockError,
 };
 
 use clap_verbosity_flag::{Verbosity, WarnLevel};
@@ -69,7 +69,7 @@ pub fn setup_logging(verbosity: Verbosity<WarnLevel>) {
     let layer = tracing_subscriber::fmt::layer::<Registry>()
         .without_time()
         .with_target(false)
-        .with_writer(move || NonClobberingWriter::new())
+        .with_writer(NonClobberingWriter::new)
         .with_filter(filter);
 
     registry.with(layer).init();

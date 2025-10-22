@@ -11,7 +11,7 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use tracing::{info, instrument};
 
 use crate::commands::common::evaluate_hive_attribute;

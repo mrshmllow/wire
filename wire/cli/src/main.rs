@@ -4,8 +4,6 @@
 #![deny(clippy::pedantic)]
 #![allow(clippy::missing_panics_doc)]
 use std::process::Command;
-use std::sync::Arc;
-use std::sync::Mutex;
 
 use crate::cli::Cli;
 use crate::cli::ToSubCommandModifiers;
@@ -13,7 +11,6 @@ use crate::tracing_setup::setup_logging;
 use clap::CommandFactory;
 use clap::Parser;
 use clap_complete::generate;
-use lib::STDIN_CLOBBER_LOCK;
 use lib::hive::Hive;
 use lib::hive::get_hive_location;
 use miette::IntoDiagnostic;

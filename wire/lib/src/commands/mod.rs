@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-use std::{
-    collections::HashMap,
-    str::from_utf8,
-    sync::{Arc, LazyLock, Mutex},
-};
+use std::{collections::HashMap, str::from_utf8, sync::LazyLock};
 
 use aho_corasick::AhoCorasick;
 use gjson::Value;

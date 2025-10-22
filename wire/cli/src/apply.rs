@@ -9,7 +9,7 @@ use lib::{SubCommandModifiers, errors::HiveLibError};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use std::collections::HashSet;
 use std::io::Read;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use thiserror::Error;
 use tracing::{Span, error, info};
 
