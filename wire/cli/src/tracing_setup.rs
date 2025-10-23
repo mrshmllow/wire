@@ -24,6 +24,12 @@ use tracing_subscriber::{
     util::SubscriberInitExt,
 };
 
+/// The non-clobbering writer ensures that log lines are held while interactive
+/// prompts are shown to the user. If logs where shown, they would "clobber" the
+/// sudo / ssh prompt.
+///
+/// Additionally, the `STDIN_CLOBBER_LOCK` is used to ensure that no two
+/// interactive prompts are shown at the same time.
 struct NonClobberingWriter {
     queue: VecDeque<Vec<u8>>,
     stderr: Stderr,
@@ -74,9 +80,13 @@ impl Write for NonClobberingWriter {
     }
 }
 
+/// Handles event formatting, which falls back to the default formatter
+/// passed.
 struct WireEventFormat(Format<Full, ()>);
+/// Formats the node's name with `WireFieldVisitor`
 struct WireFieldFormat;
 struct WireFieldVisitor<'a>(DefaultVisitor<'a>);
+/// `WireLayer` injects `WireFieldFormat` as an extension on the event
 struct WireLayer;
 
 impl<'a> WireFieldVisitor<'a> {
@@ -93,8 +103,6 @@ impl<'writer> FormatFields<'writer> for WireFieldFormat {
     ) -> std::fmt::Result {
         let mut v = WireFieldVisitor::new(writer, true);
         fields.record(&mut v);
-        // v.finish()
-
         Ok(())
     }
 }
@@ -117,8 +125,7 @@ fn get_style(level: Level) -> Style {
     style = match level {
         Level::TRACE => style.purple(),
         Level::DEBUG => style.blue(),
-        // info will not change the default
-        Level::INFO => style,
+        Level::INFO => style.green(),
         Level::WARN => style.yellow(),
         Level::ERROR => style.red(),
     };
@@ -149,58 +156,56 @@ where
     ) -> std::fmt::Result {
         let metadata = event.metadata();
 
-        // if !matches!(metadata.level(), &tracing::Level::INFO) {
-        //     return self.0.format_event(ctx, writer, event);
-        // }
-
+        // skip events without an "event_scope"
         let Some(scope) = ctx.event_scope() else {
             return self.0.format_event(ctx, writer, event);
         };
 
+        // skip spans without a parent
         let Some(parent) = scope.last() else {
             return self.0.format_event(ctx, writer, event);
         };
 
+        // skip spans that dont refer to the goal step executor
         if parent.name() != "execute" {
             return self.0.format_event(ctx, writer, event);
         }
 
+        // skip spans that dont refer to a specific node being executed
         if parent.fields().field("node").is_none() {
             return self.0.format_event(ctx, writer, event);
         }
 
         let style = get_style(*metadata.level());
 
-        let ext = parent.extensions();
-
-        let node_name = &ext.get::<FormattedFields<WireFieldFormat>>().unwrap();
-
+        // write the log level with colour
         write!(
             writer,
             "{} ",
-            fmt_level(*metadata.level()).if_supports_color(Stream::Stderr, |x| {
-                if *metadata.level() == Level::INFO {
-                    x.style(style.green())
-                } else {
-                    x.style(style)
-                }
-            })
+            fmt_level(*metadata.level()).if_supports_color(Stream::Stderr, |x| { x.style(style) })
         )?;
+
+        // extract the formatted node name into a string
+        let parent_ext = parent.extensions();
+        let node_name = &parent_ext
+            .get::<FormattedFields<WireFieldFormat>>()
+            .unwrap();
 
         write!(writer, "{node_name}")?;
 
+        // write the step name
         if let Some(step) = ctx.event_scope().unwrap().from_root().nth(1) {
             write!(writer, " {}", step.name().italic())?;
         }
 
         write!(writer, " | ")?;
 
+        // write the default fields, including the actual message and other data
         let mut fields = FormattedFields::<DefaultFields>::new(String::new());
 
         ctx.format_fields(fields.as_writer(), event)?;
 
-        write!(writer, "{fields}",)?;
-
+        write!(writer, "{fields}")?;
         writeln!(writer)?;
 
         Ok(())
@@ -233,6 +238,8 @@ where
     }
 }
 
+/// Set up logging for the application
+/// Uses `WireFieldFormat` if -v was never passed
 pub fn setup_logging<L: LogLevel>(verbosity: &Verbosity<L>) {
     let filter = verbosity.log_level_filter().as_trace();
     let registry = tracing_subscriber::registry();
