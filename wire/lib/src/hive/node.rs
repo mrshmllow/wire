@@ -5,6 +5,7 @@
 use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
+use std::assert_matches::debug_assert_matches;
 use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
@@ -12,7 +13,7 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use tracing::{Instrument, Level, debug, error, event, instrument, trace, warn};
+use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace, warn};
 
 use crate::commands::common::evaluate_hive_attribute;
 use crate::commands::{CommandArguments, WireCommandChip, run_command_with_env};
@@ -392,6 +393,12 @@ impl<'a> GoalExecutor<'a> {
     pub async fn execute(mut self) -> Result<(), HiveLibError> {
         let (tx, rx) = oneshot::channel();
         self.context.state.evaluation_rx = Some(rx);
+
+        // The name of this span should never be changed without updating
+        // `wire/cli/tracing_setup.rs`
+        debug_assert_matches!(Span::current().metadata().unwrap().name(), "execute");
+        // This span should always have a `node` field by the same file
+        debug_assert!(Span::current().metadata().unwrap().fields().field("node").is_some());
 
         if !matches!(self.context.goal, Goal::Keys) {
             tokio::spawn(
