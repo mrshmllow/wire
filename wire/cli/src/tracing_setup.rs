@@ -7,15 +7,21 @@ use std::{
     sync::TryLockError,
 };
 
-use clap_verbosity_flag::{Verbosity, WarnLevel};
+use clap_verbosity_flag::{LogLevel, Verbosity};
 use lib::STDIN_CLOBBER_LOCK;
-use owo_colors::{OwoColorize, Stream};
-use tracing::{Subscriber};
+use owo_colors::{OwoColorize, Stream, Style};
+use tracing::{Level, Subscriber};
 use tracing_log::AsTrace;
 use tracing_subscriber::{
-    Layer, field::{RecordFields, VisitFmt}, fmt::{
-        FormatEvent, FormatFields, FormattedFields, format::{self, DefaultFields, DefaultVisitor, Format, Full}
-    }, layer::SubscriberExt, registry::LookupSpan, util::SubscriberInitExt
+    Layer,
+    field::{RecordFields, VisitFmt},
+    fmt::{
+        FormatEvent, FormatFields, FormattedFields,
+        format::{self, DefaultFields, DefaultVisitor, Format, Full},
+    },
+    layer::{Context, SubscriberExt},
+    registry::LookupSpan,
+    util::SubscriberInitExt,
 };
 
 struct NonClobberingWriter {
@@ -71,6 +77,7 @@ impl Write for NonClobberingWriter {
 struct WireEventFormat(Format<Full, ()>);
 struct WireFieldFormat;
 struct WireFieldVisitor<'a>(DefaultVisitor<'a>);
+struct WireLayer;
 
 impl<'a> WireFieldVisitor<'a> {
     fn new(writer: format::Writer<'a>, is_empty: bool) -> Self {
@@ -79,7 +86,11 @@ impl<'a> WireFieldVisitor<'a> {
 }
 
 impl<'writer> FormatFields<'writer> for WireFieldFormat {
-    fn format_fields<R: RecordFields>(&self, writer: format::Writer<'writer>, fields: R) -> std::fmt::Result {
+    fn format_fields<R: RecordFields>(
+        &self,
+        writer: format::Writer<'writer>,
+        fields: R,
+    ) -> std::fmt::Result {
         let mut v = WireFieldVisitor::new(writer, true);
         fields.record(&mut v);
         // v.finish()
@@ -90,12 +101,38 @@ impl<'writer> FormatFields<'writer> for WireFieldFormat {
 
 impl tracing::field::Visit for WireFieldVisitor<'_> {
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
-        match field.name() {
-            "node" => {
-                let _ = write!(self.0.writer(), "{:?}", value.if_supports_color(Stream::Stderr, |text| text.bold()));
-            },
-            _ => return,
+        if field.name() == "node" {
+            let _ = write!(
+                self.0.writer(),
+                "{:?}",
+                value.if_supports_color(Stream::Stderr, |text| text.bold())
+            );
         }
+    }
+}
+
+fn get_style(level: Level) -> Style {
+    let mut style = Style::new();
+
+    style = match level {
+        Level::TRACE => style.purple(),
+        Level::DEBUG => style.blue(),
+        // info will not change the default
+        Level::INFO => style,
+        Level::WARN => style.yellow(),
+        Level::ERROR => style.red(),
+    };
+
+    style
+}
+
+fn fmt_level(level: Level) -> &'static str {
+    match level {
+        Level::TRACE => "TRACE",
+        Level::DEBUG => "DEBUG",
+        Level::INFO => " INFO",
+        Level::WARN => " WARN",
+        Level::ERROR => "ERROR",
     }
 }
 
@@ -128,18 +165,41 @@ where
             return self.0.format_event(ctx, writer, event);
         }
 
-        let Some(node_name) = parent.fields().field("node") else {
+        if parent.fields().field("node").is_none() {
             return self.0.format_event(ctx, writer, event);
-        };
+        }
 
-        let format = WireFieldFormat;
+        let style = get_style(*metadata.level());
 
         let ext = parent.extensions();
-        let fields = &ext
-            .get::<FormattedFields<WireFieldFormat>>()
-            .expect("will never be `None`");
 
-        write!(writer, "{fields}")?;
+        let node_name = &ext.get::<FormattedFields<WireFieldFormat>>().unwrap();
+
+        write!(
+            writer,
+            "{} ",
+            fmt_level(*metadata.level()).if_supports_color(Stream::Stderr, |x| {
+                if *metadata.level() == Level::INFO {
+                    x.style(style.green())
+                } else {
+                    x.style(style)
+                }
+            })
+        )?;
+
+        write!(writer, "{node_name}")?;
+
+        if let Some(step) = ctx.event_scope().unwrap().from_root().nth(1) {
+            write!(writer, " {}", step.name().italic())?;
+        }
+
+        write!(writer, " | ")?;
+
+        let mut fields = FormattedFields::<DefaultFields>::new(String::new());
+
+        ctx.format_fields(fields.as_writer(), event)?;
+
+        write!(writer, "{fields}",)?;
 
         writeln!(writer)?;
 
@@ -147,17 +207,53 @@ where
     }
 }
 
-pub fn setup_logging(verbosity: Verbosity<WarnLevel>) {
+impl<S> Layer<S> for WireLayer
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    fn on_new_span(
+        &self,
+        attrs: &tracing::span::Attributes<'_>,
+        id: &tracing::span::Id,
+        ctx: Context<'_, S>,
+    ) {
+        let span = ctx.span(id).unwrap();
+
+        if span.extensions().get::<WireFieldFormat>().is_some() {
+            return;
+        }
+
+        let mut fields = FormattedFields::<WireFieldFormat>::new(String::new());
+        if WireFieldFormat
+            .format_fields(fields.as_writer(), attrs)
+            .is_ok()
+        {
+            span.extensions_mut().insert(fields);
+        }
+    }
+}
+
+pub fn setup_logging<L: LogLevel>(verbosity: &Verbosity<L>) {
     let filter = verbosity.log_level_filter().as_trace();
     let registry = tracing_subscriber::registry();
+
+    if verbosity.is_present() {
+        let layer = tracing_subscriber::fmt::layer()
+            .without_time()
+            .with_target(false)
+            .with_writer(NonClobberingWriter::new)
+            .with_filter(filter);
+
+        registry.with(layer).init();
+        return;
+    }
 
     let event_formatter = WireEventFormat(format::format().without_time().with_target(false));
 
     let layer = tracing_subscriber::fmt::layer()
-        .fmt_fields(WireFieldFormat)
         .event_format(event_formatter)
         .with_writer(NonClobberingWriter::new)
         .with_filter(filter);
 
-    registry.with(layer).init();
+    registry.with(layer).with(WireLayer).init();
 }

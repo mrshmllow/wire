@@ -5,7 +5,7 @@ use clap::crate_version;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
 use clap_num::number_range;
-use clap_verbosity_flag::WarnLevel;
+use clap_verbosity_flag::InfoLevel;
 use lib::SubCommandModifiers;
 use lib::hive::Hive;
 use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
@@ -29,7 +29,7 @@ pub struct Cli {
     pub command: Commands,
 
     #[command(flatten)]
-    pub verbose: clap_verbosity_flag::Verbosity<WarnLevel>,
+    pub verbose: clap_verbosity_flag::Verbosity<InfoLevel>,
 
     /// Path or flake reference
     #[arg(long, global = true, default_value = std::env::current_dir().unwrap().into_os_string(), visible_alias("flake"))]

@@ -388,7 +388,7 @@ impl<'a> GoalExecutor<'a> {
         let _ = tx.send(output);
     }
 
-    #[instrument(skip_all, fields(goal = %self.context.goal, node = %self.context.name))]
+    #[instrument(skip_all, fields(node = %self.context.name))]
     pub async fn execute(mut self) -> Result<(), HiveLibError> {
         let (tx, rx) = oneshot::channel();
         self.context.state.evaluation_rx = Some(rx);
