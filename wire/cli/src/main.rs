@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
     let args = Cli::parse();
 
     let modifiers = args.to_subcommand_modifiers();
-    setup_logging(args.verbose);
+    setup_logging(&args.verbose);
 
     #[cfg(debug_assertions)]
     if args.markdown_help {
