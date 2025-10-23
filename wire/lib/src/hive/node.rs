@@ -398,7 +398,14 @@ impl<'a> GoalExecutor<'a> {
         // `wire/cli/tracing_setup.rs`
         debug_assert_matches!(Span::current().metadata().unwrap().name(), "execute");
         // This span should always have a `node` field by the same file
-        debug_assert!(Span::current().metadata().unwrap().fields().field("node").is_some());
+        debug_assert!(
+            Span::current()
+                .metadata()
+                .unwrap()
+                .fields()
+                .field("node")
+                .is_some()
+        );
 
         if !matches!(self.context.goal, Goal::Keys) {
             tokio::spawn(
