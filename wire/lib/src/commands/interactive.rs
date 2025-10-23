@@ -541,8 +541,9 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     Ok(())
 }
 
-fn handle_rawmode_data(
-    stderr: &mut std::io::Stderr,
+/// Returns Ok(true) if the data indicates the command was started
+fn handle_rawmode_data<W: std::io::Write>(
+    stderr: &mut W,
     buffer: &[u8],
     n: usize,
     raw_mode_buffer: &mut Vec<u8>,
@@ -655,4 +656,76 @@ fn watch_stdin_from_user(
 
     debug!("stdin_thread: goodbye");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{assert_matches::assert_matches, sync::mpsc::TryRecvError};
+
+    #[test]
+    fn test_rawmode_data() {
+        let aho_corasick = AhoCorasick::builder()
+            .ascii_case_insensitive(false)
+            .match_kind(aho_corasick::MatchKind::LeftmostFirst)
+            .build(["START_NEEDLE"])
+            .unwrap();
+        let mut stderr = vec![];
+        let (began_tx, began_rx) = mpsc::channel::<()>();
+
+        // each "Bla" is 4 bytes.
+        let buffer = "bla bla bla START_NEEDLE bla bla bla".as_bytes();
+        let mut raw_mode_buffer = vec![];
+
+        // handle 1 "bla"
+        assert_matches!(
+            handle_rawmode_data(
+                &mut stderr,
+                buffer,
+                4,
+                &mut raw_mode_buffer,
+                &aho_corasick,
+                &began_tx
+            ),
+            Ok(false)
+        );
+        assert_eq!(raw_mode_buffer, b"bla ");
+        assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
+
+        let buffer = &buffer[4..];
+
+        // handle 2 "bla"'s and half a "START_NEEDLE"
+        let n = 4 + 4 + 6;
+        assert_matches!(
+            handle_rawmode_data(
+                &mut stderr,
+                buffer,
+                n,
+                &mut raw_mode_buffer,
+                &aho_corasick,
+                &began_tx
+            ),
+            Ok(false)
+        );
+        assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
+        assert_eq!(raw_mode_buffer, b"bla bla bla START_");
+
+        let buffer = &buffer[n..];
+
+        // handle rest of the data
+        let n = buffer.len();
+        assert_matches!(
+            handle_rawmode_data(
+                &mut stderr,
+                buffer,
+                n,
+                &mut raw_mode_buffer,
+                &aho_corasick,
+                &began_tx
+            ),
+            Ok(true)
+        );
+        assert_matches!(began_rx.try_recv(), Ok(()));
+        assert_eq!(raw_mode_buffer, b"bla bla bla START_NEEDLE bla bla bla");
+    }
 }
