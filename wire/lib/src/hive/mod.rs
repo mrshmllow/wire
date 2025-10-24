@@ -294,11 +294,14 @@ mod tests {
             assert!(node.build_remotely);
         }
 
-        assert_matches!(
-            hive.force_always_local(vec!["node-a".to_string()]),
-            Ok(())
-        );
+        assert_matches!(hive.force_always_local(vec!["node-a".to_string()]), Ok(()));
 
-        assert!(!hive.nodes.get(&Name("node-a".into())).unwrap().build_remotely);
+        assert!(
+            !hive
+                .nodes
+                .get(&Name("node-a".into()))
+                .unwrap()
+                .build_remotely
+        );
     }
 }
