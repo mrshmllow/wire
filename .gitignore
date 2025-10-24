@@ -4,3 +4,4 @@ result
 .devenv
 .pre-commit-config.yaml
 *.qcow2
+mutants*/
