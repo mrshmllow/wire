@@ -6,7 +6,6 @@ use std::{
     io,
     path::Path,
     process::Command,
-    sync::{Arc, Mutex},
 };
 
 use tempdir::TempDir;

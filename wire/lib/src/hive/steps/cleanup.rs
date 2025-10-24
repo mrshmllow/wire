@@ -27,11 +27,7 @@ impl ExecuteStep for CleanUp {
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
         let output = Command::new("ssh")
-            .args(
-                ctx.node
-                    .target
-                    .create_ssh_args(ctx.modifiers, true, false)?,
-            )
+            .args(ctx.node.target.create_ssh_args(ctx.modifiers, true, false))
             .args(["-O", "stop", ctx.node.target.get_preferred_host()?])
             .output()
             .await;
