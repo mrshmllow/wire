@@ -195,6 +195,7 @@ mod tests {
                 upload_at: UploadKeyAt::PreActivation,
                 environment: im::HashMap::new()
             }],
+            build_remotely: true,
             ..Default::default()
         };
 
@@ -270,5 +271,34 @@ mod tests {
             })
             if logs.contains("The option `deployment._keys' is read-only, but it's set multiple times.")
         );
+    }
+
+    #[tokio::test]
+    async fn test_force_always_local() {
+        let mut location: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
+        location.push("non_trivial_hive");
+        let location = location!(location);
+
+        let mut hive = Hive::new_from_path(&location, SubCommandModifiers::default())
+            .await
+            .unwrap();
+
+        assert_matches!(
+            hive.force_always_local(vec!["non-existant".to_string()]),
+            Err(HiveLibError::HiveInitializationError(
+                HiveInitializationError::NodeDoesNotExist(node)
+            )) if node == "non-existant"
+        );
+
+        for node in hive.nodes.values() {
+            assert!(node.build_remotely);
+        }
+
+        assert_matches!(
+            hive.force_always_local(vec!["node-a".to_string()]),
+            Ok(())
+        );
+
+        assert!(!hive.nodes.get(&Name("node-a".into())).unwrap().build_remotely);
     }
 }

@@ -35,6 +35,8 @@ makeHive {
       source = "hi";
     };
 
+    deployment.buildOnTarget = true;
+
     nixpkgs.hostPlatform = "x86_64-linux";
   };
 }
