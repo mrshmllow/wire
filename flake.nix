@@ -61,6 +61,7 @@
             });
 
             tests = lib.filterAttrs (n: _: (lib.hasPrefix "vm" n)) self.checks.x86_64-linux;
+            inherit (self) devShells;
           };
       };
 
