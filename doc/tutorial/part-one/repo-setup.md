@@ -27,13 +27,21 @@ Great! Now lets use Git & `npins` to create a new Git repo and initialise it.
 [nix-shell]$ git init wire-tutorial
 Initialized empty Git repository in /home/.../wire-tutorial/.git/
 [nix-shell]$ cd wire-tutorial/
-[nix-shell]$ npins init
+[nix-shell]$ npins init --bare
 [INFO ] Welcome to npins!
 [INFO ] Creating `npins` directory
 [INFO ] Writing default.nix
-[INFO ] Writing initial lock file with nixpkgs entry (need to fetch latest commit first)
+[INFO ] Writing initial lock file (empty)
 [INFO ] Successfully written initial files to 'npins/sources.json'.
+[nix-shell]$ npins add github pkpbynum nixpkgs --branch pb/disk-size-bootloader
 ```
+
+::: details
+
+This tutorial is using a [PR](https://github.com/NixOS/nixpkgs/pull/449945) that
+fixes virutal machine bootloader disk sizes.
+
+:::
 
 This has created a pinned version of `nixpkgs` for us to use in our Wire hive.
 
@@ -58,10 +66,13 @@ project:
 
 ```sh
 [nix-shell]$ npins show
-nixpkgs: (Nix channel)
-    name: nixpkgs-unstable
-    url: https://releases.nixos.org/nixpkgs/nixpkgs-25.11pre861972.88cef159e47c/nixexprs.tar.xz
-    hash: 0zscvr0qa3capyzhmp798hgncz2qy8ggm843y10wk35jk7p0174f
+nixpkgs: (git repository)
+    repository: https://github.com/pkpbynum/nixpkgs.git
+    branch: pb/disk-size-bootloader
+    submodules: false
+    revision: da2060bdc1c9bc35acc4eafa265ba6b6c64f9926
+    url: https://github.com/pkpbynum/nixpkgs/archive/da2060bdc1c9bc35acc4eafa265ba6b6c64f9926.tar.gz
+    hash: 0j07gvnm7c5mzw1313asa8limzbmsbnsd02dcw22ing8fg3vbb7g
     frozen: false
 
 wire: (git release tag)

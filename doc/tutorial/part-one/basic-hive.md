@@ -33,11 +33,11 @@ Lets check out what wire sees with `wire show`.
 
 ```sh
 [nix-shell]$ wire show
- WARN wire: use --json to output something scripting suitable
-Hive {
-    nodes: {},
-    schema: 0,
-}
+ INFO eval_hive: evaluating hive HiveNix("/home/marsh/scratch/wire-tutorial/hive.nix")
+ WARN use --json to output something scripting suitable
+Summary: 0 total node(s), totalling 0 keys (0 distinct).
+Note: Listed connections are tried from Left to Right
+
 ```
 
 The line `nodes: {}` means theres no "nodes" in our hive.
@@ -56,7 +56,7 @@ in
 wire.makeHive {
   meta.nixpkgs = import sources.nixpkgs { };
 
-  virtual-machine = { # [!code ++]
+  virtual-machine = { pkgs, ... }: { # [!code ++]
     deployment.target = { # [!code ++]
         port = 2222; # [!code ++]
         hosts = [ "localhost" ]; # [!code ++]
@@ -132,7 +132,7 @@ in
 wire.makeHive {
   meta.nixpkgs = import sources.nixpkgs { };
 
-  virtual-machine = {
+  virtual-machine = { pkgs, ... }: {
     deployment.target = {
         port = 2222;
         hosts = [ "localhost" ];

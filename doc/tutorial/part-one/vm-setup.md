@@ -41,9 +41,13 @@ in
     getty.autologinUser = "root";
   };
 
+  boot.growPartition = true;
+
   virtualisation = {
     graphics = false;
     useBootLoader = true;
+
+    diskSize = 5 * 1024;
 
     # forward `openssh` port 22 to localhost:2222.
     forwardPorts = [
