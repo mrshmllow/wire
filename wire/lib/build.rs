@@ -189,7 +189,10 @@ fn main() -> Result<()> {
         .wrap_err("creating target directory")?;
     fs::write(
         Path::new(&md_out_dir).join("DIAGNOSTICS.md"),
-        entries.iter().map(std::string::ToString::to_string).join("\n\n"),
+        entries
+            .iter()
+            .map(std::string::ToString::to_string)
+            .join("\n\n"),
     )
     .into_diagnostic()
     .wrap_err("writing DIAGNOSTICS.md")?;

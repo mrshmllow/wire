@@ -257,7 +257,7 @@ impl Node {
     }
 }
 
-#[must_use] 
+#[must_use]
 pub fn should_apply_locally(allow_local_deployment: bool, name: &str) -> bool {
     *name == *gethostname() && allow_local_deployment
 }
@@ -356,7 +356,7 @@ pub struct GoalExecutor<'a> {
 }
 
 impl<'a> GoalExecutor<'a> {
-    #[must_use] 
+    #[must_use]
     pub fn new(context: Context<'a>) -> Self {
         Self {
             steps: vec![
