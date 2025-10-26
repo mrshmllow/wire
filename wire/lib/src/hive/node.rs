@@ -157,7 +157,7 @@ impl Target {
             .ok_or(HiveLibError::NetworkError(NetworkError::HostsExhausted))
     }
 
-    pub fn host_failed(&mut self) {
+    pub const fn host_failed(&mut self) {
         self.current_host += 1;
     }
 
@@ -257,6 +257,7 @@ impl Node {
     }
 }
 
+#[must_use] 
 pub fn should_apply_locally(allow_local_deployment: bool, name: &str) -> bool {
     *name == *gethostname() && allow_local_deployment
 }
@@ -355,6 +356,7 @@ pub struct GoalExecutor<'a> {
 }
 
 impl<'a> GoalExecutor<'a> {
+    #[must_use] 
     pub fn new(context: Context<'a>) -> Self {
         Self {
             steps: vec![

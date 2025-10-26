@@ -2,6 +2,7 @@
 // Copyright 2024-2025 wire Contributors
 
 use miette::{Context, IntoDiagnostic as _, Result, miette};
+use std::fmt::Write;
 use std::{
     env,
     fmt::{self, Display, Formatter},
@@ -45,7 +46,7 @@ impl Display for DerviedError {
 {help}
 :::"
                 ),
-                None => "".to_string(),
+                None => String::new(),
             },
             message = match &self.message {
                 Some(message) => format!(
@@ -54,7 +55,7 @@ impl Display for DerviedError {
 {message}
 ```"
                 ),
-                None => "".to_string(),
+                None => String::new(),
             }
         )
     }
@@ -70,7 +71,7 @@ impl DerviedError {
             list.tokens
                 .clone()
                 .into_iter()
-                .filter(|tok| matches!(tok, TokenTree::Literal(tok) if tok.to_string().starts_with("\"")))
+                .filter(|tok| matches!(tok, TokenTree::Literal(tok) if tok.to_string().starts_with('"')))
                 .map(|tok| tok.to_string())
                 .join(""),
         );
@@ -91,7 +92,7 @@ impl DerviedError {
                 matches!(ident, TokenTree::Ident(ident) if ident == "code")
                     && matches!(group, TokenTree::Group(..))
             }) {
-            Some(group.stream().to_string().replace(" ", ""))
+            Some(group.stream().to_string().replace(' ', ""))
         } else {
             None
         };
@@ -116,9 +117,9 @@ impl DerviedError {
         Err(miette!("Had no code."))
     }
 
-    fn update_from_list(&mut self, list: MetaList) {
-        let _ = self.get_error(&list);
-        let _ = self.update_diagnostic(&list);
+    fn update_from_list(&mut self, list: &MetaList) {
+        let _ = self.get_error(list);
+        let _ = self.update_diagnostic(list);
     }
 
     fn update_from_namevalue(&mut self, list: MetaNameValue) -> Result<(), miette::Error> {
@@ -129,8 +130,7 @@ impl DerviedError {
         if let Expr::Lit(lit) = list.value
             && let Lit::Str(str) = lit.lit
         {
-            self.doc_string
-                .push_str(&format!("{}\n\n", &str.value()[1..]));
+            let _ = write!(self.doc_string, "{}\n\n", &str.value()[1..]);
         }
 
         Ok(())
@@ -141,9 +141,7 @@ fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=src/errors.rs");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").into_diagnostic()?;
-    let md_out_dir = if let Ok(path) = env::var("DIAGNOSTICS_MD_OUTPUT") {
-        path
-    } else {
+    let Ok(md_out_dir) = env::var("DIAGNOSTICS_MD_OUTPUT") else {
         return Ok(());
     };
 
@@ -170,12 +168,12 @@ fn main() -> Result<()> {
                 for attribute in variant.attrs.clone() {
                     match attribute.meta {
                         Meta::List(list) => {
-                            entry.update_from_list(list);
+                            entry.update_from_list(&list);
                         }
                         Meta::NameValue(nv) => {
                             let _ = entry.update_from_namevalue(nv);
                         }
-                        _ => {}
+                        Meta::Path(_) => {}
                     }
                 }
 
@@ -191,7 +189,7 @@ fn main() -> Result<()> {
         .wrap_err("creating target directory")?;
     fs::write(
         Path::new(&md_out_dir).join("DIAGNOSTICS.md"),
-        entries.iter().map(|x| x.to_string()).join("\n\n"),
+        entries.iter().map(std::string::ToString::to_string).join("\n\n"),
     )
     .into_diagnostic()
     .wrap_err("writing DIAGNOSTICS.md")?;

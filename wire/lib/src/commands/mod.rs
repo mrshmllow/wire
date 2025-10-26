@@ -56,7 +56,7 @@ static AHO_CORASICK: LazyLock<AhoCorasick> = LazyLock::new(|| {
 });
 
 impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
-    pub(crate) fn new(command_string: S, modifiers: SubCommandModifiers) -> Self {
+    pub(crate) const fn new(command_string: S, modifiers: SubCommandModifiers) -> Self {
         Self {
             command_string,
             keep_stdin_open: false,
@@ -68,27 +68,27 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
         }
     }
 
-    pub(crate) fn on_target(mut self, target: Option<&'a Target>) -> Self {
+    pub(crate) const fn on_target(mut self, target: Option<&'a Target>) -> Self {
         self.target = target;
         self
     }
 
-    pub(crate) fn nix(mut self) -> Self {
+    pub(crate) const fn nix(mut self) -> Self {
         self.output_mode = ChildOutputMode::Nix;
         self
     }
 
-    pub(crate) fn keep_stdin_open(mut self) -> Self {
+    pub(crate) const fn keep_stdin_open(mut self) -> Self {
         self.keep_stdin_open = true;
         self
     }
 
-    pub(crate) fn elevated(mut self) -> Self {
+    pub(crate) const fn elevated(mut self) -> Self {
         self.elevated = true;
         self
     }
 
-    pub(crate) fn log_stdout(mut self) -> Self {
+    pub(crate) const fn log_stdout(mut self) -> Self {
         self.log_stdout = true;
         self
     }

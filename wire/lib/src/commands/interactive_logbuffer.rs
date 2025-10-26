@@ -7,7 +7,7 @@ pub(crate) struct LogBuffer {
 }
 
 impl LogBuffer {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self { buffer: Vec::new() }
     }
 

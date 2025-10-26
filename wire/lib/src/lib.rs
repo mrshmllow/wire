@@ -1,12 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-#![deny(clippy::pedantic)]
-#![allow(
-    clippy::missing_errors_doc,
-    clippy::must_use_candidate,
-    clippy::missing_panics_doc
-)]
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 

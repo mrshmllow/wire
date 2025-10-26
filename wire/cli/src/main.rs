@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-#![deny(clippy::pedantic)]
-#![allow(clippy::missing_panics_doc)]
 use std::process::Command;
 
 use crate::cli::Cli;

@@ -119,7 +119,7 @@ impl tracing::field::Visit for WireFieldVisitor<'_> {
     }
 }
 
-fn get_style(level: Level) -> Style {
+const fn get_style(level: Level) -> Style {
     let mut style = Style::new();
 
     style = match level {
@@ -133,7 +133,7 @@ fn get_style(level: Level) -> Style {
     style
 }
 
-fn fmt_level(level: Level) -> &'static str {
+const fn fmt_level(level: Level) -> &'static str {
     match level {
         Level::TRACE => "TRACE",
         Level::DEBUG => "DEBUG",

@@ -7,6 +7,14 @@ package.version = "1.0.0-alpha.0"
 [workspace.metadata.crane]
 name = "wire"
 
+[workspace.lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+missing_const_for_fn = "deny"
+
+# annoying to deal with
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+
 [workspace.dependencies]
 futures-util = { version = "0.3.31", features = ["sink", "std"] }
 clap = { version = "4.5.50", features = ["derive", "string", "cargo"] }

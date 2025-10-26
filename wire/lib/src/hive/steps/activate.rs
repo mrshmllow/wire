@@ -21,7 +21,7 @@ impl Display for SwitchToConfiguration {
     }
 }
 
-pub async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
+async fn wait_for_ping(ctx: &Context<'_>) -> Result<(), HiveLibError> {
     let host = ctx.node.target.get_preferred_host()?;
     let mut result = ctx.node.ping(ctx.modifiers).await;
 

@@ -288,7 +288,7 @@ fn build_command<S: AsRef<str>>(
 }
 
 impl CompletionStatus {
-    fn new() -> Self {
+    const fn new() -> Self {
         CompletionStatus {
             completed: Mutex::new(false),
             success: Mutex::new(None),

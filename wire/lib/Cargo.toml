@@ -3,6 +3,9 @@ name = "lib"
 version.workspace = true
 edition.workspace = true
 
+[lints]
+workspace = true
+
 [features]
 no_web_tests = []
 
