@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the .drv is required
 - A node which is going to be applied locally will now never `push` or
   `cleanup`.
+- `show` subcommand looks nicer now.
 
 ### Documented
 

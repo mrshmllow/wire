@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use itertools::Itertools;
 use nix_compat::flakeref::FlakeRef;
 use node::{Name, Node};
+use owo_colors::{OwoColorize, Stream};
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::collections::hash_map::OccupiedEntry;
 use std::ffi::OsStr;
+use std::fmt::Display;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -77,6 +80,74 @@ impl Hive {
                 ))?
                 .build_remotely = false;
         }
+
+        Ok(())
+    }
+}
+
+impl Display for Hive {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for (name, node) in &self.nodes {
+            writeln!(
+                f,
+                "Node {} {}:\n",
+                name.bold(),
+                format!("({})", node.host_platform)
+                    .italic()
+                    .if_supports_color(Stream::Stdout, |x| x.dimmed()),
+            )?;
+
+            if !node.tags.is_empty() {
+                write!(f, " > {}", "Tags:".bold())?;
+                writeln!(f, " {:?}", node.tags)?;
+            }
+
+            write!(f, " > {}", "Connection:".bold())?;
+            writeln!(f, " {{{}}}", node.target)?;
+
+            write!(f, " > {} {}{}", "Build remotely".bold(), "`deployment.buildOnTarget`".if_supports_color(Stream::Stdout, |x| x.dimmed()).italic(), ":".bold())?;
+            writeln!(f, " {}", node.build_remotely)?;
+
+            write!(f, " > {} {}{}", "Local apply allowed".bold(), "`deployment.allowLocalDeployment`".if_supports_color(Stream::Stdout, |x| x.dimmed()).italic(), ":".bold())?;
+            writeln!(f, " {}", node.allow_local_deployment)?;
+
+            if !node.keys.is_empty() {
+                write!(f, " > {}", "Keys:".bold())?;
+                writeln!(f, " {} key(s)", node.keys.len())?;
+
+                for key in &node.keys {
+                    writeln!(f, "    > {key}")?;
+                }
+            }
+
+            writeln!(f)?;
+        }
+
+        let total_keys = self
+            .nodes
+            .values()
+            .flat_map(|node| node.keys.iter())
+            .collect::<Vec<_>>();
+        let distinct_keys = self
+            .nodes
+            .values()
+            .flat_map(|node| node.keys.iter())
+            .unique()
+            .collect::<Vec<_>>()
+            .len();
+
+        write!(f, "{}", "Summary:".bold())?;
+        writeln!(
+            f,
+            " {} total node(s), totalling {} keys ({distinct_keys} distinct).",
+            self.nodes.len(),
+            total_keys.len()
+        )?;
+        writeln!(
+            f,
+            "{}",
+            "Note: Listed connections are tried from Left to Right".italic(),
+        )?;
 
         Ok(())
     }

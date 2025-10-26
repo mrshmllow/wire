@@ -170,6 +170,20 @@ impl Target {
     }
 }
 
+impl Display for Target {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let hosts = itertools::Itertools::join(
+            &mut self
+                .hosts
+                .iter()
+                .map(|host| format!("{}@{host}:{}", self.user, self.port)),
+            ", ",
+        );
+
+        write!(f, "{hosts}")
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Node {
     #[serde(rename = "target")]

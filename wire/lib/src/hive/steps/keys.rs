@@ -5,6 +5,7 @@ use base64::Engine;
 use base64::prelude::BASE64_STANDARD;
 use futures::future::join_all;
 use itertools::{Itertools, Position};
+use owo_colors::OwoColorize;
 use prost::Message;
 use prost::bytes::BytesMut;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fmt::Display;
 use std::io::Cursor;
-use std::path::PathBuf;
+use std::path::{PathBuf};
 use std::pin::Pin;
 use std::process::Stdio;
 use std::str::from_utf8;
@@ -60,6 +61,27 @@ pub struct Key {
     pub upload_at: UploadKeyAt,
     #[serde(default)]
     pub environment: im::HashMap<String, String>,
+}
+
+impl Display for Key {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {} {}:{} {}",
+            match self.source {
+                Source::String(_) => "Literal",
+                Source::Path(_) => "Path",
+                Source::Command(_) => "Command",
+            }.if_supports_color(owo_colors::Stream::Stdout, |x| x.dimmed()),
+            [self.dest_dir.clone(), self.name.clone()]
+                .iter()
+                .collect::<PathBuf>()
+                .display(),
+            self.user,
+            self.group,
+            self.permissions,
+        )
+    }
 }
 
 fn get_u32_permission(key: &Key) -> Result<u32, KeyError> {
@@ -114,10 +136,7 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::KeySpec, Vec<u8>), K
 
     let destination: PathBuf = [key.dest_dir.clone(), key.name.clone()].iter().collect();
 
-    debug!(
-        "Staging push to {}",
-        destination.clone().into_os_string().into_string().unwrap()
-    );
+    debug!("Staging push to {}", destination.clone().display());
 
     Ok((
         key_agent::keys::KeySpec {

@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
                 serde_json::to_string(&hive).into_diagnostic()?
             } else {
                 warn!("use --json to output something scripting suitable");
-                format!("{hive:#?}")
+                format!("{hive}")
             }
         }),
         cli::Commands::Completions { shell } => {
