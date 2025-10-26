@@ -5,6 +5,7 @@
       lib,
       craneLib,
       pkgs,
+      cargo-testing-exports,
       ...
     }:
     let
@@ -28,6 +29,7 @@
           cfg.installationScript
           ''
             export WIRE_TEST_DIR=$(realpath ./tests/rust)
+            ${cargo-testing-exports}
           ''
         ];
       };
