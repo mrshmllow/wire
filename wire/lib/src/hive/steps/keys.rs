@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use std::env;
 use std::fmt::Display;
 use std::io::Cursor;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::process::Stdio;
 use std::str::from_utf8;
@@ -72,7 +72,8 @@ impl Display for Key {
                 Source::String(_) => "Literal",
                 Source::Path(_) => "Path",
                 Source::Command(_) => "Command",
-            }.if_supports_color(owo_colors::Stream::Stdout, |x| x.dimmed()),
+            }
+            .if_supports_color(owo_colors::Stream::Stdout, |x| x.dimmed()),
             [self.dest_dir.clone(), self.name.clone()]
                 .iter()
                 .collect::<PathBuf>()

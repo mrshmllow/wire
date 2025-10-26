@@ -105,10 +105,26 @@ impl Display for Hive {
             write!(f, " > {}", "Connection:".bold())?;
             writeln!(f, " {{{}}}", node.target)?;
 
-            write!(f, " > {} {}{}", "Build remotely".bold(), "`deployment.buildOnTarget`".if_supports_color(Stream::Stdout, |x| x.dimmed()).italic(), ":".bold())?;
+            write!(
+                f,
+                " > {} {}{}",
+                "Build remotely".bold(),
+                "`deployment.buildOnTarget`"
+                    .if_supports_color(Stream::Stdout, |x| x.dimmed())
+                    .italic(),
+                ":".bold()
+            )?;
             writeln!(f, " {}", node.build_remotely)?;
 
-            write!(f, " > {} {}{}", "Local apply allowed".bold(), "`deployment.allowLocalDeployment`".if_supports_color(Stream::Stdout, |x| x.dimmed()).italic(), ":".bold())?;
+            write!(
+                f,
+                " > {} {}{}",
+                "Local apply allowed".bold(),
+                "`deployment.allowLocalDeployment`"
+                    .if_supports_color(Stream::Stdout, |x| x.dimmed())
+                    .italic(),
+                ":".bold()
+            )?;
             writeln!(f, " {}", node.allow_local_deployment)?;
 
             if !node.keys.is_empty() {
