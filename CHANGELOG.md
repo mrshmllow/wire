@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--path` now supports flakerefs (`github:foo/bar`, `git+file:///...`,
   `https://.../main.tar.gz`, etc).
 - `--flake` is now an alias for `--path`.
-- Wire will now attempt to use SSH `ControlMaster` by default.
+- wire will now attempt to use SSH `ControlMaster` by default.
 - A terminal bell will be output if a sudo / ssh prompt is ever printed.
 
 ### Fixed
@@ -44,18 +44,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documented
 
 - Added a real tutorial, and separated many how-to guides.
-  The tutorial leads the user through creating and deploying a Wire Hive.
+  The tutorial leads the user through creating and deploying a wire Hive.
 
 ## [0.5.0] - 2025-09-18
 
 ### Added
 
-- Added `--reboot`. Wire will wait for the node to reconnect after rebooting.
-  Wire will refuse to reboot localhost. Keys post-activation will be applied
+- Added `--reboot`. wire will wait for the node to reconnect after rebooting.
+  wire will refuse to reboot localhost. Keys post-activation will be applied
   after rebooting!
 - Most errors now have error codes and documentation links.
 - Added the global flag `--non-interactive`.
-- Wire now creates its own PTY to interface with openssh's PTY to allow for
+- wire now creates its own PTY to interface with openssh's PTY to allow for
   interactive sudo authentication on both remote and local targets.
 
   Using a wheel user as `deployment.target.user` is no longer necessary
@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `wire inspect/show --json` will no longer use a pretty print.
-- Wire will now wait for the node to reconnect if activation failed (excluding
+- wire will now wait for the node to reconnect if activation failed (excluding
   dry-activate).
 - Nix logs with the `Talkative` and `Chatty` level have been moved to
   `tracing_level::TRACE`.
@@ -84,13 +84,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Nodes may now fail without stopping the entire hive from continuing. A summary
   of errors will be presented at the end of the apply process.
-- Wire will now ping the node before it proceeds executing.
-- Wire will now properly respect `deployment.target.hosts`.
-- Wire will now attempt each target host in order until a valid one is found.
+- wire will now ping the node before it proceeds executing.
+- wire will now properly respect `deployment.target.hosts`.
+- wire will now attempt each target host in order until a valid one is found.
 
 ### Changed
 
-- Wire now directly evaluates your hive instead of shipping extra nix code along with its binary.
+- wire now directly evaluates your hive instead of shipping extra nix code along with its binary.
   You must now use `outputs.makeHive { ... }` instead of a raw attribute.
   This can be obtained with npins or a flake input.
 - The expected flake output name has changed from `outputs.colmena` to `outputs.wire`.
@@ -104,7 +104,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Dependency Updates.
-- Wire now compiles and includes key agents for multiple architectures, currently only linux.
+- wire now compiles and includes key agents for multiple architectures, currently only linux.
 - There is a new package output, `wire-small`, for testing purposes.
   It only compiles the key agent for the host that builds `wire-small`.
 - `--no-progress` now defaults to true if stdin does not refer to a tty (unix pipelines, in CI).

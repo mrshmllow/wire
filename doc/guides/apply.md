@@ -70,7 +70,7 @@ like `keys` and `push`.
 
 ### `wire apply keys`
 
-Wire will push all deployment keys to nodes, and do nothing else. While running
+wire will push all deployment keys to nodes, and do nothing else. While running
 this goal, option
 [`deployment.keys.<name>.uploadAt`](/reference/module#deployment-keys-name-uploadat)
 has no effect and all keys will be pushed. Read [the secret management guide](./keys)
@@ -78,7 +78,7 @@ to learn more about wire deployment keys.
 
 ### `wire apply push`
 
-Wire will "push" (equivalent to [`nix
+wire will "push" (equivalent to [`nix
 copy`](https://nix.dev/manual/nix/2.18/command-ref/new-cli/nix3-copy)) the
 `.drv` file that can produce the node's NixOS system when built.
 
@@ -102,7 +102,7 @@ machine. Goals like `push` and `build`, wont actually "push" anything as
 the paths already exists on the local machine.
 
 When applying to your local machine, wire can interactively run `sudo`!
-Wire will prompt for your password, meaning wire can be ran as any user in
+wire will prompt for your password, meaning wire can be ran as any user in
 the `wheel` group.
 
 ## Applying specific nodes

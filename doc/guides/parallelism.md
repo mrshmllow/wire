@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Use Parallelism
-description: A deeper dive into parallelism with Wire Tool.
+description: A deeper dive into parallelism with wire Tool.
 ---
 
 # {{ $frontmatter.title }}
@@ -10,8 +10,8 @@ description: A deeper dive into parallelism with Wire Tool.
 
 ## Controlling CPU Usage
 
-Wire evaluates, builds, pushes, and deploys each node completely independently
-from each other. Internally Wire calls this process a "node execution".
+wire evaluates, builds, pushes, and deploys each node completely independently
+from each other. Internally wire calls this process a "node execution".
 
 The default number of parallel _node executions_ is `10`, which can be
 controlled with the `-p` / `--parallel` argument.

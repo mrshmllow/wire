@@ -10,7 +10,7 @@ description: Installing npins, nix, and enabling the binary cache.
 
 ::: warning
 This page is for the purposes for the **Tutorial**.
-You should read [How-to Guides - Install wire](/guides/installation.html) for installing Wire for
+You should read [How-to Guides - Install wire](/guides/installation.html) for installing wire for
 regular use.
 :::
 
@@ -28,7 +28,7 @@ nix (Nix) 2.11.0
 
 ## Using `cache.althaea.zone`
 
-Because Wire can be heavy to compile, it is distributed with a [binary
+Because wire can be heavy to compile, it is distributed with a [binary
 cache](https://wiki.nixos.org/wiki/Binary_Cache). It's URL is
 `https://cache.althaea.zone` and it's public key is
 `cache.althaea.zone:BelRpa863X9q3Y+AOnl5SM7QFzre3qb+5I7g2s/mqHI=`.

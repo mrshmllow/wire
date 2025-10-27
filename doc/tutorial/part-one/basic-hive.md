@@ -11,7 +11,7 @@ description: Creating a basic hive and deploying changes to the virtual machine.
 ## Editing `hive.nix`
 
 Open a text editor and edit `hive.nix`. You should copy this example, which imports
-the npins sources we added. It also calls `makeHive`, and gives Wire `nixpkgs`
+the npins sources we added. It also calls `makeHive`, and gives wire `nixpkgs`
 from npins as well.
 
 ```nix:line-numbers [hive.nix]
@@ -22,7 +22,7 @@ let
   wire = import sources.wire;
 in
 wire.makeHive {
-  # give Wire nixpkgs from npins
+  # give wire nixpkgs from npins
   meta.nixpkgs = import sources.nixpkgs { };
 
   # we'll edit this part

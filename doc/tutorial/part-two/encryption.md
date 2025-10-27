@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Deployment Keys Basics
-description: Deploy a age-encrypted secret with Wire tool.
+description: Deploy a age-encrypted secret with wire tool.
 ---
 
 # {{ $frontmatter.title }}

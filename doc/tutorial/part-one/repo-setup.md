@@ -43,7 +43,7 @@ fixes virutal machine bootloader disk sizes.
 
 :::
 
-This has created a pinned version of `nixpkgs` for us to use in our Wire hive.
+This has created a pinned version of `nixpkgs` for us to use in our wire hive.
 
 ## Adding wire as a dependency
 

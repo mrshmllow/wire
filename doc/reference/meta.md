@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Meta Options
-description: Wire hive meta options.
+description: wire hive meta options.
 ---
 
 # {{ $frontmatter.title }}
@@ -40,7 +40,7 @@ Extra `specialArgs` to pass to each node & `default`.
 
 ::: tip
 
-Wire always passes `name` (name of the node)
+wire always passes `name` (name of the node)
 and `nodes` (attribute set of all nodes) as args, even if `meta.specialArgs =
 { }`.
 

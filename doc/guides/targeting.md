@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Target Nodes
-description: Tags, nodes, and how to target them with Wire Tool.
+description: Tags, nodes, and how to target them with wire Tool.
 ---
 
 # {{ $frontmatter.title }}

@@ -1,22 +1,22 @@
 ---
 comment: false
-title: Wire Tutorial Overview
-description: In this tutorial we will create and deploy a Wire Hive.
+title: wire Tutorial Overview
+description: In this tutorial we will create and deploy a wire Hive.
 ---
 
 # {{ $frontmatter.title }}
 
-Wire is a tool to deploy NixOS systems. Its usage is inspired by [colmena](https://colmena.cli.rs/). In many places it's configuration attempts to remain a superset[^1] of colmena, however it is **not** a fork.
+wire is a tool to deploy NixOS systems. Its usage is inspired by [colmena](https://colmena.cli.rs/). In many places it's configuration attempts to remain a superset[^1] of colmena, however it is **not** a fork.
 
 [^1]: A lot of your colmena module options will continue to work with wire, but wire has additional ergonomic changes you can take advantage of.
 
 ::: warning
-Wire is alpha software, please use at your own risk. Many features listed in this documentation overall may not be complete / implemented, however features covered in this this tutorial are considered complete.
+wire is alpha software, please use at your own risk. Many features listed in this documentation overall may not be complete / implemented, however features covered in this this tutorial are considered complete.
 :::
 
 ---
 
-In this tutorial we will create and deploy a Wire Hive. Along the way we will
+In this tutorial we will create and deploy a wire Hive. Along the way we will
 encounter [npins](https://github.com/andir/npins), simple NixOS
 configurations, virutal machines, and deployment keys.
 
@@ -26,11 +26,11 @@ Ready? Skip to [Nix Setup](./part-one/nix-setup).
 
 </div>
 
-## Why Wire?
+## Why wire?
 
 ### Features
 
-| Features                           | Wire               | Colmena            |
+| Features                           | wire               | Colmena            |
 | ---------------------------------- | ------------------ | ------------------ |
 | Node Tagging                       | :white_check_mark: | :white_check_mark: |
 | Secret Management                  | :white_check_mark: | :white_check_mark: |
@@ -53,11 +53,11 @@ Ready? Skip to [Nix Setup](./part-one/nix-setup).
     `wheel` or not. You may need to enter your password multiple times for the various elevated
     steps wire needs to perform.
 
-[^5]: Wire lacks an equivalent to `colmena exec`.
+[^5]: wire lacks an equivalent to `colmena exec`.
 
 ### Speed
 
-Wire is about >2x faster than colmena deploying [identical large
+wire is about >2x faster than colmena deploying [identical large
 hives](https://github.com/mrshmllow/wire/blob/main/bench/run.nix).
 
 | Command          |         Mean [s] | Min [s] | Max [s] |    Relative |
