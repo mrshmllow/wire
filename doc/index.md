@@ -11,14 +11,20 @@ hero:
       text: Read Tutorial
       link: /tutorial/overview
     - theme: alt
-      text: Guides
+      text: How-to Guides
       link: /guides/installation
+    - theme: alt
+      text: Sources
+      link: https://github.com/mrshmllow/wire.git
 
 features:
-  - title: Parallelism
-    details: Build and deploy many nodes at once
-  - title: Secret management
-    details: Fast & Unopinionated secret management
-  - title: Node Tagging & CI Friendly
-    details: Pipe data through jq
+  - title: Deploy in Parallel
+    details: Build and deploy many nodes at once.
+    icon: 💽
+  - title: Manage Secrets
+    details: Fast & Unopinionated secret management. Bring your own GPG, Age, or any other encryption tool.
+    icon: 🔑
+  - title: Deploy as Any User
+    details: Non-root deployments and interactive authentication is fully supported.
+    icon: 🧑‍💻
 ---
