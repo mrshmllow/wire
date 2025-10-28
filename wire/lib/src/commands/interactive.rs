@@ -10,7 +10,6 @@ use nix::{
 };
 use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
-use tokio::sync::{Mutex, Notify};
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Sender};
 use std::{
@@ -18,6 +17,7 @@ use std::{
     os::fd::{AsFd, OwnedFd},
     sync::Arc,
 };
+use tokio::sync::{Mutex, Notify};
 use tracing::instrument;
 use tracing::{Span, debug, error, info, trace, warn};
 
@@ -153,7 +153,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             log_stdout: arguments.log_stdout,
         };
 
-        tokio::task::spawn(async move {dynamic_watch_sudo_stdout(arguments).await})
+        tokio::task::spawn(async move { dynamic_watch_sudo_stdout(arguments).await })
     };
 
     let (write_stdin_pipe_r, write_stdin_pipe_w) =
@@ -291,7 +291,7 @@ impl CompletionStatus {
         CompletionStatus {
             completed: Mutex::new(false),
             success: Mutex::new(None),
-            notify: Notify::new()
+            notify: Notify::new(),
         }
     }
 
@@ -352,13 +352,7 @@ impl WireCommandChip for InteractiveChildChip {
 
         debug!("child did not succeed");
 
-        let logs = self
-            .stderr_collection
-            .lock()
-            .await
-            .iter()
-            .rev()
-            .join("\n");
+        let logs = self.stderr_collection.lock().await.iter().rev().join("\n");
 
         Err(CommandError::CommandFailed {
             command_ran: self.original_command,
