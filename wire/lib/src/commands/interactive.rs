@@ -10,10 +10,9 @@ use nix::{
 };
 use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
+use tokio::sync::{Mutex, Notify};
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Condvar, Mutex};
-use std::thread::JoinHandle;
 use std::{
     io::{Read, Write},
     os::fd::{AsFd, OwnedFd},
@@ -48,7 +47,7 @@ pub(crate) struct InteractiveChildChip {
     original_command: String,
 
     completion_status: Arc<CompletionStatus>,
-    stdout_handle: JoinHandle<Result<(), CommandError>>,
+    stdout_handle: tokio::task::JoinHandle<Result<(), CommandError>>,
 }
 
 struct StdinTermiosAttrGuard(Termios);
@@ -56,7 +55,7 @@ struct StdinTermiosAttrGuard(Termios);
 struct CompletionStatus {
     completed: Mutex<bool>,
     success: Mutex<Option<bool>>,
-    condvar: Condvar,
+    notify: Notify,
 }
 
 struct WatchStdoutArguments {
@@ -154,7 +153,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             log_stdout: arguments.log_stdout,
         };
 
-        std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
+        tokio::task::spawn(async move {dynamic_watch_sudo_stdout(arguments).await})
     };
 
     let (write_stdin_pipe_r, write_stdin_pipe_w) =
@@ -288,32 +287,33 @@ fn build_command<S: AsRef<str>>(
 }
 
 impl CompletionStatus {
-    const fn new() -> Self {
+    fn new() -> Self {
         CompletionStatus {
             completed: Mutex::new(false),
             success: Mutex::new(None),
-            condvar: Condvar::new(),
+            notify: Notify::new()
         }
     }
 
-    fn mark_completed(&self, was_successful: bool) {
-        let mut completed = self.completed.lock().unwrap();
-        let mut success = self.success.lock().unwrap();
+    async fn mark_completed(&self, was_successful: bool) {
+        let mut completed = self.completed.lock().await;
+        let mut success = self.success.lock().await;
 
         *completed = true;
         *success = Some(was_successful);
 
-        self.condvar.notify_all();
+        self.notify.notify_one();
     }
 
-    fn wait(&self) -> Option<bool> {
-        let mut completed = self.completed.lock().unwrap();
+    async fn wait(&self) -> Option<bool> {
+        let mut completed = self.completed.lock().await;
 
         while !*completed {
-            completed = self.condvar.wait(completed).unwrap();
+            let _wait = self.notify.notified().await;
+            *completed = true;
         }
 
-        *self.success.lock().unwrap()
+        *self.success.lock().await
     }
 }
 
@@ -332,16 +332,16 @@ impl WireCommandChip for InteractiveChildChip {
         debug!("exit_status: {exit_status:?}");
 
         self.stdout_handle
-            .join()
+            .await
             .map_err(|_| CommandError::ThreadPanic)??;
-        let success = self.completion_status.wait();
+        let success = self.completion_status.wait().await;
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
         if let Some(true) = success {
             let logs = self
                 .stdout_collection
                 .lock()
-                .unwrap()
+                .await
                 .iter()
                 .rev()
                 .map(|x| x.trim())
@@ -355,7 +355,7 @@ impl WireCommandChip for InteractiveChildChip {
         let logs = self
             .stderr_collection
             .lock()
-            .unwrap()
+            .await
             .iter()
             .rev()
             .join("\n");
@@ -415,8 +415,8 @@ fn create_sync_ssh_command(
     Ok(command)
 }
 
-#[instrument(skip_all, name = "log", parent = arguments.span)]
-fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
+#[instrument(skip_all, name = "log" /* parent = arguments.span */)]
+async fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
     let WatchStdoutArguments {
         began_tx,
         mut reader,
@@ -489,13 +489,13 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
 
                     if searched.iter().any(|x| x == &PatternID::must(1)) {
                         debug!("succeed needle was found, marking child as succeeding.");
-                        completion_status.mark_completed(true);
+                        completion_status.mark_completed(true).await;
                         break 'outer;
                     }
 
                     if searched.iter().any(|x| x == &PatternID::must(2)) {
                         debug!("failed needle was found, elevated child did not succeed.");
-                        completion_status.mark_completed(false);
+                        completion_status.mark_completed(false).await;
                         break 'outer;
                     }
 
@@ -506,7 +506,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                             output_mode.trace_slice(stripped);
                         }
 
-                        let mut queue = stdout_collection.lock().unwrap();
+                        let mut queue = stdout_collection.lock().await;
                         queue.push_front(String::from_utf8_lossy(stripped).to_string());
                         continue;
                     }
@@ -514,7 +514,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                     let log = output_mode.trace_slice(&mut line);
 
                     if let Some(error_msg) = log {
-                        let mut queue = stderr_collection.lock().unwrap();
+                        let mut queue = stderr_collection.lock().await;
 
                         // add at most 20 message to the front, drop the rest.
                         queue.push_front(error_msg);
@@ -532,8 +532,8 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     let _ = began_tx.send(());
 
     // failsafe if there were errors or the reader stopped
-    if !*completion_status.completed.lock().unwrap() {
-        completion_status.mark_completed(false);
+    if !*completion_status.completed.lock().await {
+        completion_status.mark_completed(false).await;
     }
 
     debug!("stdout: goodbye");
