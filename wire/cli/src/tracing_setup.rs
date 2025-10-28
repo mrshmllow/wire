@@ -3,8 +3,7 @@
 
 use std::{
     collections::VecDeque,
-    io::{self, Stderr, Write, stderr},
-    sync::TryLockError,
+    io::{self, Stderr, Write, stderr}
 };
 
 use clap_verbosity_flag::{LogLevel, Verbosity};
@@ -56,22 +55,14 @@ impl NonClobberingWriter {
 
 impl Write for NonClobberingWriter {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        match STDIN_CLOBBER_LOCK.clone().try_lock() {
-            Ok(_) => {
-                self.dump_previous().map(|()| 0)?;
+        if STDIN_CLOBBER_LOCK.available_permits() > 0 {
+            self.dump_previous().map(|()| 0)?;
 
-                self.stderr.write(buf)
-            }
-            Err(e) => match e {
-                TryLockError::Poisoned(_) => {
-                    panic!("Internal stdout clobber lock is posioned. Please create an issue.");
-                }
-                TryLockError::WouldBlock => {
-                    self.queue.push_front(buf.to_vec());
+            self.stderr.write(buf)
+        } else {
+            self.queue.push_front(buf.to_vec());
 
-                    Ok(buf.len())
-                }
-            },
+            Ok(buf.len())
         }
     }
 

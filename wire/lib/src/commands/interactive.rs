@@ -81,8 +81,8 @@ const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
 #[instrument(skip_all, name = "run-int", fields(elevated = %arguments.elevated))]
-pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
-    arguments: &CommandArguments<S>,
+pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
     envs: std::collections::HashMap<String, String>,
 ) -> Result<InteractiveChildChip, HiveLibError> {
     print_authenticate_warning(arguments)?;
@@ -114,7 +114,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
         command.env(key, value);
     }
 
-    let clobber_guard = STDIN_CLOBBER_LOCK.lock().unwrap();
+    let clobber_guard = STDIN_CLOBBER_LOCK.acquire().await.unwrap();
     let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
     let child = pty_pair
         .slave

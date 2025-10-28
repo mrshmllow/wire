@@ -244,7 +244,8 @@ impl Node {
                 "NIX_SSHOPTS".into(),
                 self.target.create_ssh_opts(modifiers, true),
             )]),
-        )?;
+        )
+        .await?;
 
         output.wait_till_success().await.map_err(|source| {
             HiveLibError::NetworkError(NetworkError::HostUnreachable {

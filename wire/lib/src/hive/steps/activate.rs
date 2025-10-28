@@ -58,7 +58,8 @@ async fn set_profile(
                 Some(&ctx.node.target)
             })
             .elevated(),
-    )?;
+    )
+    .await?;
 
     let _ = child
         .wait_till_success()
@@ -113,7 +114,8 @@ impl ExecuteStep for SwitchToConfiguration {
                 })
                 .elevated()
                 .log_stdout(),
-        )?;
+        )
+        .await?;
 
         let result = child.wait_till_success().await;
 
@@ -136,7 +138,8 @@ impl ExecuteStep for SwitchToConfiguration {
                         .log_stdout()
                         .on_target(Some(&ctx.node.target))
                         .elevated(),
-                )?;
+                )
+                .await?;
 
                 // consume result, impossible to know if the machine failed to reboot or we
                 // simply disconnected
