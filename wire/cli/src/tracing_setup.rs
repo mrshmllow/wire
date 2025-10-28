@@ -3,7 +3,7 @@
 
 use std::{
     collections::VecDeque,
-    io::{self, Stderr, Write, stderr}
+    io::{self, Stderr, Write, stderr},
 };
 
 use clap_verbosity_flag::{LogLevel, Verbosity};
