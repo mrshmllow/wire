@@ -9,7 +9,6 @@ use clap_verbosity_flag::InfoLevel;
 use lib::SubCommandModifiers;
 use lib::hive::Hive;
 use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
-use tracing::instrument;
 
 use std::io::IsTerminal;
 use std::{
