@@ -38,8 +38,6 @@ async fn main() -> Result<()> {
     let modifiers = args.to_subcommand_modifiers();
     setup_logging(&args.verbose);
 
-    info!("{:?}", modifiers.ssh_accept_host);
-
     #[cfg(debug_assertions)]
     if args.markdown_help {
         clap_markdown::print_help_markdown::<Cli>();

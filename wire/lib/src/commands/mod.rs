@@ -105,12 +105,8 @@ pub(crate) fn run_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
     envs: HashMap<String, String>,
 ) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
-    // use the non interactive command runner when forced or when there is simply no reason
-    // for user input to be taken (local, and not elevated)
-    if !matches!(arguments.output_mode, ChildOutputMode::Interactive)
-        || arguments.modifiers.non_interactive
-        || (!arguments.elevated && arguments.target.is_none())
-    {
+    // use the non interactive command runner when forced
+    if arguments.modifiers.non_interactive {
         return Ok(Either::Right(non_interactive_command_with_env(
             arguments, envs,
         )?));
