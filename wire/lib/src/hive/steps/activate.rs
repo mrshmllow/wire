@@ -51,7 +51,7 @@ async fn set_profile(
 
     let child = run_command(
         &CommandArguments::new(command_string, ctx.modifiers)
-            .nix()
+            .mode(crate::commands::ChildOutputMode::Nix)
             .on_target(if ctx.should_apply_locally {
                 None
             } else {

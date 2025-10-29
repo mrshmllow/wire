@@ -99,7 +99,7 @@ fn create_ending_segment<S: AsRef<str>>(
 
     format!(
         "echo -e '{succeed}' || echo '{failed}'",
-        succeed = if arguments.intrinsically_interactive {
+        succeed = if matches!(arguments.output_mode, ChildOutputMode::Interactive) {
             format!(
                 "{start}\\n{succeed}",
                 start = String::from_utf8_lossy(&start_needle),
@@ -116,7 +116,7 @@ fn create_starting_segment<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
     start_needle: &Arc<Vec<u8>>,
 ) -> String {
-    if arguments.intrinsically_interactive {
+    if matches!(arguments.output_mode, ChildOutputMode::Interactive) {
         String::new()
     } else {
         format!(
@@ -144,7 +144,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
         command = arguments.command_string.as_ref(),
         flags = match arguments.output_mode {
             ChildOutputMode::Nix => "--log-format internal-json",
-            ChildOutputMode::Raw => "",
+            ChildOutputMode::Generic | ChildOutputMode::Interactive => "",
         },
         starting = create_starting_segment(arguments, &start_needle),
         ending = create_ending_segment(

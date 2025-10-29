@@ -24,12 +24,10 @@ use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
 use crate::hive::steps::ping::Ping;
 use crate::hive::steps::push::{PushBuildOutput, PushEvaluatedOutput};
-use crate::{EvalGoal, SubCommandModifiers};
+use crate::{EvalGoal, StrictHostKeyChecking, SubCommandModifiers};
 
 use super::HiveLibError;
 use super::steps::activate::SwitchToConfiguration;
-
-const CONTROL_PERSIST: &str = "yes";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
@@ -50,7 +48,7 @@ impl Target {
         self.create_ssh_args(modifiers, false, master).join(" ")
     }
 
-    #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
+    #[instrument(ret(level = tracing::Level::DEBUG))]
     pub fn create_ssh_args(
         &self,
         modifiers: SubCommandModifiers,
@@ -66,10 +64,9 @@ impl Target {
         let mut options = vec![
             format!(
                 "StrictHostKeyChecking={}",
-                if modifiers.ssh_accept_host {
-                    "no"
-                } else {
-                    "accept-new"
+                match modifiers.ssh_accept_host {
+                    StrictHostKeyChecking::AcceptNew => "accept-new",
+                    StrictHostKeyChecking::No => "no",
                 }
             )
             .to_string(),
@@ -84,7 +81,7 @@ impl Target {
             options.extend([
                 format!("ControlMaster={}", if master { "yes" } else { "no" }),
                 format!("ControlPath={control_path}"),
-                format!("ControlPersist={CONTROL_PERSIST}"),
+                "ControlPersist=yes".to_string(),
             ]);
         }
 
@@ -161,6 +158,7 @@ impl Target {
     }
 
     #[cfg(test)]
+    #[must_use]
     pub fn from_host(host: &str) -> Self {
         Target {
             hosts: vec![host.into()],
@@ -220,6 +218,7 @@ impl Default for Node {
 
 impl Node {
     #[cfg(test)]
+    #[must_use]
     pub fn from_host(host: &str) -> Self {
         Node {
             target: Target::from_host(host),
@@ -242,7 +241,7 @@ impl Node {
         let output = run_command(
             &CommandArguments::new(command_string, modifiers)
                 .log_stdout()
-                .command_is_interactive(),
+                .mode(crate::commands::ChildOutputMode::Interactive),
         )?;
 
         output.wait_till_success().await.map_err(|source| {
@@ -722,7 +721,7 @@ mod tests {
             "-o".to_string(),
             format!("ControlPath={tmp}/wire/%C"),
             "-o".to_string(),
-            format!("ControlPersist={CONTROL_PERSIST}"),
+            "ControlPersist=yes".to_string(),
         ];
 
         assert_eq!(
@@ -748,7 +747,7 @@ mod tests {
                 "-o".to_string(),
                 format!("ControlPath={tmp}/wire/%C"),
                 "-o".to_string(),
-                format!("ControlPersist={CONTROL_PERSIST}"),
+                "ControlPersist=yes".to_string(),
             ]
         );
 
@@ -770,7 +769,7 @@ mod tests {
                 "-o".to_string(),
                 format!("ControlPath={tmp}/wire/%C"),
                 "-o".to_string(),
-                format!("ControlPersist={CONTROL_PERSIST}"),
+                "ControlPersist=yes".to_string(),
             ]
         );
 

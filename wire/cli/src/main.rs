@@ -14,6 +14,7 @@ use lib::hive::get_hive_location;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tracing::error;
+use tracing::info;
 use tracing::warn;
 
 #[macro_use]
@@ -36,6 +37,8 @@ async fn main() -> Result<()> {
 
     let modifiers = args.to_subcommand_modifiers();
     setup_logging(&args.verbose);
+
+    info!("{:?}", modifiers.ssh_accept_host);
 
     #[cfg(debug_assertions)]
     if args.markdown_help {

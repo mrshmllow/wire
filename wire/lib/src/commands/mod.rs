@@ -26,8 +26,9 @@ pub(crate) mod noninteractive;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum ChildOutputMode {
-    Raw,
     Nix,
+    Generic,
+    Interactive,
 }
 
 #[derive(Debug)]
@@ -45,7 +46,6 @@ pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
     keep_stdin_open: bool,
     elevated: bool,
     log_stdout: bool,
-    intrinsically_interactive: bool,
 }
 
 static AHO_CORASICK: LazyLock<AhoCorasick> = LazyLock::new(|| {
@@ -64,9 +64,8 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
             elevated: false,
             log_stdout: false,
             target: None,
-            output_mode: ChildOutputMode::Raw,
+            output_mode: ChildOutputMode::Generic,
             modifiers,
-            intrinsically_interactive: false,
         }
     }
 
@@ -75,8 +74,8 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
         self
     }
 
-    pub(crate) const fn nix(mut self) -> Self {
-        self.output_mode = ChildOutputMode::Nix;
+    pub(crate) const fn mode(mut self, mode: ChildOutputMode) -> Self {
+        self.output_mode = mode;
         self
     }
 
@@ -94,11 +93,6 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
         self.log_stdout = true;
         self
     }
-
-    pub(crate) const fn command_is_interactive(mut self) -> Self {
-        self.intrinsically_interactive = true;
-        self
-    }
 }
 
 pub(crate) fn run_command<S: AsRef<str>>(
@@ -113,7 +107,10 @@ pub(crate) fn run_command_with_env<S: AsRef<str>>(
 ) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
     // use the non interactive command runner when forced or when there is simply no reason
     // for user input to be taken (local, and not elevated)
-    if arguments.modifiers.non_interactive || (!arguments.elevated && arguments.target.is_none()) {
+    if !matches!(arguments.output_mode, ChildOutputMode::Interactive)
+        || arguments.modifiers.non_interactive
+        || (!arguments.elevated && arguments.target.is_none())
+    {
         return Ok(Either::Right(non_interactive_command_with_env(
             arguments, envs,
         )?));
@@ -195,7 +192,7 @@ impl ChildOutputMode {
     /// Returns a string if this log is notable to be stored as an error message
     fn trace_slice(self, line: &mut [u8]) -> Option<String> {
         let slice = match self {
-            Self::Raw => {
+            Self::Generic | Self::Interactive => {
                 let string = String::from_utf8_lossy(line);
                 let stripped = strip_ansi_escapes::strip_str(&string);
                 warn!("{stripped}");

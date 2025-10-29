@@ -28,7 +28,8 @@ pub async fn push(context: &Context<'_>, push: Push<'_>) -> Result<(), HiveLibEr
     );
 
     let child = run_command_with_env(
-        &CommandArguments::new(command_string, context.modifiers).nix(),
+        &CommandArguments::new(command_string, context.modifiers)
+            .mode(crate::commands::ChildOutputMode::Nix),
         HashMap::from([(
             "NIX_SSHOPTS".into(),
             context
@@ -91,7 +92,10 @@ pub async fn evaluate_hive_attribute(
         },
     );
 
-    let child = run_command(&CommandArguments::new(command_string, modifiers).nix())?;
+    let child = run_command(
+        &CommandArguments::new(command_string, modifiers)
+            .mode(crate::commands::ChildOutputMode::Nix),
+    )?;
 
     child
         .wait_till_success()
