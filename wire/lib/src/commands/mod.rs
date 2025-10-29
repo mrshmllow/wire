@@ -45,6 +45,7 @@ pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
     keep_stdin_open: bool,
     elevated: bool,
     log_stdout: bool,
+    intrinsically_interactive: bool,
 }
 
 static AHO_CORASICK: LazyLock<AhoCorasick> = LazyLock::new(|| {
@@ -65,6 +66,7 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
             target: None,
             output_mode: ChildOutputMode::Raw,
             modifiers,
+            intrinsically_interactive: false,
         }
     }
 
@@ -90,6 +92,11 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
 
     pub(crate) const fn log_stdout(mut self) -> Self {
         self.log_stdout = true;
+        self
+    }
+
+    pub(crate) const fn command_is_interactive(mut self) -> Self {
+        self.intrinsically_interactive = true;
         self
     }
 }

@@ -12,7 +12,7 @@ use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
 use std::sync::mpsc::{self, Sender};
-use std::sync::{Condvar, Mutex};
+use std::sync::{Condvar, LazyLock, Mutex};
 use std::thread::JoinHandle;
 use std::{
     io::{Read, Write},
@@ -20,7 +20,7 @@ use std::{
     sync::Arc,
 };
 use tracing::instrument;
-use tracing::{Span, debug, error, info, trace, warn};
+use tracing::{Span, debug, error, trace, warn};
 
 use crate::commands::CommandArguments;
 use crate::commands::interactive_logbuffer::LogBuffer;
@@ -73,12 +73,58 @@ struct WatchStdoutArguments {
     log_stdout: bool,
 }
 
+#[derive(Debug)]
+enum SearchFindings {
+    None,
+    Started,
+    Terminate,
+}
+
 /// the underlying command began
 const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
 const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 
+static STARTED_PATTERN: LazyLock<PatternID> = LazyLock::new(|| PatternID::must(0));
+static SUCCEEDED_PATTERN: LazyLock<PatternID> = LazyLock::new(|| PatternID::must(1));
+static FAILED_PATTERN: LazyLock<PatternID> = LazyLock::new(|| PatternID::must(2));
+
 /// substitutes STDOUT with #$line. stdout is far less common than stderr.
 const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
+
+fn create_ending_segment<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
+    needles: Needles,
+) -> String {
+    let (succeed_needle, failed_needle, start_needle) = needles;
+
+    format!(
+        "echo -e '{succeed}' || echo '{failed}'",
+        succeed = if arguments.intrinsically_interactive {
+            format!(
+                "{start}\\n{succeed}",
+                start = String::from_utf8_lossy(&start_needle),
+                succeed = String::from_utf8_lossy(&succeed_needle)
+            )
+        } else {
+            String::from_utf8_lossy(&succeed_needle).to_string()
+        },
+        failed = String::from_utf8_lossy(&failed_needle)
+    )
+}
+
+fn create_starting_segment<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
+    start_needle: &Arc<Vec<u8>>,
+) -> String {
+    if arguments.intrinsically_interactive {
+        String::new()
+    } else {
+        format!(
+            "echo '{start}' && ",
+            start = String::from_utf8_lossy(start_needle)
+        )
+    }
+}
 
 #[instrument(skip_all, name = "run-int", fields(elevated = %arguments.elevated))]
 pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
@@ -94,15 +140,21 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     setup_master(&pty_pair)?;
 
     let command_string = &format!(
-        "echo '{start}' && {command} {flags} {IO_SUBS} && echo '{succeed}' || echo '{failed}'",
-        start = String::from_utf8_lossy(&start_needle),
-        succeed = String::from_utf8_lossy(&succeed_needle),
-        failed = String::from_utf8_lossy(&failed_needle),
+        "{starting}{command} {flags} {IO_SUBS} && {ending}",
         command = arguments.command_string.as_ref(),
         flags = match arguments.output_mode {
             ChildOutputMode::Nix => "--log-format internal-json",
             ChildOutputMode::Raw => "",
-        }
+        },
+        starting = create_starting_segment(arguments, &start_needle),
+        ending = create_ending_segment(
+            arguments,
+            (
+                succeed_needle.clone(),
+                failed_needle.clone(),
+                start_needle.clone()
+            )
+        )
     );
 
     debug!("{command_string}");
@@ -171,7 +223,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
         )
     });
 
-    info!("Setup threads");
+    debug!("Setup threads");
 
     let () = began_rx
         .recv()
@@ -453,16 +505,23 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
             Ok(0) => break 'outer,
             Ok(n) => {
                 if !began {
-                    if handle_rawmode_data(
+                    let findings = handle_rawmode_data(
                         &mut stderr,
                         &buffer,
                         n,
                         &mut raw_mode_buffer,
                         &aho_corasick,
+                        &completion_status,
                         &began_tx,
-                    )? {
-                        began = true;
-                        continue;
+                    )?;
+
+                    match findings {
+                        SearchFindings::Terminate => break 'outer,
+                        SearchFindings::Started => {
+                            began = true;
+                            continue;
+                        }
+                        SearchFindings::None => {}
                     }
 
                     if belled {
@@ -482,44 +541,25 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                 log_buffer.process_slice(&buffer[..n]);
 
                 while let Some(mut line) = log_buffer.next_line() {
-                    let searched = aho_corasick
-                        .find_iter(&line)
-                        .map(|x| x.pattern())
-                        .collect::<Vec<_>>();
+                    let findings =
+                        search_string(&aho_corasick, &line, &completion_status, &began_tx);
 
-                    if searched.iter().any(|x| x == &PatternID::must(1)) {
-                        debug!("succeed needle was found, marking child as succeeding.");
-                        completion_status.mark_completed(true);
-                        break 'outer;
-                    }
-
-                    if searched.iter().any(|x| x == &PatternID::must(2)) {
-                        debug!("failed needle was found, elevated child did not succeed.");
-                        completion_status.mark_completed(false);
-                        break 'outer;
-                    }
-
-                    if line.starts_with(b"#") {
-                        let stripped = &mut line[1..];
-
-                        if log_stdout {
-                            output_mode.trace_slice(stripped);
+                    match findings {
+                        SearchFindings::Terminate => break 'outer,
+                        SearchFindings::Started => {
+                            began = true;
+                            continue;
                         }
-
-                        let mut queue = stdout_collection.lock().unwrap();
-                        queue.push_front(String::from_utf8_lossy(stripped).to_string());
-                        continue;
+                        SearchFindings::None => {}
                     }
 
-                    let log = output_mode.trace_slice(&mut line);
-
-                    if let Some(error_msg) = log {
-                        let mut queue = stderr_collection.lock().unwrap();
-
-                        // add at most 20 message to the front, drop the rest.
-                        queue.push_front(error_msg);
-                        queue.truncate(20);
-                    }
+                    handle_normal_data(
+                        &stderr_collection,
+                        &stdout_collection,
+                        &mut line,
+                        log_stdout,
+                        output_mode,
+                    );
                 }
             }
             Err(e) => {
@@ -541,24 +581,51 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     Ok(())
 }
 
-/// Returns Ok(true) if the data indicates the command was started
+fn handle_normal_data(
+    stderr_collection: &Arc<Mutex<VecDeque<String>>>,
+    stdout_collection: &Arc<Mutex<VecDeque<String>>>,
+    line: &mut [u8],
+    log_stdout: bool,
+    output_mode: ChildOutputMode,
+) {
+    if line.starts_with(b"#") {
+        let stripped = &mut line[1..];
+
+        if log_stdout {
+            output_mode.trace_slice(stripped);
+        }
+
+        let mut queue = stdout_collection.lock().unwrap();
+        queue.push_front(String::from_utf8_lossy(stripped).to_string());
+        return;
+    }
+
+    let log = output_mode.trace_slice(line);
+
+    if let Some(error_msg) = log {
+        let mut queue = stderr_collection.lock().unwrap();
+
+        // add at most 20 message to the front, drop the rest.
+        queue.push_front(error_msg);
+        queue.truncate(20);
+    }
+}
+
 fn handle_rawmode_data<W: std::io::Write>(
     stderr: &mut W,
     buffer: &[u8],
     n: usize,
     raw_mode_buffer: &mut Vec<u8>,
     aho_corasick: &AhoCorasick,
+    completion_status: &CompletionStatus,
     began_tx: &Sender<()>,
-) -> Result<bool, CommandError> {
+) -> Result<SearchFindings, CommandError> {
     raw_mode_buffer.extend_from_slice(&buffer[..n]);
 
-    if aho_corasick
-        .find_iter(&raw_mode_buffer)
-        .any(|x| x.pattern() == PatternID::must(0))
-    {
-        debug!("start needle was found, switching mode...");
-        let _ = began_tx.send(());
-        return Ok(true);
+    let findings = search_string(aho_corasick, raw_mode_buffer, completion_status, began_tx);
+
+    if !matches!(findings, SearchFindings::None) {
+        return Ok(findings);
     }
 
     stderr
@@ -567,7 +634,54 @@ fn handle_rawmode_data<W: std::io::Write>(
 
     stderr.flush().map_err(CommandError::WritingClientStderr)?;
 
-    Ok(false)
+    Ok(findings)
+}
+
+/// returns true if the command is considered stopped
+fn search_string(
+    aho_corasick: &AhoCorasick,
+    haystack: &[u8],
+    completion_status: &CompletionStatus,
+    began_tx: &Sender<()>,
+) -> SearchFindings {
+    let searched = aho_corasick
+        .find_iter(haystack)
+        .map(|x| x.pattern())
+        .collect::<Vec<_>>();
+
+    let started = if searched.contains(&STARTED_PATTERN) {
+        debug!("start needle was found, switching mode...");
+        let _ = began_tx.send(());
+        true
+    } else {
+        false
+    };
+
+    let succeeded = if searched.contains(&SUCCEEDED_PATTERN) {
+        debug!("succeed needle was found, marking child as succeeding.");
+        completion_status.mark_completed(true);
+        true
+    } else {
+        false
+    };
+
+    let failed = if searched.contains(&FAILED_PATTERN) {
+        debug!("failed needle was found, elevated child did not succeed.");
+        completion_status.mark_completed(false);
+        true
+    } else {
+        false
+    };
+
+    if succeeded || failed {
+        return SearchFindings::Terminate;
+    }
+
+    if started {
+        return SearchFindings::Started;
+    }
+
+    SearchFindings::None
 }
 
 /// Exits on any data written to `cancel_pipe_r`
@@ -668,10 +782,11 @@ mod tests {
         let aho_corasick = AhoCorasick::builder()
             .ascii_case_insensitive(false)
             .match_kind(aho_corasick::MatchKind::LeftmostFirst)
-            .build(["START_NEEDLE"])
+            .build(["START_NEEDLE", "SUCCEEDED_NEEDLE", "FAILED_NEEDLE"])
             .unwrap();
         let mut stderr = vec![];
         let (began_tx, began_rx) = mpsc::channel::<()>();
+        let completion_status = CompletionStatus::new();
 
         // each "Bla" is 4 bytes.
         let buffer = "bla bla bla START_NEEDLE bla bla bla".as_bytes();
@@ -685,12 +800,14 @@ mod tests {
                 4,
                 &mut raw_mode_buffer,
                 &aho_corasick,
+                &completion_status,
                 &began_tx
             ),
-            Ok(false)
+            Ok(SearchFindings::None)
         );
         assert_eq!(raw_mode_buffer, b"bla ");
         assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
+        assert!(!*completion_status.completed.lock().unwrap());
 
         let buffer = &buffer[4..];
 
@@ -703,12 +820,14 @@ mod tests {
                 n,
                 &mut raw_mode_buffer,
                 &aho_corasick,
+                &completion_status,
                 &began_tx
             ),
-            Ok(false)
+            Ok(SearchFindings::None)
         );
         assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
         assert_eq!(raw_mode_buffer, b"bla bla bla START_");
+        assert!(!*completion_status.completed.lock().unwrap());
 
         let buffer = &buffer[n..];
 
@@ -721,11 +840,52 @@ mod tests {
                 n,
                 &mut raw_mode_buffer,
                 &aho_corasick,
+                &completion_status,
                 &began_tx
             ),
-            Ok(true)
+            Ok(SearchFindings::Started)
         );
         assert_matches!(began_rx.try_recv(), Ok(()));
         assert_eq!(raw_mode_buffer, b"bla bla bla START_NEEDLE bla bla bla");
+        assert!(!*completion_status.completed.lock().unwrap());
+
+        // test failed needle
+        let buffer = "bla FAILED_NEEDLE bla".as_bytes();
+        let mut raw_mode_buffer = vec![];
+
+        let n = buffer.len();
+        assert_matches!(
+            handle_rawmode_data(
+                &mut stderr,
+                buffer,
+                n,
+                &mut raw_mode_buffer,
+                &aho_corasick,
+                &completion_status,
+                &began_tx
+            ),
+            Ok(SearchFindings::Terminate)
+        );
+        assert_matches!(*completion_status.success.lock().unwrap(), Some(false));
+
+        // test succeed needle
+        let buffer = "bla SUCCEEDED_NEEDLE bla".as_bytes();
+        let mut raw_mode_buffer = vec![];
+        let completion_status = CompletionStatus::new();
+
+        let n = buffer.len();
+        assert_matches!(
+            handle_rawmode_data(
+                &mut stderr,
+                buffer,
+                n,
+                &mut raw_mode_buffer,
+                &aho_corasick,
+                &completion_status,
+                &began_tx
+            ),
+            Ok(SearchFindings::Terminate)
+        );
+        assert_matches!(*completion_status.success.lock().unwrap(), Some(true));
     }
 }

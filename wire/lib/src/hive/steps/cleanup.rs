@@ -4,11 +4,12 @@
 use std::fmt::Display;
 
 use tokio::process::Command;
-use tracing::error;
+use tracing::debug;
 
 use crate::{
+    SubCommandModifiers,
     errors::HiveLibError,
-    hive::node::{Context, ExecuteStep},
+    hive::node::{Context, ExecuteStep, Node},
 };
 
 #[derive(PartialEq, Debug)]
@@ -20,32 +21,39 @@ impl Display for CleanUp {
     }
 }
 
+pub(crate) async fn clean_up_control_master(
+    node: &Node,
+    modifiers: SubCommandModifiers,
+) -> Result<(), HiveLibError> {
+    let output = Command::new("ssh")
+        .args(node.target.create_ssh_args(modifiers, true, false))
+        .args(["-O", "stop", node.target.get_preferred_host()?])
+        .output()
+        .await;
+
+    match output {
+        Err(err) => {
+            debug!("failed to wind-down ControlMaster with `ssh -O stop`: {err}");
+        }
+        Ok(std::process::Output { status, stderr, .. }) if !status.success() => {
+            debug!(
+                "failed to wind-down ControlMaster with `ssh -O stop`: {}",
+                String::from_utf8_lossy(&stderr)
+            );
+        }
+        Ok(_) => {}
+    }
+
+    Ok(())
+}
+
 impl ExecuteStep for CleanUp {
     fn should_execute(&self, ctx: &Context) -> bool {
         !ctx.should_apply_locally
     }
 
     async fn execute(&self, ctx: &mut Context<'_>) -> Result<(), HiveLibError> {
-        let output = Command::new("ssh")
-            .args(ctx.node.target.create_ssh_args(ctx.modifiers, true, false))
-            .args(["-O", "stop", ctx.node.target.get_preferred_host()?])
-            .output()
-            .await;
-
-        // non failing error handling because the apply was successful until
-        // this point.
-        match output {
-            Err(err) => {
-                error!("failed to wind-down ControlMaster with `ssh -O stop`: {err}");
-            }
-            Ok(std::process::Output { status, stderr, .. }) if !status.success() => {
-                error!(
-                    "failed to wind-down ControlMaster with `ssh -O stop`: {}",
-                    String::from_utf8_lossy(&stderr)
-                );
-            }
-            Ok(_) => {}
-        }
+        let _ = clean_up_control_master(ctx.node, ctx.modifiers).await;
 
         Ok(())
     }

@@ -6,7 +6,6 @@ use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::assert_matches::debug_assert_matches;
-use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
 use std::io::ErrorKind;
@@ -16,11 +15,11 @@ use tokio::sync::oneshot;
 use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace, warn};
 
 use crate::commands::common::evaluate_hive_attribute;
-use crate::commands::{CommandArguments, WireCommandChip, run_command_with_env};
+use crate::commands::{CommandArguments, WireCommandChip, run_command};
 use crate::errors::NetworkError;
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
-use crate::hive::steps::cleanup::CleanUp;
+use crate::hive::steps::cleanup::{CleanUp, clean_up_control_master};
 use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
 use crate::hive::steps::ping::Ping;
@@ -30,7 +29,7 @@ use crate::{EvalGoal, SubCommandModifiers};
 use super::HiveLibError;
 use super::steps::activate::SwitchToConfiguration;
 
-const CONTROL_PERSIST: &str = "600s";
+const CONTROL_PERSIST: &str = "yes";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
@@ -228,22 +227,22 @@ impl Node {
         }
     }
 
+    /// Tests the connection to a node, and sets up an SSH control master process in the background
     pub async fn ping(&self, modifiers: SubCommandModifiers) -> Result<(), HiveLibError> {
+        let _ = clean_up_control_master(self, modifiers).await;
+
         let host = self.target.get_preferred_host()?;
 
         let command_string = format!(
-            "nix --extra-experimental-features nix-command \
-            store ping --store ssh://{}@{}",
-            self.target.user, host
+            "ssh {}@{host} {} -N",
+            self.target.user,
+            self.target.create_ssh_opts(modifiers, true)
         );
-        let output = run_command_with_env(
+
+        let output = run_command(
             &CommandArguments::new(command_string, modifiers)
-                .nix()
-                .log_stdout(),
-            HashMap::from([(
-                "NIX_SSHOPTS".into(),
-                self.target.create_ssh_opts(modifiers, true),
-            )]),
+                .log_stdout()
+                .command_is_interactive(),
         )?;
 
         output.wait_till_success().await.map_err(|source| {
@@ -448,9 +447,14 @@ impl<'a> GoalExecutor<'a> {
                 progress = format!("{}/{length}", position + 1)
             );
 
-            step.execute(&mut self.context).await.inspect_err(|_| {
+            if let Err(err) = step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");
-            })?;
+            }) {
+                // discard error from cleanup
+                let _ = CleanUp.execute(&mut self.context).await;
+
+                return Err(err);
+            }
         }
 
         Ok(())
