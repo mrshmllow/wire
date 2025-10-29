@@ -35,7 +35,7 @@ pub async fn push(context: &Context<'_>, push: Push<'_>) -> Result<(), HiveLibEr
             context
                 .node
                 .target
-                .create_ssh_opts(context.modifiers, false),
+                .create_ssh_opts(context.modifiers, false)?,
         )]),
     )?;
 

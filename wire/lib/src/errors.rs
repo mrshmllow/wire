@@ -262,6 +262,20 @@ pub enum CommandError {
         code: String,
         reason: &'static str,
     },
+
+    #[diagnostic(
+        code(wire::command::RuntimeDirectory),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("error creating $XDG_RUNTIME_DIR/wire")]
+    RuntimeDirectory(#[source] std::io::Error),
+
+    #[diagnostic(
+        code(wire::command::RuntimeDirectoryMissing),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("$XDG_RUNTIME_DIR could not be used.")]
+    RuntimeDirectoryMissing(#[source] std::env::VarError),
 }
 
 #[derive(Debug, Diagnostic, Error)]

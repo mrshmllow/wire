@@ -12,11 +12,11 @@ use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace, warn};
+use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace};
 
 use crate::commands::common::evaluate_hive_attribute;
 use crate::commands::{CommandArguments, WireCommandChip, run_command};
-use crate::errors::NetworkError;
+use crate::errors::{CommandError, NetworkError};
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
 use crate::hive::steps::cleanup::{CleanUp, clean_up_control_master};
@@ -44,8 +44,13 @@ pub struct Target {
 
 impl Target {
     #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
-    pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers, master: bool) -> String {
-        self.create_ssh_args(modifiers, false, master).join(" ")
+    pub fn create_ssh_opts(
+        &self,
+        modifiers: SubCommandModifiers,
+        master: bool,
+    ) -> Result<String, HiveLibError> {
+        self.create_ssh_args(modifiers, false, master)
+            .map(|x| x.join(" "))
     }
 
     #[instrument(ret(level = tracing::Level::DEBUG))]
@@ -54,7 +59,7 @@ impl Target {
         modifiers: SubCommandModifiers,
         non_interactive_forced: bool,
         master: bool,
-    ) -> Vec<String> {
+    ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
             self.user.to_string(),
@@ -77,40 +82,36 @@ impl Target {
             options.extend(["KbdInteractiveAuthentication=no".to_string()]);
         }
 
-        if let Some(control_path) = get_control_path() {
-            options.extend([
-                format!("ControlMaster={}", if master { "yes" } else { "no" }),
-                format!("ControlPath={control_path}"),
-                "ControlPersist=yes".to_string(),
-            ]);
-        }
+        let control_path = get_control_path().map_err(HiveLibError::CommandError)?;
+        options.extend([
+            format!("ControlMaster={}", if master { "yes" } else { "no" }),
+            format!("ControlPath={control_path}"),
+            "ControlPersist=yes".to_string(),
+        ]);
 
         vector.push("-o".to_string());
         vector.extend(options.into_iter().intersperse("-o".to_string()));
 
-        vector
+        Ok(vector)
     }
 }
 
-fn get_control_path() -> Option<String> {
-    if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-        let control_path = PathBuf::from(runtime_dir).join("wire");
+fn get_control_path() -> Result<String, CommandError> {
+    match env::var("XDG_RUNTIME_DIR") {
+        Ok(runtime_dir) => {
+            let control_path = PathBuf::from(runtime_dir).join("wire");
 
-        match std::fs::create_dir(&control_path) {
-            Err(err) if err.kind() != ErrorKind::AlreadyExists => {
-                error!(
-                    "not using `ControlMaster`, failed to create path {control_path:?}: {err:?}"
-                );
-                return None;
+            match std::fs::create_dir(&control_path) {
+                Err(err) if err.kind() != ErrorKind::AlreadyExists => {
+                    return Err(CommandError::RuntimeDirectory(err));
+                }
+                _ => (),
             }
-            _ => (),
+
+            Ok(control_path.join("%C").display().to_string())
         }
-
-        return Some(control_path.join("%C").display().to_string());
+        Err(err) => Err(CommandError::RuntimeDirectoryMissing(err)),
     }
-
-    warn!("XDG_RUNTIME_DIR could not be found, disabling SSH `ControlMaster`");
-    None
 }
 
 #[cfg(test)]
@@ -235,7 +236,7 @@ impl Node {
         let command_string = format!(
             "ssh {}@{host} {} -N",
             self.target.user,
-            self.target.create_ssh_opts(modifiers, true)
+            self.target.create_ssh_opts(modifiers, true)?
         );
 
         let output = run_command(
@@ -725,16 +726,20 @@ mod tests {
         ];
 
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, false, false),
+            target
+                .create_ssh_args(subcommand_modifiers, false, false)
+                .unwrap(),
             args
         );
         assert_eq!(
-            target.create_ssh_opts(subcommand_modifiers, false),
+            target.create_ssh_opts(subcommand_modifiers, false).unwrap(),
             args.join(" ")
         );
 
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, false, true),
+            target
+                .create_ssh_args(subcommand_modifiers, false, true)
+                .unwrap(),
             [
                 "-l".to_string(),
                 target.user.to_string(),
@@ -752,7 +757,9 @@ mod tests {
         );
 
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, true, true),
+            target
+                .create_ssh_args(subcommand_modifiers, true, true)
+                .unwrap(),
             [
                 "-l".to_string(),
                 target.user.to_string(),
@@ -775,15 +782,19 @@ mod tests {
 
         // forced non interactive is the same as --non-interactive
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, true, false),
-            target.create_ssh_args(
-                SubCommandModifiers {
-                    non_interactive: true,
-                    ..Default::default()
-                },
-                false,
-                false
-            )
+            target
+                .create_ssh_args(subcommand_modifiers, true, false)
+                .unwrap(),
+            target
+                .create_ssh_args(
+                    SubCommandModifiers {
+                        non_interactive: true,
+                        ..Default::default()
+                    },
+                    false,
+                    false
+                )
+                .unwrap()
         );
     }
 }

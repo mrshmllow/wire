@@ -26,7 +26,7 @@ pub(crate) async fn clean_up_control_master(
     modifiers: SubCommandModifiers,
 ) -> Result<(), HiveLibError> {
     let output = Command::new("ssh")
-        .args(node.target.create_ssh_args(modifiers, true, false))
+        .args(node.target.create_ssh_args(modifiers, true, false)?)
         .args(["-O", "stop", node.target.get_preferred_host()?])
         .output()
         .await;
