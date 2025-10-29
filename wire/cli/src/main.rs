@@ -14,7 +14,6 @@ use lib::hive::get_hive_location;
 use miette::IntoDiagnostic;
 use miette::Result;
 use tracing::error;
-use tracing::info;
 use tracing::warn;
 
 #[macro_use]
