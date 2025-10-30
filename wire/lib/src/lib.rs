@@ -22,11 +22,21 @@ mod test_support;
 
 pub mod errors;
 
+#[derive(Clone, Debug, Copy, Default)]
+pub enum StrictHostKeyChecking {
+    /// do not accept new host. dangerous!
+    No,
+
+    /// accept-new, default
+    #[default]
+    AcceptNew,
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct SubCommandModifiers {
     pub show_trace: bool,
     pub non_interactive: bool,
-    pub ssh_accept_host: bool,
+    pub ssh_accept_host: StrictHostKeyChecking,
 }
 
 impl Default for SubCommandModifiers {
@@ -34,7 +44,7 @@ impl Default for SubCommandModifiers {
         SubCommandModifiers {
             show_trace: false,
             non_interactive: !std::io::stdin().is_terminal(),
-            ssh_accept_host: false,
+            ssh_accept_host: StrictHostKeyChecking::default(),
         }
     }
 }

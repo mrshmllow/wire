@@ -41,7 +41,7 @@ impl ExecuteStep for Build {
                 } else {
                     None
                 })
-                .nix()
+                .mode(crate::commands::ChildOutputMode::Nix)
                 .log_stdout(),
             std::collections::HashMap::new(),
         )?

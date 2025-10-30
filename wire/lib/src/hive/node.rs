@@ -6,31 +6,28 @@ use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::assert_matches::debug_assert_matches;
-use std::collections::HashMap;
 use std::env;
 use std::fmt::Display;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace, warn};
+use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace};
 
 use crate::commands::common::evaluate_hive_attribute;
-use crate::commands::{CommandArguments, WireCommandChip, run_command_with_env};
-use crate::errors::NetworkError;
+use crate::commands::{CommandArguments, WireCommandChip, run_command};
+use crate::errors::{CommandError, NetworkError};
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
-use crate::hive::steps::cleanup::CleanUp;
+use crate::hive::steps::cleanup::{CleanUp, clean_up_control_master};
 use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
 use crate::hive::steps::ping::Ping;
 use crate::hive::steps::push::{PushBuildOutput, PushEvaluatedOutput};
-use crate::{EvalGoal, SubCommandModifiers};
+use crate::{EvalGoal, StrictHostKeyChecking, SubCommandModifiers};
 
 use super::HiveLibError;
 use super::steps::activate::SwitchToConfiguration;
-
-const CONTROL_PERSIST: &str = "600s";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq, derive_more::Display)]
 pub struct Name(pub Arc<str>);
@@ -47,17 +44,22 @@ pub struct Target {
 
 impl Target {
     #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
-    pub fn create_ssh_opts(&self, modifiers: SubCommandModifiers, master: bool) -> String {
-        self.create_ssh_args(modifiers, false, master).join(" ")
+    pub fn create_ssh_opts(
+        &self,
+        modifiers: SubCommandModifiers,
+        master: bool,
+    ) -> Result<String, HiveLibError> {
+        self.create_ssh_args(modifiers, false, master)
+            .map(|x| x.join(" "))
     }
 
-    #[instrument(ret(level = tracing::Level::DEBUG), skip_all)]
+    #[instrument(ret(level = tracing::Level::DEBUG))]
     pub fn create_ssh_args(
         &self,
         modifiers: SubCommandModifiers,
         non_interactive_forced: bool,
         master: bool,
-    ) -> Vec<String> {
+    ) -> Result<Vec<String>, HiveLibError> {
         let mut vector = vec![
             "-l".to_string(),
             self.user.to_string(),
@@ -67,10 +69,9 @@ impl Target {
         let mut options = vec![
             format!(
                 "StrictHostKeyChecking={}",
-                if modifiers.ssh_accept_host {
-                    "no"
-                } else {
-                    "accept-new"
+                match modifiers.ssh_accept_host {
+                    StrictHostKeyChecking::AcceptNew => "accept-new",
+                    StrictHostKeyChecking::No => "no",
                 }
             )
             .to_string(),
@@ -81,40 +82,36 @@ impl Target {
             options.extend(["KbdInteractiveAuthentication=no".to_string()]);
         }
 
-        if let Some(control_path) = get_control_path() {
-            options.extend([
-                format!("ControlMaster={}", if master { "yes" } else { "no" }),
-                format!("ControlPath={control_path}"),
-                format!("ControlPersist={CONTROL_PERSIST}"),
-            ]);
-        }
+        let control_path = get_control_path().map_err(HiveLibError::CommandError)?;
+        options.extend([
+            format!("ControlMaster={}", if master { "yes" } else { "no" }),
+            format!("ControlPath={control_path}"),
+            "ControlPersist=yes".to_string(),
+        ]);
 
         vector.push("-o".to_string());
         vector.extend(options.into_iter().intersperse("-o".to_string()));
 
-        vector
+        Ok(vector)
     }
 }
 
-fn get_control_path() -> Option<String> {
-    if let Ok(runtime_dir) = env::var("XDG_RUNTIME_DIR") {
-        let control_path = PathBuf::from(runtime_dir).join("wire");
+fn get_control_path() -> Result<String, CommandError> {
+    match env::var("XDG_RUNTIME_DIR") {
+        Ok(runtime_dir) => {
+            let control_path = PathBuf::from(runtime_dir).join("wire");
 
-        match std::fs::create_dir(&control_path) {
-            Err(err) if err.kind() != ErrorKind::AlreadyExists => {
-                error!(
-                    "not using `ControlMaster`, failed to create path {control_path:?}: {err:?}"
-                );
-                return None;
+            match std::fs::create_dir(&control_path) {
+                Err(err) if err.kind() != ErrorKind::AlreadyExists => {
+                    return Err(CommandError::RuntimeDirectory(err));
+                }
+                _ => (),
             }
-            _ => (),
+
+            Ok(control_path.join("%C").display().to_string())
         }
-
-        return Some(control_path.join("%C").display().to_string());
+        Err(err) => Err(CommandError::RuntimeDirectoryMissing(err)),
     }
-
-    warn!("XDG_RUNTIME_DIR could not be found, disabling SSH `ControlMaster`");
-    None
 }
 
 #[cfg(test)]
@@ -162,6 +159,7 @@ impl Target {
     }
 
     #[cfg(test)]
+    #[must_use]
     pub fn from_host(host: &str) -> Self {
         Target {
             hosts: vec![host.into()],
@@ -221,6 +219,7 @@ impl Default for Node {
 
 impl Node {
     #[cfg(test)]
+    #[must_use]
     pub fn from_host(host: &str) -> Self {
         Node {
             target: Target::from_host(host),
@@ -228,22 +227,22 @@ impl Node {
         }
     }
 
+    /// Tests the connection to a node, and sets up an SSH control master process in the background
     pub async fn ping(&self, modifiers: SubCommandModifiers) -> Result<(), HiveLibError> {
+        let _ = clean_up_control_master(self, modifiers).await;
+
         let host = self.target.get_preferred_host()?;
 
         let command_string = format!(
-            "nix --extra-experimental-features nix-command \
-            store ping --store ssh://{}@{}",
-            self.target.user, host
+            "ssh {}@{host} {} -N",
+            self.target.user,
+            self.target.create_ssh_opts(modifiers, true)?
         );
-        let output = run_command_with_env(
+
+        let output = run_command(
             &CommandArguments::new(command_string, modifiers)
-                .nix()
-                .log_stdout(),
-            HashMap::from([(
-                "NIX_SSHOPTS".into(),
-                self.target.create_ssh_opts(modifiers, true),
-            )]),
+                .log_stdout()
+                .mode(crate::commands::ChildOutputMode::Interactive),
         )?;
 
         output.wait_till_success().await.map_err(|source| {
@@ -448,9 +447,14 @@ impl<'a> GoalExecutor<'a> {
                 progress = format!("{}/{length}", position + 1)
             );
 
-            step.execute(&mut self.context).await.inspect_err(|_| {
+            if let Err(err) = step.execute(&mut self.context).await.inspect_err(|_| {
                 error!("Failed to execute `{step}`");
-            })?;
+            }) {
+                // discard error from cleanup
+                let _ = CleanUp.execute(&mut self.context).await;
+
+                return Err(err);
+            }
         }
 
         Ok(())
@@ -718,20 +722,24 @@ mod tests {
             "-o".to_string(),
             format!("ControlPath={tmp}/wire/%C"),
             "-o".to_string(),
-            format!("ControlPersist={CONTROL_PERSIST}"),
+            "ControlPersist=yes".to_string(),
         ];
 
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, false, false),
+            target
+                .create_ssh_args(subcommand_modifiers, false, false)
+                .unwrap(),
             args
         );
         assert_eq!(
-            target.create_ssh_opts(subcommand_modifiers, false),
+            target.create_ssh_opts(subcommand_modifiers, false).unwrap(),
             args.join(" ")
         );
 
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, false, true),
+            target
+                .create_ssh_args(subcommand_modifiers, false, true)
+                .unwrap(),
             [
                 "-l".to_string(),
                 target.user.to_string(),
@@ -744,12 +752,14 @@ mod tests {
                 "-o".to_string(),
                 format!("ControlPath={tmp}/wire/%C"),
                 "-o".to_string(),
-                format!("ControlPersist={CONTROL_PERSIST}"),
+                "ControlPersist=yes".to_string(),
             ]
         );
 
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, true, true),
+            target
+                .create_ssh_args(subcommand_modifiers, true, true)
+                .unwrap(),
             [
                 "-l".to_string(),
                 target.user.to_string(),
@@ -766,21 +776,25 @@ mod tests {
                 "-o".to_string(),
                 format!("ControlPath={tmp}/wire/%C"),
                 "-o".to_string(),
-                format!("ControlPersist={CONTROL_PERSIST}"),
+                "ControlPersist=yes".to_string(),
             ]
         );
 
         // forced non interactive is the same as --non-interactive
         assert_eq!(
-            target.create_ssh_args(subcommand_modifiers, true, false),
-            target.create_ssh_args(
-                SubCommandModifiers {
-                    non_interactive: true,
-                    ..Default::default()
-                },
-                false,
-                false
-            )
+            target
+                .create_ssh_args(subcommand_modifiers, true, false)
+                .unwrap(),
+            target
+                .create_ssh_args(
+                    SubCommandModifiers {
+                        non_interactive: true,
+                        ..Default::default()
+                    },
+                    false,
+                    false
+                )
+                .unwrap()
         );
     }
 }

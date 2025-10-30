@@ -50,7 +50,7 @@ pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
         "{command_string}{extra}",
         command_string = arguments.command_string.as_ref(),
         extra = match arguments.output_mode {
-            ChildOutputMode::Raw => "",
+            ChildOutputMode::Generic | ChildOutputMode::Interactive => "",
             ChildOutputMode::Nix => " --log-format internal-json",
         }
     );
@@ -192,7 +192,7 @@ fn create_sync_ssh_command(
     modifiers: SubCommandModifiers,
 ) -> Result<Command, HiveLibError> {
     let mut command = Command::new("ssh");
-    command.args(target.create_ssh_args(modifiers, true, false));
+    command.args(target.create_ssh_args(modifiers, true, false)?);
     command.arg(target.get_preferred_host()?.to_string());
 
     Ok(command)

@@ -204,8 +204,8 @@ impl ToSubCommandModifiers for Cli {
             show_trace: self.show_trace,
             non_interactive: self.non_interactive,
             ssh_accept_host: match &self.command {
-                Commands::Apply(args) => args.ssh_accept_host,
-                _ => false,
+                Commands::Apply(args) if args.ssh_accept_host => lib::StrictHostKeyChecking::No,
+                _ => lib::StrictHostKeyChecking::default(),
             },
         }
     }

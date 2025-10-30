@@ -141,6 +141,7 @@ in
                 };
 
                 environment.systemPackages = [ pkgs.ripgrep ];
+                environment.variables.XDG_RUNTIME_DIR = "/tmp";
                 virtualisation.memorySize = 4096;
                 virtualisation.additionalPaths = flatten [
                   injectedFlakeDir

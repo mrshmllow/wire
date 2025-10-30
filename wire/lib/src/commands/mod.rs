@@ -26,8 +26,9 @@ pub(crate) mod noninteractive;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum ChildOutputMode {
-    Raw,
     Nix,
+    Generic,
+    Interactive,
 }
 
 #[derive(Debug)]
@@ -63,7 +64,7 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
             elevated: false,
             log_stdout: false,
             target: None,
-            output_mode: ChildOutputMode::Raw,
+            output_mode: ChildOutputMode::Generic,
             modifiers,
         }
     }
@@ -73,8 +74,8 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
         self
     }
 
-    pub(crate) const fn nix(mut self) -> Self {
-        self.output_mode = ChildOutputMode::Nix;
+    pub(crate) const fn mode(mut self, mode: ChildOutputMode) -> Self {
+        self.output_mode = mode;
         self
     }
 
@@ -104,9 +105,8 @@ pub(crate) fn run_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
     envs: HashMap<String, String>,
 ) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
-    // use the non interactive command runner when forced or when there is simply no reason
-    // for user input to be taken (local, and not elevated)
-    if arguments.modifiers.non_interactive || (!arguments.elevated && arguments.target.is_none()) {
+    // use the non interactive command runner when forced
+    if arguments.modifiers.non_interactive {
         return Ok(Either::Right(non_interactive_command_with_env(
             arguments, envs,
         )?));
@@ -188,7 +188,7 @@ impl ChildOutputMode {
     /// Returns a string if this log is notable to be stored as an error message
     fn trace_slice(self, line: &mut [u8]) -> Option<String> {
         let slice = match self {
-            Self::Raw => {
+            Self::Generic | Self::Interactive => {
                 let string = String::from_utf8_lossy(line);
                 let stripped = strip_ansi_escapes::strip_str(&string);
                 warn!("{stripped}");
