@@ -4,7 +4,7 @@
 {
   lib,
   snakeOil,
-  wire-small,
+  wire-small-dev,
   config,
   pkgs,
   ...
@@ -36,7 +36,7 @@ in
         "C+ /root/.ssh/id_ed25519 600 - - - ${snakeOil.snakeOilEd25519PrivateKey}"
       ];
       environment.systemPackages = [
-        wire-small
+        wire-small-dev
         pkgs.ripgrep
       ];
       # It's important to note that you should never ever use this configuration
