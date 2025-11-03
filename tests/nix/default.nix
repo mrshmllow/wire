@@ -153,20 +153,21 @@ in
               testName = name;
               snakeOil = import "${pkgs.path}/nixos/tests/ssh-keys.nix" pkgs;
               inherit (opts) testDir;
-              inherit (self'.packages) wire-small;
+              inherit (self'.packages) wire-small-dev;
             };
             # NOTE: there is surely a better way of doing this in a more
             # "controlled" manner, but until a need is asked for, this will remain
             # as is.
-            testScript = ''
-              start_all()
+            testScript =
+              ''
+                start_all()
 
-              TEST_DIR="${injectedFlakeDir}/${path}"
+                TEST_DIR="${injectedFlakeDir}/${path}"
 
-              ${builtins.readFile ./tools.py}
-            ''
-            + lib.concatStringsSep "\n" (mapAttrsToList (_: value: value._wire.testScript) value.nodes)
-            + opts.testScript;
+                ${builtins.readFile ./tools.py}
+              ''
+              + lib.concatStringsSep "\n" (mapAttrsToList (_: value: value._wire.testScript) value.nodes)
+              + opts.testScript;
           };
         };
     in
