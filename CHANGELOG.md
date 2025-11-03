@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A node which is going to be applied locally will now never `push` or
   `cleanup`.
 - `show` subcommand looks nicer now.
+- `build` step will always build remotely when the node is going to be applied
+  locally.
 
 ### Documented
 

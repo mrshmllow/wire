@@ -36,7 +36,10 @@ impl ExecuteStep for Build {
 
         let status = run_command_with_env(
             &CommandArguments::new(command_string, ctx.modifiers)
-                .on_target(if ctx.node.build_remotely {
+                // build remotely if asked for AND we arent applying locally
+                // building remotely but applying locally does not logically
+                // make any sense
+                .on_target(if ctx.node.build_remotely && !ctx.should_apply_locally {
                     Some(&ctx.node.target)
                 } else {
                     None
