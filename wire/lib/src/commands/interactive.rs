@@ -11,14 +11,13 @@ use nix::{
 use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
-use std::sync::mpsc::{self, Sender};
-use std::sync::{Condvar, LazyLock, Mutex};
-use std::thread::JoinHandle;
+use std::sync::{LazyLock, Mutex};
 use std::{
     io::{Read, Write},
     os::fd::{AsFd, OwnedFd},
     sync::Arc,
 };
+use tokio::sync::{Notify, watch};
 use tracing::instrument;
 use tracing::{Span, debug, error, trace, warn};
 
@@ -47,20 +46,20 @@ pub(crate) struct InteractiveChildChip {
 
     original_command: String,
 
-    completion_status: Arc<CompletionStatus>,
+    status_receiver: watch::Receiver<Status>,
     stdout_handle: tokio::task::JoinHandle<Result<(), CommandError>>,
 }
 
 struct StdinTermiosAttrGuard(Termios);
 
-struct CompletionStatus {
-    completed: Mutex<bool>,
-    success: Mutex<Option<bool>>,
-    condvar: Condvar,
+#[derive(Debug)]
+enum Status {
+    Running,
+    Done { success: bool },
 }
 
 struct WatchStdoutArguments {
-    began_tx: Sender<()>,
+    notify: Arc<Notify>,
     reader: MasterReader,
     succeed_needle: Arc<Vec<u8>>,
     failed_needle: Arc<Vec<u8>>,
@@ -68,7 +67,7 @@ struct WatchStdoutArguments {
     output_mode: ChildOutputMode,
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
-    completion_status: Arc<CompletionStatus>,
+    status_sender: watch::Sender<Status>,
     span: Span,
     log_stdout: bool,
 }
@@ -188,12 +187,12 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 
     let stderr_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
     let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
-    let (began_tx, began_rx) = mpsc::channel::<()>();
-    let completion_status = Arc::new(CompletionStatus::new());
+    let notify = Arc::new(Notify::new());
+    let (status_sender, status_receiver) = watch::channel(Status::Running);
 
     let stdout_handle = {
         let arguments = WatchStdoutArguments {
-            began_tx,
+            notify: notify.clone(),
             reader,
             succeed_needle: succeed_needle.clone(),
             failed_needle: failed_needle.clone(),
@@ -201,9 +200,9 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             output_mode: arguments.output_mode,
             stderr_collection: stderr_collection.clone(),
             stdout_collection: stdout_collection.clone(),
-            completion_status: completion_status.clone(),
             span: Span::current(),
             log_stdout: arguments.log_stdout,
+            status_sender,
         };
 
         tokio::task::spawn_blocking(move || dynamic_watch_sudo_stdout(arguments))
@@ -225,9 +224,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 
     debug!("Setup threads");
 
-    let () = began_rx
-        .recv()
-        .map_err(|x| HiveLibError::CommandError(CommandError::RecvError(x)))?;
+    let () = notify.notified().await;
 
     drop(clobber_guard);
 
@@ -250,7 +247,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
         stderr_collection,
         stdout_collection,
         original_command: arguments.command_string.as_ref().to_string(),
-        completion_status,
+        status_receiver,
         stdout_handle,
     })
 }
@@ -339,36 +336,6 @@ fn build_command<S: AsRef<str>>(
     Ok(command)
 }
 
-impl CompletionStatus {
-    const fn new() -> Self {
-        CompletionStatus {
-            completed: Mutex::new(false),
-            success: Mutex::new(None),
-            condvar: Condvar::new(),
-        }
-    }
-
-    fn mark_completed(&self, was_successful: bool) {
-        let mut completed = self.completed.lock().unwrap();
-        let mut success = self.success.lock().unwrap();
-
-        *completed = true;
-        *success = Some(was_successful);
-
-        self.condvar.notify_all();
-    }
-
-    fn wait(&self) -> Option<bool> {
-        let mut completed = self.completed.lock().unwrap();
-
-        while !*completed {
-            completed = self.condvar.wait(completed).unwrap();
-        }
-
-        *self.success.lock().unwrap()
-    }
-}
-
 impl WireCommandChip for InteractiveChildChip {
     type ExitStatus = (portable_pty::ExitStatus, String);
 
@@ -384,12 +351,17 @@ impl WireCommandChip for InteractiveChildChip {
         debug!("exit_status: {exit_status:?}");
 
         self.stdout_handle
-            .join()
+            .await
             .map_err(|_| CommandError::ThreadPanic)??;
-        let success = self.completion_status.wait();
+
+        let status = self.status_receiver
+            .wait_for(|value| matches!(value, Status::Done { .. }))
+            .await
+            .unwrap();
+
         let _ = posix_write(&self.cancel_stdin_pipe_w, THREAD_QUIT_SIGNAL);
 
-        if let Some(true) = success {
+        if let Status::Done { success: true } = *status {
             let logs = self
                 .stdout_collection
                 .lock()
@@ -416,9 +388,9 @@ impl WireCommandChip for InteractiveChildChip {
             command_ran: self.original_command,
             logs,
             code: format!("code {}", exit_status.exit_code()),
-            reason: match success {
-                Some(_) => "marked-unsuccessful",
-                None => "child-crashed-before-succeeding",
+            reason: match *status {
+                Status::Done { .. } => "marked-unsuccessful",
+                Status::Running => "child-crashed-before-succeeding",
             },
         })
     }
@@ -470,7 +442,7 @@ fn create_sync_ssh_command(
 #[instrument(skip_all, name = "log", parent = arguments.span)]
 fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
     let WatchStdoutArguments {
-        began_tx,
+        notify,
         mut reader,
         succeed_needle,
         failed_needle,
@@ -478,7 +450,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         output_mode,
         stdout_collection,
         stderr_collection,
-        completion_status,
+        status_sender,
         log_stdout,
         ..
     } = arguments;
@@ -511,8 +483,8 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         n,
                         &mut raw_mode_buffer,
                         &aho_corasick,
-                        &completion_status,
-                        &began_tx,
+                        &status_sender,
+                        &notify,
                     )?;
 
                     match findings {
@@ -541,8 +513,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                 log_buffer.process_slice(&buffer[..n]);
 
                 while let Some(mut line) = log_buffer.next_line() {
-                    let findings =
-                        search_string(&aho_corasick, &line, &completion_status, &began_tx);
+                    let findings = search_string(&aho_corasick, &line, &status_sender, &notify);
 
                     match findings {
                         SearchFindings::Terminate => break 'outer,
@@ -569,11 +540,11 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         }
     }
 
-    let _ = began_tx.send(());
+    notify.notify_one();
 
     // failsafe if there were errors or the reader stopped
-    if !*completion_status.completed.lock().unwrap() {
-        completion_status.mark_completed(false);
+    if matches!(*status_sender.borrow(), Status::Running) {
+        status_sender.send_replace(Status::Done { success: false });
     }
 
     debug!("stdout: goodbye");
@@ -617,12 +588,12 @@ fn handle_rawmode_data<W: std::io::Write>(
     n: usize,
     raw_mode_buffer: &mut Vec<u8>,
     aho_corasick: &AhoCorasick,
-    completion_status: &CompletionStatus,
-    began_tx: &Sender<()>,
+    status_sender: &watch::Sender<Status>,
+    notify: &Arc<Notify>,
 ) -> Result<SearchFindings, CommandError> {
     raw_mode_buffer.extend_from_slice(&buffer[..n]);
 
-    let findings = search_string(aho_corasick, raw_mode_buffer, completion_status, began_tx);
+    let findings = search_string(aho_corasick, raw_mode_buffer, status_sender, notify);
 
     if !matches!(findings, SearchFindings::None) {
         return Ok(findings);
@@ -641,8 +612,8 @@ fn handle_rawmode_data<W: std::io::Write>(
 fn search_string(
     aho_corasick: &AhoCorasick,
     haystack: &[u8],
-    completion_status: &CompletionStatus,
-    began_tx: &Sender<()>,
+    status_sender: &watch::Sender<Status>,
+    notify: &Arc<Notify>,
 ) -> SearchFindings {
     let searched = aho_corasick
         .find_iter(haystack)
@@ -651,7 +622,7 @@ fn search_string(
 
     let started = if searched.contains(&STARTED_PATTERN) {
         debug!("start needle was found, switching mode...");
-        let _ = began_tx.send(());
+        notify.notify_one();
         true
     } else {
         false
@@ -659,7 +630,7 @@ fn search_string(
 
     let succeeded = if searched.contains(&SUCCEEDED_PATTERN) {
         debug!("succeed needle was found, marking child as succeeding.");
-        completion_status.mark_completed(true);
+        status_sender.send(Status::Done { success: true }).unwrap();
         true
     } else {
         false
@@ -667,7 +638,7 @@ fn search_string(
 
     let failed = if searched.contains(&FAILED_PATTERN) {
         debug!("failed needle was found, elevated child did not succeed.");
-        completion_status.mark_completed(false);
+        status_sender.send(Status::Done { success: false }).unwrap();
         true
     } else {
         false
@@ -774,8 +745,10 @@ fn watch_stdin_from_user(
 
 #[cfg(test)]
 mod tests {
+    use tokio::sync::Notify;
+
     use super::*;
-    use std::{assert_matches::assert_matches, sync::mpsc::TryRecvError};
+    use std::{assert_matches::assert_matches};
 
     #[test]
     fn test_rawmode_data() {
@@ -785,8 +758,8 @@ mod tests {
             .build(["START_NEEDLE", "SUCCEEDED_NEEDLE", "FAILED_NEEDLE"])
             .unwrap();
         let mut stderr = vec![];
-        let (began_tx, began_rx) = mpsc::channel::<()>();
-        let completion_status = CompletionStatus::new();
+        let notify = Arc::new(Notify::new());
+        let (status_sender, _) = watch::channel(Status::Running);
 
         // each "Bla" is 4 bytes.
         let buffer = "bla bla bla START_NEEDLE bla bla bla".as_bytes();
@@ -800,14 +773,13 @@ mod tests {
                 4,
                 &mut raw_mode_buffer,
                 &aho_corasick,
-                &completion_status,
-                &began_tx
+                &status_sender,
+                &notify
             ),
             Ok(SearchFindings::None)
         );
         assert_eq!(raw_mode_buffer, b"bla ");
-        assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
-        assert!(!*completion_status.completed.lock().unwrap());
+        assert_matches!(*status_sender.borrow(), Status::Running);
 
         let buffer = &buffer[4..];
 
@@ -820,14 +792,13 @@ mod tests {
                 n,
                 &mut raw_mode_buffer,
                 &aho_corasick,
-                &completion_status,
-                &began_tx
+                &status_sender,
+                &notify,
             ),
             Ok(SearchFindings::None)
         );
-        assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
+        assert_matches!(*status_sender.borrow(), Status::Running);
         assert_eq!(raw_mode_buffer, b"bla bla bla START_");
-        assert!(!*completion_status.completed.lock().unwrap());
 
         let buffer = &buffer[n..];
 
@@ -840,14 +811,13 @@ mod tests {
                 n,
                 &mut raw_mode_buffer,
                 &aho_corasick,
-                &completion_status,
-                &began_tx
+                &status_sender,
+                &notify
             ),
             Ok(SearchFindings::Started)
         );
-        assert_matches!(began_rx.try_recv(), Ok(()));
         assert_eq!(raw_mode_buffer, b"bla bla bla START_NEEDLE bla bla bla");
-        assert!(!*completion_status.completed.lock().unwrap());
+        assert_matches!(*status_sender.borrow(), Status::Running);
 
         // test failed needle
         let buffer = "bla FAILED_NEEDLE bla".as_bytes();
@@ -861,17 +831,17 @@ mod tests {
                 n,
                 &mut raw_mode_buffer,
                 &aho_corasick,
-                &completion_status,
-                &began_tx
+                &status_sender,
+                &notify
             ),
             Ok(SearchFindings::Terminate)
         );
-        assert_matches!(*completion_status.success.lock().unwrap(), Some(false));
+        assert_matches!(*status_sender.borrow(), Status::Done { success: false });
 
         // test succeed needle
         let buffer = "bla SUCCEEDED_NEEDLE bla".as_bytes();
         let mut raw_mode_buffer = vec![];
-        let completion_status = CompletionStatus::new();
+        let (status_sender, _) = watch::channel(Status::Running);
 
         let n = buffer.len();
         assert_matches!(
@@ -881,11 +851,11 @@ mod tests {
                 n,
                 &mut raw_mode_buffer,
                 &aho_corasick,
-                &completion_status,
-                &began_tx
+                &status_sender,
+                &notify
             ),
             Ok(SearchFindings::Terminate)
         );
-        assert_matches!(*completion_status.success.lock().unwrap(), Some(true));
+        assert_matches!(*status_sender.borrow(), Status::Done { success: true });
     }
 }
