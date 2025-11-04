@@ -101,13 +101,13 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
     }
 }
 
-pub(crate) fn run_command<S: AsRef<str>>(
+pub(crate) async fn run_command<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
 ) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
-    run_command_with_env(arguments, HashMap::new())
+    run_command_with_env(arguments, HashMap::new()).await
 }
 
-pub(crate) fn run_command_with_env<S: AsRef<str>>(
+pub(crate) async fn run_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
     envs: HashMap<String, String>,
 ) -> Result<Either<InteractiveChildChip, NonInteractiveChildChip>, HiveLibError> {
@@ -118,7 +118,9 @@ pub(crate) fn run_command_with_env<S: AsRef<str>>(
         )?));
     }
 
-    Ok(Either::Left(interactive_command_with_env(arguments, envs)?))
+    Ok(Either::Left(
+        interactive_command_with_env(arguments, envs).await?,
+    ))
 }
 
 pub(crate) trait WireCommandChip {

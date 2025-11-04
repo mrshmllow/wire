@@ -4,10 +4,9 @@
 #![feature(assert_matches)]
 #![feature(iter_intersperse)]
 
-use std::{
-    io::IsTerminal,
-    sync::{Arc, LazyLock, Mutex},
-};
+use std::{io::IsTerminal, sync::LazyLock};
+
+use tokio::sync::Semaphore;
 
 use crate::{errors::HiveLibError, hive::node::Name};
 
@@ -54,5 +53,4 @@ pub enum EvalGoal<'a> {
     GetTopLevel(&'a Name),
 }
 
-pub static STDIN_CLOBBER_LOCK: LazyLock<Arc<Mutex<()>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(())));
+pub static STDIN_CLOBBER_LOCK: LazyLock<Semaphore> = LazyLock::new(|| Semaphore::new(1));

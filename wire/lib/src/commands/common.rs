@@ -37,7 +37,8 @@ pub async fn push(context: &Context<'_>, push: Push<'_>) -> Result<(), HiveLibEr
                 .target
                 .create_ssh_opts(context.modifiers, false)?,
         )]),
-    )?;
+    )
+    .await?;
 
     child
         .wait_till_success()
@@ -95,7 +96,8 @@ pub async fn evaluate_hive_attribute(
     let child = run_command(
         &CommandArguments::new(command_string, modifiers)
             .mode(crate::commands::ChildOutputMode::Nix),
-    )?;
+    )
+    .await?;
 
     child
         .wait_till_success()

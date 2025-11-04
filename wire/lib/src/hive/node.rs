@@ -218,7 +218,8 @@ impl Node {
             &CommandArguments::new(command_string, modifiers)
                 .log_stdout()
                 .mode(crate::commands::ChildOutputMode::Interactive),
-        )?;
+        )
+        .await?;
 
         output.wait_till_success().await.map_err(|source| {
             HiveLibError::NetworkError(NetworkError::HostUnreachable {

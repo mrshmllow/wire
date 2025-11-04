@@ -127,8 +127,8 @@ fn create_starting_segment<S: AsRef<str>>(
 }
 
 #[instrument(skip_all, name = "run-int", fields(elevated = %arguments.is_elevated()))]
-pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
-    arguments: &CommandArguments<S>,
+pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
+    arguments: &CommandArguments<'_, S>,
     envs: std::collections::HashMap<String, String>,
 ) -> Result<InteractiveChildChip, HiveLibError> {
     print_authenticate_warning(arguments)?;
@@ -166,7 +166,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
         command.env(key, value);
     }
 
-    let clobber_guard = STDIN_CLOBBER_LOCK.lock().unwrap();
+    let clobber_guard = STDIN_CLOBBER_LOCK.acquire().await.unwrap();
     let _guard = StdinTermiosAttrGuard::new().map_err(HiveLibError::CommandError)?;
     let child = pty_pair
         .slave
