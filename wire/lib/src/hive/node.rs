@@ -6,20 +6,17 @@ use enum_dispatch::enum_dispatch;
 use gethostname::gethostname;
 use serde::{Deserialize, Serialize};
 use std::assert_matches::debug_assert_matches;
-use std::env;
 use std::fmt::Display;
-use std::io::ErrorKind;
-use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::{Instrument, Level, Span, debug, error, event, instrument, trace};
 
 use crate::commands::common::evaluate_hive_attribute;
 use crate::commands::{CommandArguments, WireCommandChip, run_command};
-use crate::errors::{CommandError, NetworkError};
+use crate::errors::NetworkError;
 use crate::hive::HiveLocation;
 use crate::hive::steps::build::Build;
-use crate::hive::steps::cleanup::{CleanUp, clean_up_control_master};
+use crate::hive::steps::cleanup::CleanUp;
 use crate::hive::steps::evaluate::Evaluate;
 use crate::hive::steps::keys::{Key, Keys, PushKeyAgent, UploadKeyAt};
 use crate::hive::steps::ping::Ping;
@@ -77,40 +74,13 @@ impl Target {
             .to_string(),
         ];
 
-        if modifiers.non_interactive || non_interactive_forced {
-            options.extend(["PasswordAuthentication=no".to_string()]);
-            options.extend(["KbdInteractiveAuthentication=no".to_string()]);
-        }
-
-        let control_path = get_control_path().map_err(HiveLibError::CommandError)?;
-        options.extend([
-            format!("ControlMaster={}", if master { "yes" } else { "no" }),
-            format!("ControlPath={control_path}"),
-            "ControlPersist=yes".to_string(),
-        ]);
+        options.extend(["PasswordAuthentication=no".to_string()]);
+        options.extend(["KbdInteractiveAuthentication=no".to_string()]);
 
         vector.push("-o".to_string());
         vector.extend(options.into_iter().intersperse("-o".to_string()));
 
         Ok(vector)
-    }
-}
-
-fn get_control_path() -> Result<String, CommandError> {
-    match env::var("XDG_RUNTIME_DIR") {
-        Ok(runtime_dir) => {
-            let control_path = PathBuf::from(runtime_dir).join("wire");
-
-            match std::fs::create_dir(&control_path) {
-                Err(err) if err.kind() != ErrorKind::AlreadyExists => {
-                    return Err(CommandError::RuntimeDirectory(err));
-                }
-                _ => (),
-            }
-
-            Ok(control_path.join("%C").display().to_string())
-        }
-        Err(err) => Err(CommandError::RuntimeDirectoryMissing(err)),
     }
 }
 
@@ -229,12 +199,10 @@ impl Node {
 
     /// Tests the connection to a node, and sets up an SSH control master process in the background
     pub async fn ping(&self, modifiers: SubCommandModifiers) -> Result<(), HiveLibError> {
-        let _ = clean_up_control_master(self, modifiers).await;
-
         let host = self.target.get_preferred_host()?;
 
         let command_string = format!(
-            "ssh {}@{host} {} -N",
+            "ssh {}@{host} {} exit",
             self.target.user,
             self.target.create_ssh_opts(modifiers, true)?
         );
