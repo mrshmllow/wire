@@ -48,7 +48,7 @@ pub(crate) struct InteractiveChildChip {
     original_command: String,
 
     completion_status: Arc<CompletionStatus>,
-    stdout_handle: JoinHandle<Result<(), CommandError>>,
+    stdout_handle: tokio::task::JoinHandle<Result<(), CommandError>>,
 }
 
 struct StdinTermiosAttrGuard(Termios);
@@ -206,7 +206,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             log_stdout: arguments.log_stdout,
         };
 
-        std::thread::spawn(move || dynamic_watch_sudo_stdout(arguments))
+        tokio::task::spawn_blocking(move || dynamic_watch_sudo_stdout(arguments))
     };
 
     let (write_stdin_pipe_r, write_stdin_pipe_w) =
@@ -214,7 +214,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
     let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
         posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
-    std::thread::spawn(move || {
+    tokio::task::spawn_blocking(move || {
         watch_stdin_from_user(
             &cancel_stdin_pipe_r,
             master_writer,
