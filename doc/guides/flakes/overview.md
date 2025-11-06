@@ -26,5 +26,5 @@ come from an input.
 ```
 ❯ nix flake show
 git+file:///some/path
-└───colmena: unknown
+└───wire: unknown
 ```
