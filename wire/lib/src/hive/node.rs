@@ -197,7 +197,7 @@ impl Node {
         }
     }
 
-    /// Tests the connection to a node, and sets up an SSH control master process in the background
+    /// Tests the connection to a node
     pub async fn ping(&self, modifiers: SubCommandModifiers) -> Result<(), HiveLibError> {
         let host = self.target.get_preferred_host()?;
 
@@ -686,11 +686,9 @@ mod tests {
             "-o".to_string(),
             "StrictHostKeyChecking=accept-new".to_string(),
             "-o".to_string(),
-            "ControlMaster=no".to_string(),
+            "PasswordAuthentication=no".to_string(),
             "-o".to_string(),
-            format!("ControlPath={tmp}/wire/%C"),
-            "-o".to_string(),
-            "ControlPersist=yes".to_string(),
+            "KbdInteractiveAuthentication=no".to_string(),
         ];
 
         assert_eq!(
@@ -716,11 +714,9 @@ mod tests {
                 "-o".to_string(),
                 "StrictHostKeyChecking=accept-new".to_string(),
                 "-o".to_string(),
-                "ControlMaster=yes".to_string(),
+                "PasswordAuthentication=no".to_string(),
                 "-o".to_string(),
-                format!("ControlPath={tmp}/wire/%C"),
-                "-o".to_string(),
-                "ControlPersist=yes".to_string(),
+                "KbdInteractiveAuthentication=no".to_string(),
             ]
         );
 
@@ -739,12 +735,6 @@ mod tests {
                 "PasswordAuthentication=no".to_string(),
                 "-o".to_string(),
                 "KbdInteractiveAuthentication=no".to_string(),
-                "-o".to_string(),
-                "ControlMaster=yes".to_string(),
-                "-o".to_string(),
-                format!("ControlPath={tmp}/wire/%C"),
-                "-o".to_string(),
-                "ControlPersist=yes".to_string(),
             ]
         );
 
