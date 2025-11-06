@@ -17,7 +17,7 @@ use std::{
     os::fd::{AsFd, OwnedFd},
     sync::Arc,
 };
-use tokio::sync::{Notify, watch};
+use tokio::sync::{oneshot, watch};
 use tracing::instrument;
 use tracing::{Span, debug, error, trace, warn};
 
@@ -59,7 +59,7 @@ enum Status {
 }
 
 struct WatchStdoutArguments {
-    notify: Arc<Notify>,
+    began_tx: oneshot::Sender::<()>,
     reader: MasterReader,
     succeed_needle: Arc<Vec<u8>>,
     failed_needle: Arc<Vec<u8>>,
@@ -187,12 +187,12 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 
     let stderr_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
     let stdout_collection = Arc::new(Mutex::new(VecDeque::<String>::with_capacity(10)));
-    let notify = Arc::new(Notify::new());
+    let (began_tx, began_rx) = oneshot::channel::<()>();
     let (status_sender, status_receiver) = watch::channel(Status::Running);
 
     let stdout_handle = {
         let arguments = WatchStdoutArguments {
-            notify: notify.clone(),
+            began_tx,
             reader,
             succeed_needle: succeed_needle.clone(),
             failed_needle: failed_needle.clone(),
@@ -224,7 +224,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 
     debug!("Setup threads");
 
-    let () = notify.notified().await;
+    let () = began_rx.await.map_err(|x| HiveLibError::CommandError(CommandError::OneshotRecvError(x)))?;
 
     drop(clobber_guard);
 
@@ -442,7 +442,7 @@ fn create_sync_ssh_command(
 #[instrument(skip_all, name = "log", parent = arguments.span)]
 fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
     let WatchStdoutArguments {
-        notify,
+        began_tx,
         mut reader,
         succeed_needle,
         failed_needle,
@@ -471,6 +471,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     let mut log_buffer = LogBuffer::new();
     let mut raw_mode_buffer = Vec::new();
     let mut belled = false;
+    let mut began_tx = Some(began_tx);
 
     'outer: loop {
         match reader.read(&mut buffer) {
@@ -484,7 +485,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                         &mut raw_mode_buffer,
                         &aho_corasick,
                         &status_sender,
-                        &notify,
+                        &mut began_tx,
                     )?;
 
                     match findings {
@@ -513,7 +514,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
                 log_buffer.process_slice(&buffer[..n]);
 
                 while let Some(mut line) = log_buffer.next_line() {
-                    let findings = search_string(&aho_corasick, &line, &status_sender, &notify);
+                    let findings = search_string(&aho_corasick, &line, &status_sender, &mut began_tx);
 
                     match findings {
                         SearchFindings::Terminate => break 'outer,
@@ -540,7 +541,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         }
     }
 
-    notify.notify_one();
+    began_tx.map(|began_tx| began_tx.send(()));
 
     // failsafe if there were errors or the reader stopped
     if matches!(*status_sender.borrow(), Status::Running) {
@@ -589,11 +590,11 @@ fn handle_rawmode_data<W: std::io::Write>(
     raw_mode_buffer: &mut Vec<u8>,
     aho_corasick: &AhoCorasick,
     status_sender: &watch::Sender<Status>,
-    notify: &Arc<Notify>,
+    began_tx: &mut Option<oneshot::Sender<()>>
 ) -> Result<SearchFindings, CommandError> {
     raw_mode_buffer.extend_from_slice(&buffer[..n]);
 
-    let findings = search_string(aho_corasick, raw_mode_buffer, status_sender, notify);
+    let findings = search_string(aho_corasick, raw_mode_buffer, status_sender, began_tx);
 
     if !matches!(findings, SearchFindings::None) {
         return Ok(findings);
@@ -613,7 +614,7 @@ fn search_string(
     aho_corasick: &AhoCorasick,
     haystack: &[u8],
     status_sender: &watch::Sender<Status>,
-    notify: &Arc<Notify>,
+    began_tx: &mut Option<oneshot::Sender<()>>
 ) -> SearchFindings {
     let searched = aho_corasick
         .find_iter(haystack)
@@ -622,7 +623,9 @@ fn search_string(
 
     let started = if searched.contains(&STARTED_PATTERN) {
         debug!("start needle was found, switching mode...");
-        notify.notify_one();
+        if let Some(began_tx) = began_tx.take() {
+            let _ = began_tx.send(());
+        }
         true
     } else {
         false
@@ -630,7 +633,7 @@ fn search_string(
 
     let succeeded = if searched.contains(&SUCCEEDED_PATTERN) {
         debug!("succeed needle was found, marking child as succeeding.");
-        status_sender.send(Status::Done { success: true }).unwrap();
+        status_sender.send_replace(Status::Done { success: true });
         true
     } else {
         false
@@ -638,7 +641,7 @@ fn search_string(
 
     let failed = if searched.contains(&FAILED_PATTERN) {
         debug!("failed needle was found, elevated child did not succeed.");
-        status_sender.send(Status::Done { success: false }).unwrap();
+        status_sender.send_replace(Status::Done { success: false });
         true
     } else {
         false
@@ -745,7 +748,7 @@ fn watch_stdin_from_user(
 
 #[cfg(test)]
 mod tests {
-    use tokio::sync::Notify;
+    use tokio::sync::oneshot::error::TryRecvError;
 
     use super::*;
     use std::{assert_matches::assert_matches};
@@ -758,7 +761,8 @@ mod tests {
             .build(["START_NEEDLE", "SUCCEEDED_NEEDLE", "FAILED_NEEDLE"])
             .unwrap();
         let mut stderr = vec![];
-        let notify = Arc::new(Notify::new());
+        let (began_tx, mut began_rx) = oneshot::channel::<()>();
+        let mut began_tx = Some(began_tx);
         let (status_sender, _) = watch::channel(Status::Running);
 
         // each "Bla" is 4 bytes.
@@ -774,10 +778,12 @@ mod tests {
                 &mut raw_mode_buffer,
                 &aho_corasick,
                 &status_sender,
-                &notify
+                &mut began_tx
             ),
             Ok(SearchFindings::None)
         );
+        assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
+        assert!(began_tx.is_some());
         assert_eq!(raw_mode_buffer, b"bla ");
         assert_matches!(*status_sender.borrow(), Status::Running);
 
@@ -793,10 +799,12 @@ mod tests {
                 &mut raw_mode_buffer,
                 &aho_corasick,
                 &status_sender,
-                &notify,
+                &mut began_tx
             ),
             Ok(SearchFindings::None)
         );
+        assert_matches!(began_rx.try_recv(), Err(TryRecvError::Empty));
+        assert!(began_tx.is_some());
         assert_matches!(*status_sender.borrow(), Status::Running);
         assert_eq!(raw_mode_buffer, b"bla bla bla START_");
 
@@ -812,10 +820,12 @@ mod tests {
                 &mut raw_mode_buffer,
                 &aho_corasick,
                 &status_sender,
-                &notify
+                &mut began_tx
             ),
             Ok(SearchFindings::Started)
         );
+        assert_matches!(began_rx.try_recv(), Ok(()));
+        assert_matches!(began_tx, None);
         assert_eq!(raw_mode_buffer, b"bla bla bla START_NEEDLE bla bla bla");
         assert_matches!(*status_sender.borrow(), Status::Running);
 
@@ -832,7 +842,7 @@ mod tests {
                 &mut raw_mode_buffer,
                 &aho_corasick,
                 &status_sender,
-                &notify
+                &mut began_tx
             ),
             Ok(SearchFindings::Terminate)
         );
@@ -852,7 +862,7 @@ mod tests {
                 &mut raw_mode_buffer,
                 &aho_corasick,
                 &status_sender,
-                &notify
+                &mut began_tx
             ),
             Ok(SearchFindings::Terminate)
         );
