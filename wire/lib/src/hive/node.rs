@@ -172,7 +172,10 @@ pub struct Node {
     #[serde(rename(deserialize = "_hostPlatform", serialize = "host_platform"))]
     pub host_platform: Arc<str>,
 
-    #[serde(rename(deserialize = "privilegeEscalationCommand", serialize = "privilege_escalation_command"))]
+    #[serde(rename(
+        deserialize = "privilegeEscalationCommand",
+        serialize = "privilege_escalation_command"
+    ))]
     pub privilege_escalation_command: im::Vector<Arc<str>>,
 }
 

@@ -86,7 +86,8 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
     }
 
     pub(crate) fn elevated(mut self, node: &Node) -> Self {
-        self.privilege_escalation_command = Some(node.privilege_escalation_command.iter().join(" "));
+        self.privilege_escalation_command =
+            Some(node.privilege_escalation_command.iter().join(" "));
         self
     }
 
