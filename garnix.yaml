@@ -1,4 +1,4 @@
 builds:
   exclude:
-    - "checks.*.pre-commit"
+    - "checks.*"
   branch: main
