@@ -8,19 +8,20 @@
 let
   module = import ./module;
 
-  mergedHive = {
-    meta = { };
+  mergedHive =
+    {
+      meta = { };
 
-    defaults = { };
-  }
-  // hive
-  # Map nixosConfigurations into nodes
-  // (builtins.mapAttrs (name: value: {
-    imports =
-      value._module.args.modules
-      # Include any custom stuff within `colmena`
-      ++ [ hive.${name} or { } ];
-  }) nixosConfigurations);
+      defaults = { };
+    }
+    // hive
+    # Map nixosConfigurations into nodes
+    // (builtins.mapAttrs (name: value: {
+      imports =
+        value._module.args.modules
+        # Include any custom stuff within `colmena`
+        ++ [ hive.${name} or { } ];
+    }) nixosConfigurations);
 
   nodeNames = builtins.filter (
     name:
@@ -55,20 +56,20 @@ let
       evalConfig = import (resolvedNixpkgs.path + "/nixos/lib/eval-config.nix");
     in
     evalConfig {
-      modules = [
-        module
+      modules =
+        [
+          module
 
-        mergedHive.defaults
-        mergedHive.${name}
-      ]
-      ++ (resolvedNixpkgs.lib.optional isFlake {
-        config.nixpkgs.flake.source = resolvedNixpkgs.lib.mkDefault resolvedNixpkgs.path;
-      });
+          mergedHive.defaults
+          mergedHive.${name}
+        ]
+        ++ (resolvedNixpkgs.lib.optional isFlake {
+          config.nixpkgs.flake.source = resolvedNixpkgs.lib.mkDefault resolvedNixpkgs.path;
+        });
       system = null;
       specialArgs = {
         inherit name nodes;
-      }
-      // mergedHive.meta.specialArgs or { };
+      } // mergedHive.meta.specialArgs or { };
     };
   nodes = builtins.listToAttrs (
     map (name: {
@@ -84,8 +85,10 @@ rec {
 
   topLevels = builtins.mapAttrs (name: _: getTopLevel name) nodes;
   inspect = {
-    _schema = 1;
+    _schema = 2;
 
     nodes = builtins.mapAttrs (_: v: v.config.deployment) nodes;
   };
+
+  shallow = builtins.mapAttrs (_: v: v.config.deployment.tags) nodes;
 }

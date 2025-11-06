@@ -51,8 +51,8 @@ async fn main() -> Result<()> {
 
     match args.command {
         cli::Commands::Apply(apply_args) => {
-            let mut hive = Hive::new_from_path(&location, modifiers).await?;
-            apply::apply(&mut hive, location, apply_args, modifiers).await?;
+            let shallow = Hive::shallow_from_path(&location, modifiers).await?;
+            apply::apply(shallow, location, apply_args, modifiers).await?;
         }
         cli::Commands::Inspect { online: _, json } => println!("{}", {
             let hive = Hive::new_from_path(&location, modifiers).await?;

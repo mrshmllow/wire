@@ -32,6 +32,8 @@ pub struct Hive {
     pub schema: u32,
 }
 
+pub type ShallowHive = HashMap<Name, Vec<String>>;
+
 pub enum Action<'a> {
     Inspect,
     EvaluateNode(OccupiedEntry<'a, String, Node>),
@@ -48,7 +50,7 @@ fn check_schema_version<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error
 }
 
 impl Hive {
-    pub const SCHEMA_VERSION: u32 = 1;
+    pub const SCHEMA_VERSION: u32 = 2;
 
     #[instrument(skip_all, name = "eval_hive")]
     pub async fn new_from_path(
@@ -64,6 +66,40 @@ impl Hive {
         })?;
 
         Ok(hive)
+    }
+
+    #[instrument(skip_all, name = "eval_names")]
+    pub async fn shallow_from_path(
+        location: &HiveLocation,
+        modifiers: SubCommandModifiers,
+    ) -> Result<ShallowHive, HiveLibError> {
+        info!("evaluating hive {location:?} names");
+
+        let output = evaluate_hive_attribute(location, &EvalGoal::Shallow, modifiers).await?;
+
+        let names: ShallowHive = serde_json::from_str(&output).map_err(|err| {
+            HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
+        })?;
+
+        Ok(names)
+    }
+
+    #[instrument(skip_all, name = "eval_names")]
+    pub async fn node_from_path<'a>(
+        name: &'a Name,
+        location: &'a HiveLocation,
+        modifiers: SubCommandModifiers,
+    ) -> Result<Node, HiveLibError> {
+        info!("evaluating {name:?} from {location:?}");
+
+        let output =
+            evaluate_hive_attribute(location, &EvalGoal::InspectNode(name), modifiers).await?;
+
+        let names: Node = serde_json::from_str(&output).map_err(|err| {
+            HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
+        })?;
+
+        Ok(names)
     }
 
     /// # Errors
