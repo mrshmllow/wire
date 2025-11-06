@@ -13,10 +13,10 @@ description: Deploy as any user with wire.
 If your selected deployment user does not fit the following requirements, the
 deployment commands will likely fail with an error:
 
-|                | Password-based SSH | Non-interactive SSH Auth |
-| :------------- | ---------------: | ------: |
-| In `wheel` (Sudo User)    | ❌ Not Supported | ✅ Supported |
-| Not In `wheel` (Unprivileged user) | ❌ Not Supported | ❌ Not Supported |
+|                                    | Password-based SSH | Non-interactive SSH Auth |
+| :--------------------------------- | -----------------: | -----------------------: |
+| In `wheel` (Sudo User)             |   ❌ Not Supported |             ✅ Supported |
+| Not In `wheel` (Unprivileged user) |   ❌ Not Supported |         ❌ Not Supported |
 
 - "In `wheel`" here meaning a sudoer, whether it be `root` or not.
 - "Non-interactive SSH Auth" here most likely meaning an SSH key, anything that
@@ -50,5 +50,5 @@ $ wire apply keys --on media
 ...
  INFO media | step="Upload key @ NoFilter" progress="3/4"
 me@node:22 | Authenticate for "sudo /nix/store/.../bin/key_agent":
-[sudo] password for deploy-user: 
+[sudo] password for deploy-user:
 ```
