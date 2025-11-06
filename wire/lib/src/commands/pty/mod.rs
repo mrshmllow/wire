@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-use aho_corasick::{AhoCorasick, PatternID};
+use crate::commands::pty::output::{WatchStdoutArguments, handle_pty_stdout};
+use aho_corasick::{PatternID};
 use itertools::Itertools;
 use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
+use nix::unistd::pipe;
 use nix::{
-    poll::{PollFd, PollFlags, PollTimeout, poll},
-    unistd::{pipe as posix_pipe, read as posix_read, write as posix_write},
+    unistd::{write as posix_write},
 };
 use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
@@ -19,10 +20,10 @@ use std::{
 };
 use tokio::sync::{oneshot, watch};
 use tracing::instrument;
-use tracing::{Span, debug, error, trace, warn};
+use tracing::{Span, debug, trace};
 
 use crate::commands::CommandArguments;
-use crate::commands::interactive_logbuffer::LogBuffer;
+use crate::commands::pty::input::watch_stdin_from_user;
 use crate::errors::CommandError;
 use crate::{STDIN_CLOBBER_LOCK, SubCommandModifiers};
 use crate::{
@@ -31,8 +32,17 @@ use crate::{
     hive::node::Target,
 };
 
+mod logbuffer;
+mod input;
+mod output;
+
 type MasterWriter = Box<dyn Write + Send>;
 type MasterReader = Box<dyn Read + Send>;
+
+/// the underlying command began
+const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
+const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
+
 type Child = Box<dyn portable_pty::Child + Send + Sync>;
 
 pub(crate) struct InteractiveChildChip {
@@ -60,28 +70,12 @@ enum Status {
     Done { success: bool },
 }
 
-struct WatchStdoutArguments {
-    began_tx: oneshot::Sender::<()>,
-    reader: MasterReader,
-    needles: Needles,
-    output_mode: ChildOutputMode,
-    stderr_collection: Arc<Mutex<VecDeque<String>>>,
-    stdout_collection: Arc<Mutex<VecDeque<String>>>,
-    status_sender: watch::Sender<Status>,
-    span: Span,
-    log_stdout: bool,
-}
-
 #[derive(Debug)]
 enum SearchFindings {
     None,
     Started,
     Terminate,
 }
-
-/// the underlying command began
-const THREAD_BEGAN_SIGNAL: &[u8; 1] = b"b";
-const THREAD_QUIT_SIGNAL: &[u8; 1] = b"q";
 
 static STARTED_PATTERN: LazyLock<PatternID> = LazyLock::new(|| PatternID::must(0));
 static SUCCEEDED_PATTERN: LazyLock<PatternID> = LazyLock::new(|| PatternID::must(1));
@@ -202,9 +196,9 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
     };
 
     let (write_stdin_pipe_r, write_stdin_pipe_w) =
-        posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
+        pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
     let (cancel_stdin_pipe_r, cancel_stdin_pipe_w) =
-        posix_pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
+        pipe().map_err(|x| HiveLibError::CommandError(CommandError::PosixPipe(x)))?;
 
     tokio::task::spawn_blocking(move || {
         watch_stdin_from_user(
@@ -248,7 +242,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 fn print_authenticate_warning<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
 ) -> Result<(), HiveLibError> {
-    if !arguments.is_elevated() {
+    if !arguments.elevated {
         return Ok(());
     }
 
@@ -324,8 +318,8 @@ fn build_command<S: AsRef<str>>(
         command
     };
 
-    if let Some(escalation_command) = &arguments.privilege_escalation_command {
-        command.arg(format!("{escalation_command} sh -c '{command_string}'"));
+    if arguments.elevated {
+        command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
     } else {
         command.arg(command_string);
     }
@@ -436,323 +430,12 @@ fn create_int_ssh_command(
     Ok(command)
 }
 
-/// Handles data from the PTY, and logs or prompts the user depending on the state
-/// of the command.
-///
-/// Emits a message on the `began_tx` when the command is considered started.
-///
-/// Records stderr and stdout when it is considered notable (all stdout, last few stderr messages)
-#[instrument(skip_all, name = "log", parent = arguments.span)]
-fn handle_pty_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
-    let WatchStdoutArguments {
-        began_tx,
-        mut reader,
-        needles,
-        output_mode,
-        stdout_collection,
-        stderr_collection,
-        status_sender,
-        log_stdout,
-        ..
-    } = arguments;
-
-    let aho_corasick = AhoCorasick::builder()
-        .ascii_case_insensitive(false)
-        .match_kind(aho_corasick::MatchKind::LeftmostFirst)
-        .build([
-            needles.start.as_ref(),
-            needles.succeed.as_ref(),
-            needles.fail.as_ref(),
-        ])
-        .unwrap();
-
-    let mut buffer = [0u8; 1024];
-    let mut stderr = std::io::stderr();
-    let mut began = false;
-    let mut log_buffer = LogBuffer::new();
-    let mut raw_mode_buffer = Vec::new();
-    let mut belled = false;
-    let mut began_tx = Some(began_tx);
-
-    'outer: loop {
-        match reader.read(&mut buffer) {
-            Ok(0) => break 'outer,
-            Ok(n) => {
-                if !began {
-                    let findings = handle_rawmode_data(
-                        &mut stderr,
-                        &buffer,
-                        n,
-                        &mut raw_mode_buffer,
-                        &aho_corasick,
-                        &status_sender,
-                        &mut began_tx,
-                    )?;
-
-                    match findings {
-                        SearchFindings::Terminate => break 'outer,
-                        SearchFindings::Started => {
-                            began = true;
-                            continue;
-                        }
-                        SearchFindings::None => {}
-                    }
-
-                    if belled {
-                        continue;
-                    }
-
-                    stderr
-                        .write(b"\x07")
-                        .map_err(CommandError::WritingClientStderr)?;
-                    stderr.flush().map_err(CommandError::WritingClientStderr)?;
-
-                    belled = true;
-
-                    continue;
-                }
-
-                log_buffer.process_slice(&buffer[..n]);
-
-                while let Some(mut line) = log_buffer.next_line() {
-                    let findings = search_string(&aho_corasick, &line, &status_sender, &mut began_tx);
-
-                    match findings {
-                        SearchFindings::Terminate => break 'outer,
-                        SearchFindings::Started => {
-                            began = true;
-                            continue;
-                        }
-                        SearchFindings::None => {}
-                    }
-
-                    handle_normal_data(
-                        &stderr_collection,
-                        &stdout_collection,
-                        &mut line,
-                        log_stdout,
-                        output_mode,
-                    );
-                }
-            }
-            Err(e) => {
-                eprintln!("Error reading from PTY: {e}");
-                break;
-            }
-        }
-    }
-
-    began_tx.map(|began_tx| began_tx.send(()));
-
-    // failsafe if there were errors or the reader stopped
-    if matches!(*status_sender.borrow(), Status::Running) {
-        status_sender.send_replace(Status::Done { success: false });
-    }
-
-    debug!("stdout: goodbye");
-
-    Ok(())
-}
-
-/// handles data when the command is considered "started", logs and records errors as appropriate
-fn handle_normal_data(
-    stderr_collection: &Arc<Mutex<VecDeque<String>>>,
-    stdout_collection: &Arc<Mutex<VecDeque<String>>>,
-    line: &mut [u8],
-    log_stdout: bool,
-    output_mode: ChildOutputMode,
-) {
-    if line.starts_with(b"#") {
-        let stripped = &mut line[1..];
-
-        if log_stdout {
-            output_mode.trace_slice(stripped);
-        }
-
-        let mut queue = stdout_collection.lock().unwrap();
-        queue.push_front(String::from_utf8_lossy(stripped).to_string());
-        return;
-    }
-
-    let log = output_mode.trace_slice(line);
-
-    if let Some(error_msg) = log {
-        let mut queue = stderr_collection.lock().unwrap();
-
-        // add at most 20 message to the front, drop the rest.
-        queue.push_front(error_msg);
-        queue.truncate(20);
-    }
-}
-
-/// handles raw data, prints to stderr when a prompt is detected
-fn handle_rawmode_data<W: std::io::Write>(
-    stderr: &mut W,
-    buffer: &[u8],
-    n: usize,
-    raw_mode_buffer: &mut Vec<u8>,
-    aho_corasick: &AhoCorasick,
-    status_sender: &watch::Sender<Status>,
-    began_tx: &mut Option<oneshot::Sender<()>>
-) -> Result<SearchFindings, CommandError> {
-    raw_mode_buffer.extend_from_slice(&buffer[..n]);
-
-    let findings = search_string(aho_corasick, raw_mode_buffer, status_sender, began_tx);
-
-    if !matches!(findings, SearchFindings::None) {
-        return Ok(findings);
-    }
-
-    stderr
-        .write_all(&buffer[..n])
-        .map_err(CommandError::WritingClientStderr)?;
-
-    stderr.flush().map_err(CommandError::WritingClientStderr)?;
-
-    Ok(findings)
-}
-
-/// returns true if the command is considered stopped
-fn search_string(
-    aho_corasick: &AhoCorasick,
-    haystack: &[u8],
-    status_sender: &watch::Sender<Status>,
-    began_tx: &mut Option<oneshot::Sender<()>>
-) -> SearchFindings {
-    let searched = aho_corasick
-        .find_iter(haystack)
-        .map(|x| x.pattern())
-        .collect::<Vec<_>>();
-
-    let started = if searched.contains(&STARTED_PATTERN) {
-        debug!("start needle was found, switching mode...");
-        if let Some(began_tx) = began_tx.take() {
-            let _ = began_tx.send(());
-        }
-        true
-    } else {
-        false
-    };
-
-    let succeeded = if searched.contains(&SUCCEEDED_PATTERN) {
-        debug!("succeed needle was found, marking child as succeeding.");
-        status_sender.send_replace(Status::Done { success: true });
-        true
-    } else {
-        false
-    };
-
-    let failed = if searched.contains(&FAILED_PATTERN) {
-        debug!("failed needle was found, elevated child did not succeed.");
-        status_sender.send_replace(Status::Done { success: false });
-        true
-    } else {
-        false
-    };
-
-    if succeeded || failed {
-        return SearchFindings::Terminate;
-    }
-
-    if started {
-        return SearchFindings::Started;
-    }
-
-    SearchFindings::None
-}
-
-/// Exits on any data written to `cancel_pipe_r`
-/// A pipe is used to cancel the function.
-#[instrument(skip_all, level = "trace", parent = span)]
-fn watch_stdin_from_user(
-    cancel_pipe_r: &OwnedFd,
-    mut master_writer: MasterWriter,
-    write_pipe_r: &OwnedFd,
-    span: Span,
-) -> Result<(), CommandError> {
-    const WRITER_POSITION: usize = 0;
-    const SIGNAL_POSITION: usize = 1;
-    const USER_POSITION: usize = 2;
-
-    let mut buffer = [0u8; 1024];
-    let stdin = std::io::stdin();
-    let mut cancel_pipe_buf = [0u8; 1];
-
-    let user_stdin_fd = std::os::fd::AsFd::as_fd(&stdin);
-    let cancel_pipe_r_fd = cancel_pipe_r.as_fd();
-
-    let mut all_fds = vec![
-        PollFd::new(write_pipe_r.as_fd(), PollFlags::POLLIN),
-        PollFd::new(cancel_pipe_r.as_fd(), PollFlags::POLLIN),
-        PollFd::new(user_stdin_fd, PollFlags::POLLIN),
-    ];
-
-    loop {
-        match poll(&mut all_fds, PollTimeout::NONE) {
-            Ok(0) => {} // timeout, impossible
-            Ok(_) => {
-                // The user stdin pipe can be removed
-                if all_fds.get(USER_POSITION).is_some()
-                    && let Some(events) = all_fds[USER_POSITION].revents()
-                    && events.contains(PollFlags::POLLIN)
-                {
-                    trace!("Got stdin from user...");
-                    let n =
-                        posix_read(user_stdin_fd, &mut buffer).map_err(CommandError::PosixPipe)?;
-                    master_writer
-                        .write_all(&buffer[..n])
-                        .map_err(CommandError::WritingMasterStdout)?;
-                    master_writer
-                        .flush()
-                        .map_err(CommandError::WritingMasterStdout)?;
-                }
-
-                if let Some(events) = all_fds[WRITER_POSITION].revents()
-                    && events.contains(PollFlags::POLLIN)
-                {
-                    trace!("Got stdin from writer...");
-                    let n =
-                        posix_read(write_pipe_r, &mut buffer).map_err(CommandError::PosixPipe)?;
-                    master_writer
-                        .write_all(&buffer[..n])
-                        .map_err(CommandError::WritingMasterStdout)?;
-                    master_writer
-                        .flush()
-                        .map_err(CommandError::WritingMasterStdout)?;
-                }
-
-                if let Some(events) = all_fds[SIGNAL_POSITION].revents()
-                    && events.contains(PollFlags::POLLIN)
-                {
-                    let n = posix_read(cancel_pipe_r_fd, &mut cancel_pipe_buf)
-                        .map_err(CommandError::PosixPipe)?;
-                    let message = &cancel_pipe_buf[..n];
-
-                    trace!("Got byte from signal pipe: {message:?}");
-
-                    if message == THREAD_QUIT_SIGNAL {
-                        return Ok(());
-                    }
-
-                    if message == THREAD_BEGAN_SIGNAL {
-                        all_fds.remove(USER_POSITION);
-                    }
-                }
-            }
-            Err(e) => {
-                error!("Poll error: {e}");
-                break;
-            }
-        }
-    }
-
-    debug!("stdin_thread: goodbye");
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
+    use aho_corasick::AhoCorasick;
     use tokio::sync::oneshot::error::TryRecvError;
+
+    use crate::commands::pty::output::handle_rawmode_data;
 
     use super::*;
     use std::{assert_matches::assert_matches};

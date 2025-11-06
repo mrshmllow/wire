@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use crate::commands::pty::{InteractiveChildChip, interactive_command_with_env};
 use std::{collections::HashMap, str::from_utf8, sync::LazyLock};
 
 use aho_corasick::AhoCorasick;
@@ -13,7 +14,6 @@ use tracing::{debug, error, info, trace, warn};
 use crate::{
     SubCommandModifiers,
     commands::{
-        interactive::{InteractiveChildChip, interactive_command_with_env},
         noninteractive::{NonInteractiveChildChip, non_interactive_command_with_env},
     },
     errors::{CommandError, HiveLibError},
@@ -21,9 +21,8 @@ use crate::{
 };
 
 pub(crate) mod common;
-pub(crate) mod interactive;
-pub(crate) mod interactive_logbuffer;
 pub(crate) mod noninteractive;
+pub(crate) mod pty;
 
 #[derive(Copy, Clone, Debug)]
 pub(crate) enum ChildOutputMode {
