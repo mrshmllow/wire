@@ -2,13 +2,11 @@
 // Copyright 2024-2025 wire Contributors
 
 use crate::commands::pty::output::{WatchStdoutArguments, handle_pty_stdout};
-use aho_corasick::{PatternID};
+use aho_corasick::PatternID;
 use itertools::Itertools;
 use nix::sys::termios::{LocalFlags, SetArg, Termios, tcgetattr, tcsetattr};
 use nix::unistd::pipe;
-use nix::{
-    unistd::{write as posix_write},
-};
+use nix::unistd::write as posix_write;
 use portable_pty::{CommandBuilder, NativePtySystem, PtyPair, PtySize};
 use rand::distr::Alphabetic;
 use std::collections::VecDeque;
@@ -32,8 +30,8 @@ use crate::{
     hive::node::Target,
 };
 
-mod logbuffer;
 mod input;
+mod logbuffer;
 mod output;
 
 type MasterWriter = Box<dyn Write + Send>;
@@ -88,7 +86,11 @@ fn create_ending_segment<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
     needles: &Needles,
 ) -> String {
-    let Needles { succeed, fail, start } = needles;
+    let Needles {
+        succeed,
+        fail,
+        start,
+    } = needles;
 
     format!(
         "echo -e '{succeed}' || echo '{failed}'",
@@ -139,10 +141,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             ChildOutputMode::Generic | ChildOutputMode::Interactive => "",
         },
         starting = create_starting_segment(arguments, &needles.start),
-        ending = create_ending_segment(
-            arguments,
-            &needles
-        )
+        ending = create_ending_segment(arguments, &needles)
     );
 
     debug!("{command_string}");
@@ -211,7 +210,9 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 
     debug!("Setup threads");
 
-    let () = began_rx.await.map_err(|x| HiveLibError::CommandError(CommandError::OneshotRecvError(x)))?;
+    let () = began_rx
+        .await
+        .map_err(|x| HiveLibError::CommandError(CommandError::OneshotRecvError(x)))?;
 
     drop(clobber_guard);
 
@@ -263,9 +264,9 @@ fn print_authenticate_warning<S: AsRef<str>>(
 }
 
 struct Needles {
-    succeed: Arc<Vec<u8>>, 
+    succeed: Arc<Vec<u8>>,
     fail: Arc<Vec<u8>>,
-    start: Arc<Vec<u8>>
+    start: Arc<Vec<u8>>,
 }
 
 fn create_needles() -> Needles {
@@ -274,7 +275,7 @@ fn create_needles() -> Needles {
     Needles {
         succeed: Arc::new(format!("{tmp_prefix}_W_Q").as_bytes().to_vec()),
         fail: Arc::new(format!("{tmp_prefix}_W_F").as_bytes().to_vec()),
-        start: Arc::new(format!("{tmp_prefix}_W_S").as_bytes().to_vec())
+        start: Arc::new(format!("{tmp_prefix}_W_S").as_bytes().to_vec()),
     }
 }
 
@@ -345,7 +346,8 @@ impl WireCommandChip for InteractiveChildChip {
             .await
             .map_err(|_| CommandError::ThreadPanic)??;
 
-        let status = self.status_receiver
+        let status = self
+            .status_receiver
             .wait_for(|value| matches!(value, Status::Done { .. }))
             .await
             .unwrap();
@@ -438,7 +440,7 @@ mod tests {
     use crate::commands::pty::output::handle_rawmode_data;
 
     use super::*;
-    use std::{assert_matches::assert_matches};
+    use std::assert_matches::assert_matches;
 
     #[test]
     fn test_rawmode_data() {

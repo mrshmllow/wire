@@ -1,14 +1,27 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-use std::{collections::VecDeque, io::Write, sync::{Arc, Mutex}};
+use crate::{
+    commands::{
+        ChildOutputMode,
+        pty::{
+            FAILED_PATTERN, Needles, STARTED_PATTERN, SUCCEEDED_PATTERN, SearchFindings, Status,
+            logbuffer::LogBuffer,
+        },
+    },
+    errors::CommandError,
+};
 use aho_corasick::AhoCorasick;
+use std::{
+    collections::VecDeque,
+    io::Write,
+    sync::{Arc, Mutex},
+};
 use tokio::sync::{oneshot, watch};
 use tracing::{Span, debug, instrument};
-use crate::{commands::{ChildOutputMode, pty::{FAILED_PATTERN, Needles, STARTED_PATTERN, SUCCEEDED_PATTERN, SearchFindings, Status, logbuffer::LogBuffer}}, errors::CommandError};
 
 pub(super) struct WatchStdoutArguments {
-    pub began_tx: oneshot::Sender::<()>,
+    pub began_tx: oneshot::Sender<()>,
     pub reader: super::MasterReader,
     pub needles: Needles,
     pub output_mode: ChildOutputMode,
@@ -98,7 +111,8 @@ pub(super) fn handle_pty_stdout(arguments: WatchStdoutArguments) -> Result<(), C
                 log_buffer.process_slice(&buffer[..n]);
 
                 while let Some(mut line) = log_buffer.next_line() {
-                    let findings = search_string(&aho_corasick, &line, &status_sender, &mut began_tx);
+                    let findings =
+                        search_string(&aho_corasick, &line, &status_sender, &mut began_tx);
 
                     match findings {
                         SearchFindings::Terminate => break 'outer,
@@ -137,7 +151,6 @@ pub(super) fn handle_pty_stdout(arguments: WatchStdoutArguments) -> Result<(), C
     Ok(())
 }
 
-
 /// handles raw data, prints to stderr when a prompt is detected
 pub(super) fn handle_rawmode_data<W: std::io::Write>(
     stderr: &mut W,
@@ -146,7 +159,7 @@ pub(super) fn handle_rawmode_data<W: std::io::Write>(
     raw_mode_buffer: &mut Vec<u8>,
     aho_corasick: &AhoCorasick,
     status_sender: &watch::Sender<Status>,
-    began_tx: &mut Option<oneshot::Sender<()>>
+    began_tx: &mut Option<oneshot::Sender<()>>,
 ) -> Result<SearchFindings, CommandError> {
     raw_mode_buffer.extend_from_slice(&buffer[..n]);
 
@@ -164,7 +177,6 @@ pub(super) fn handle_rawmode_data<W: std::io::Write>(
 
     Ok(findings)
 }
-
 
 /// handles data when the command is considered "started", logs and records errors as appropriate
 fn handle_normal_data(
@@ -202,7 +214,7 @@ fn search_string(
     aho_corasick: &AhoCorasick,
     haystack: &[u8],
     status_sender: &watch::Sender<Status>,
-    began_tx: &mut Option<oneshot::Sender<()>>
+    began_tx: &mut Option<oneshot::Sender<()>>,
 ) -> SearchFindings {
     let searched = aho_corasick
         .find_iter(haystack)
@@ -245,4 +257,3 @@ fn search_string(
 
     SearchFindings::None
 }
-

@@ -3,10 +3,16 @@
 
 use std::os::fd::{AsFd, OwnedFd};
 
-use nix::{poll::{PollFd, PollFlags, PollTimeout, poll}, unistd::read};
+use nix::{
+    poll::{PollFd, PollFlags, PollTimeout, poll},
+    unistd::read,
+};
 use tracing::{Span, debug, error, instrument, trace};
 
-use crate::{commands::pty::{MasterWriter, THREAD_BEGAN_SIGNAL, THREAD_QUIT_SIGNAL}, errors::CommandError};
+use crate::{
+    commands::pty::{MasterWriter, THREAD_BEGAN_SIGNAL, THREAD_QUIT_SIGNAL},
+    errors::CommandError,
+};
 
 /// Exits on any data written to `cancel_pipe_r`
 /// A pipe is used to cancel the function.
@@ -44,8 +50,7 @@ pub(super) fn watch_stdin_from_user(
                     && events.contains(PollFlags::POLLIN)
                 {
                     trace!("Got stdin from user...");
-                    let n =
-                        read(user_stdin_fd, &mut buffer).map_err(CommandError::PosixPipe)?;
+                    let n = read(user_stdin_fd, &mut buffer).map_err(CommandError::PosixPipe)?;
                     master_writer
                         .write_all(&buffer[..n])
                         .map_err(CommandError::WritingMasterStdout)?;
@@ -58,8 +63,7 @@ pub(super) fn watch_stdin_from_user(
                     && events.contains(PollFlags::POLLIN)
                 {
                     trace!("Got stdin from writer...");
-                    let n =
-                        read(write_pipe_r, &mut buffer).map_err(CommandError::PosixPipe)?;
+                    let n = read(write_pipe_r, &mut buffer).map_err(CommandError::PosixPipe)?;
                     master_writer
                         .write_all(&buffer[..n])
                         .map_err(CommandError::WritingMasterStdout)?;

@@ -13,9 +13,7 @@ use tracing::{debug, error, info, trace, warn};
 
 use crate::{
     SubCommandModifiers,
-    commands::{
-        noninteractive::{NonInteractiveChildChip, non_interactive_command_with_env},
-    },
+    commands::noninteractive::{NonInteractiveChildChip, non_interactive_command_with_env},
     errors::{CommandError, HiveLibError},
     hive::node::{Node, Target},
 };
