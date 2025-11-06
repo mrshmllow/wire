@@ -242,7 +242,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 fn print_authenticate_warning<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
 ) -> Result<(), HiveLibError> {
-    if !arguments.elevated {
+    if !arguments.is_elevated() {
         return Ok(());
     }
 
@@ -318,7 +318,7 @@ fn build_command<S: AsRef<str>>(
         command
     };
 
-    if arguments.elevated {
+    if arguments.is_elevated() {
         command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
     } else {
         command.arg(command_string);
