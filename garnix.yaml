@@ -2,6 +2,7 @@ builds:
   exclude: []
   branch: main
   include:
-    - packages.*
-    - devShells.*
-    - formatter.*
+    - 'packages.*'
+    - 'devShells.*'
+    - 'formatter.*'
+  
