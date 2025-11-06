@@ -90,6 +90,7 @@ export default withMermaid(
             items: [
               { text: "Install wire", link: "/guides/installation" },
               { text: "Apply your Config", link: "/guides/apply" },
+              { text: "Use a non-root user", link: "/guides/non-root-user" },
               { text: "Target Nodes", link: "/guides/targeting" },
               {
                 text: "Flakes",
