@@ -50,6 +50,8 @@ pub(crate) struct InteractiveChildChip {
     stdout_handle: tokio::task::JoinHandle<Result<(), CommandError>>,
 }
 
+/// sets and reverts terminal options (the terminal user interaction is performed)
+/// reverts data when dropped
 struct StdinTermiosAttrGuard(Termios);
 
 #[derive(Debug)]
@@ -196,7 +198,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             status_sender,
         };
 
-        tokio::task::spawn_blocking(move || dynamic_watch_sudo_stdout(arguments))
+        tokio::task::spawn_blocking(move || handle_pty_stdout(arguments))
     };
 
     let (write_stdin_pipe_r, write_stdin_pipe_w) =
@@ -308,7 +310,7 @@ fn build_command<S: AsRef<str>>(
     command_string: &String,
 ) -> Result<CommandBuilder, HiveLibError> {
     let mut command = if let Some(target) = arguments.target {
-        let mut command = create_sync_ssh_command(target, arguments.modifiers)?;
+        let mut command = create_int_ssh_command(target, arguments.modifiers)?;
 
         // force ssh to use our pesudo terminal
         command.arg("-tt");
@@ -424,7 +426,7 @@ impl Drop for StdinTermiosAttrGuard {
     }
 }
 
-fn create_sync_ssh_command(
+fn create_int_ssh_command(
     target: &Target,
     modifiers: SubCommandModifiers,
 ) -> Result<portable_pty::CommandBuilder, HiveLibError> {
@@ -434,8 +436,14 @@ fn create_sync_ssh_command(
     Ok(command)
 }
 
+/// Handles data from the PTY, and logs or prompts the user depending on the state
+/// of the command.
+///
+/// Emits a message on the `began_tx` when the command is considered started.
+///
+/// Records stderr and stdout when it is considered notable (all stdout, last few stderr messages)
 #[instrument(skip_all, name = "log", parent = arguments.span)]
-fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
+fn handle_pty_stdout(arguments: WatchStdoutArguments) -> Result<(), CommandError> {
     let WatchStdoutArguments {
         began_tx,
         mut reader,
@@ -546,6 +554,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     Ok(())
 }
 
+/// handles data when the command is considered "started", logs and records errors as appropriate
 fn handle_normal_data(
     stderr_collection: &Arc<Mutex<VecDeque<String>>>,
     stdout_collection: &Arc<Mutex<VecDeque<String>>>,
@@ -576,6 +585,7 @@ fn handle_normal_data(
     }
 }
 
+/// handles raw data, prints to stderr when a prompt is detected
 fn handle_rawmode_data<W: std::io::Write>(
     stderr: &mut W,
     buffer: &[u8],
@@ -652,6 +662,7 @@ fn search_string(
 }
 
 /// Exits on any data written to `cancel_pipe_r`
+/// A pipe is used to cancel the function.
 #[instrument(skip_all, level = "trace", parent = span)]
 fn watch_stdin_from_user(
     cancel_pipe_r: &OwnedFd,
