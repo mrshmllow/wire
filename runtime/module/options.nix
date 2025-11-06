@@ -35,7 +35,8 @@ in
           };
           user = lib.mkOption {
             type = types.str;
-            description = "User to use for ssh.";
+            description = "User to use for SSH. The user must be atleast `wheel` and must use an SSH key or similar
+            non-interactive login method. More information can be found at https://wire.althaea.zone/guides/non-root-user";
             default = "root";
           };
           port = lib.mkOption {

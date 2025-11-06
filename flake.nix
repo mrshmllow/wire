@@ -42,11 +42,11 @@
         ./doc
         ./tests/nix
         ./bench/run.nix
+        ./runtime
       ];
       systems = import systems;
 
       flake = {
-        nixosModules.default = import ./runtime/module;
         makeHive = import ./runtime/makeHive.nix;
         hydraJobs =
           let
