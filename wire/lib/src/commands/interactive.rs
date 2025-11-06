@@ -61,9 +61,7 @@ enum Status {
 struct WatchStdoutArguments {
     began_tx: oneshot::Sender::<()>,
     reader: MasterReader,
-    succeed_needle: Arc<Vec<u8>>,
-    failed_needle: Arc<Vec<u8>>,
-    start_needle: Arc<Vec<u8>>,
+    needles: Needles,
     output_mode: ChildOutputMode,
     stderr_collection: Arc<Mutex<VecDeque<String>>>,
     stdout_collection: Arc<Mutex<VecDeque<String>>>,
@@ -92,22 +90,22 @@ const IO_SUBS: &str = "1> >(while IFS= read -r line; do echo \"#$line\"; done)";
 
 fn create_ending_segment<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
-    needles: Needles,
+    needles: &Needles,
 ) -> String {
-    let (succeed_needle, failed_needle, start_needle) = needles;
+    let Needles { succeed, fail, start } = needles;
 
     format!(
         "echo -e '{succeed}' || echo '{failed}'",
         succeed = if matches!(arguments.output_mode, ChildOutputMode::Interactive) {
             format!(
                 "{start}\\n{succeed}",
-                start = String::from_utf8_lossy(&start_needle),
-                succeed = String::from_utf8_lossy(&succeed_needle)
+                start = String::from_utf8_lossy(start),
+                succeed = String::from_utf8_lossy(succeed)
             )
         } else {
-            String::from_utf8_lossy(&succeed_needle).to_string()
+            String::from_utf8_lossy(succeed).to_string()
         },
-        failed = String::from_utf8_lossy(&failed_needle)
+        failed = String::from_utf8_lossy(fail)
     )
 }
 
@@ -132,8 +130,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
 ) -> Result<InteractiveChildChip, HiveLibError> {
     print_authenticate_warning(arguments)?;
 
-    let (succeed_needle, failed_needle, start_needle) = create_needles();
-
+    let needles = create_needles();
     let pty_system = NativePtySystem::default();
     let pty_pair = portable_pty::PtySystem::openpty(&pty_system, PtySize::default()).unwrap();
     setup_master(&pty_pair)?;
@@ -145,14 +142,10 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
             ChildOutputMode::Nix => "--log-format internal-json",
             ChildOutputMode::Generic | ChildOutputMode::Interactive => "",
         },
-        starting = create_starting_segment(arguments, &start_needle),
+        starting = create_starting_segment(arguments, &needles.start),
         ending = create_ending_segment(
             arguments,
-            (
-                succeed_needle.clone(),
-                failed_needle.clone(),
-                start_needle.clone()
-            )
+            &needles
         )
     );
 
@@ -194,9 +187,7 @@ pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
         let arguments = WatchStdoutArguments {
             began_tx,
             reader,
-            succeed_needle: succeed_needle.clone(),
-            failed_needle: failed_needle.clone(),
-            start_needle: start_needle.clone(),
+            needles,
             output_mode: arguments.output_mode,
             stderr_collection: stderr_collection.clone(),
             stdout_collection: stdout_collection.clone(),
@@ -275,16 +266,20 @@ fn print_authenticate_warning<S: AsRef<str>>(
     Ok(())
 }
 
-type Needles = (Arc<Vec<u8>>, Arc<Vec<u8>>, Arc<Vec<u8>>);
+struct Needles {
+    succeed: Arc<Vec<u8>>, 
+    fail: Arc<Vec<u8>>,
+    start: Arc<Vec<u8>>
+}
 
 fn create_needles() -> Needles {
     let tmp_prefix = rand::distr::SampleString::sample_string(&Alphabetic, &mut rand::rng(), 5);
 
-    (
-        Arc::new(format!("{tmp_prefix}_W_Q").as_bytes().to_vec()),
-        Arc::new(format!("{tmp_prefix}_W_F").as_bytes().to_vec()),
-        Arc::new(format!("{tmp_prefix}_W_S").as_bytes().to_vec()),
-    )
+    Needles {
+        succeed: Arc::new(format!("{tmp_prefix}_W_Q").as_bytes().to_vec()),
+        fail: Arc::new(format!("{tmp_prefix}_W_F").as_bytes().to_vec()),
+        start: Arc::new(format!("{tmp_prefix}_W_S").as_bytes().to_vec())
+    }
 }
 
 fn setup_master(pty_pair: &PtyPair) -> Result<(), HiveLibError> {
@@ -444,9 +439,7 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
     let WatchStdoutArguments {
         began_tx,
         mut reader,
-        succeed_needle,
-        failed_needle,
-        start_needle,
+        needles,
         output_mode,
         stdout_collection,
         stderr_collection,
@@ -459,9 +452,9 @@ fn dynamic_watch_sudo_stdout(arguments: WatchStdoutArguments) -> Result<(), Comm
         .ascii_case_insensitive(false)
         .match_kind(aho_corasick::MatchKind::LeftmostFirst)
         .build([
-            start_needle.as_ref(),
-            succeed_needle.as_ref(),
-            failed_needle.as_ref(),
+            needles.start.as_ref(),
+            needles.succeed.as_ref(),
+            needles.fail.as_ref(),
         ])
         .unwrap();
 
