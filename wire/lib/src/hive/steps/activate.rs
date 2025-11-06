@@ -57,7 +57,7 @@ async fn set_profile(
             } else {
                 Some(&ctx.node.target)
             })
-            .elevated(),
+            .elevated(ctx.node),
     )?;
 
     let _ = child
@@ -111,7 +111,7 @@ impl ExecuteStep for SwitchToConfiguration {
                 } else {
                     Some(&ctx.node.target)
                 })
-                .elevated()
+                .elevated(ctx.node)
                 .log_stdout(),
         )?;
 
@@ -135,7 +135,7 @@ impl ExecuteStep for SwitchToConfiguration {
                     &CommandArguments::new("reboot now", ctx.modifiers)
                         .log_stdout()
                         .on_target(Some(&ctx.node.target))
-                        .elevated(),
+                        .elevated(ctx.node),
                 )?;
 
                 // consume result, impossible to know if the machine failed to reboot or we

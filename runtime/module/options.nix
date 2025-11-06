@@ -73,6 +73,27 @@ in
       ];
     };
 
+    privilegeEscalationCommand = lib.mkOption {
+      type = types.listOf types.str;
+      description = "Command to elevate.";
+      default = [
+        "sudo"
+        "--"
+      ];
+    };
+
+    replaceUnknownProfiles = lib.mkOption {
+      type = types.bool;
+      description = "No-op, colmena compatability";
+      default = true;
+    };
+
+    sshOptions = lib.mkOption {
+      type = types.listOf types.str;
+      description = "No-op, colmena compatability";
+      default = [ ];
+    };
+
     _keys = lib.mkOption {
       internal = true;
       readOnly = true;

@@ -31,7 +31,7 @@ pub(crate) struct NonInteractiveChildChip {
     stdin: ChildStdin,
 }
 
-#[instrument(skip_all, name = "run", fields(elevated = %arguments.elevated))]
+#[instrument(skip_all, name = "run", fields(elevated = %arguments.is_elevated()))]
 pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: HashMap<String, String>,
@@ -55,8 +55,8 @@ pub(crate) fn non_interactive_command_with_env<S: AsRef<str>>(
         }
     );
 
-    let command_string = if arguments.elevated {
-        format!("sudo -u root -- sh -c '{command_string}'")
+    let command_string = if let Some(escalation_command) = &arguments.privilege_escalation_command {
+        format!("{escalation_command} sh -c '{command_string}'")
     } else {
         command_string
     };

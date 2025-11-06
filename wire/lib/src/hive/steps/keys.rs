@@ -258,7 +258,7 @@ impl ExecuteStep for Keys {
                 } else {
                     Some(&ctx.node.target)
                 })
-                .elevated()
+                .elevated(ctx.node)
                 .keep_stdin_open()
                 .log_stdout(),
         )?;

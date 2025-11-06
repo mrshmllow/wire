@@ -48,7 +48,7 @@ fn check_schema_version<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error
 }
 
 impl Hive {
-    pub const SCHEMA_VERSION: u32 = 0;
+    pub const SCHEMA_VERSION: u32 = 1;
 
     #[instrument(skip_all, name = "eval_hive")]
     pub async fn new_from_path(

@@ -126,7 +126,7 @@ fn create_starting_segment<S: AsRef<str>>(
     }
 }
 
-#[instrument(skip_all, name = "run-int", fields(elevated = %arguments.elevated))]
+#[instrument(skip_all, name = "run-int", fields(elevated = %arguments.is_elevated()))]
 pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
     envs: std::collections::HashMap<String, String>,
@@ -258,7 +258,7 @@ pub(crate) fn interactive_command_with_env<S: AsRef<str>>(
 fn print_authenticate_warning<S: AsRef<str>>(
     arguments: &CommandArguments<S>,
 ) -> Result<(), HiveLibError> {
-    if !arguments.elevated {
+    if !arguments.is_elevated() {
         return Ok(());
     }
 
@@ -330,8 +330,8 @@ fn build_command<S: AsRef<str>>(
         command
     };
 
-    if arguments.elevated {
-        command.arg(format!("sudo -u root -- sh -c '{command_string}'"));
+    if let Some(escalation_command) = &arguments.privilege_escalation_command {
+        command.arg(format!("{escalation_command} sh -c '{command_string}'"));
     } else {
         command.arg(command_string);
     }

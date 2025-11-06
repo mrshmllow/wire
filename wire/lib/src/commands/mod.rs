@@ -5,6 +5,7 @@ use std::{collections::HashMap, str::from_utf8, sync::LazyLock};
 
 use aho_corasick::AhoCorasick;
 use gjson::Value;
+use itertools::Itertools;
 use nix_compat::log::{AT_NIX_PREFIX, VerbosityLevel};
 use num_enum::TryFromPrimitive;
 use tracing::{debug, error, info, trace, warn};
@@ -16,7 +17,7 @@ use crate::{
         noninteractive::{NonInteractiveChildChip, non_interactive_command_with_env},
     },
     errors::{CommandError, HiveLibError},
-    hive::node::Target,
+    hive::node::{Node, Target},
 };
 
 pub(crate) mod common;
@@ -44,7 +45,7 @@ pub(crate) struct CommandArguments<'t, S: AsRef<str>> {
     output_mode: ChildOutputMode,
     command_string: S,
     keep_stdin_open: bool,
-    elevated: bool,
+    privilege_escalation_command: Option<String>,
     log_stdout: bool,
 }
 
@@ -61,7 +62,7 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
         Self {
             command_string,
             keep_stdin_open: false,
-            elevated: false,
+            privilege_escalation_command: None,
             log_stdout: false,
             target: None,
             output_mode: ChildOutputMode::Generic,
@@ -84,9 +85,13 @@ impl<'a, S: AsRef<str>> CommandArguments<'a, S> {
         self
     }
 
-    pub(crate) const fn elevated(mut self) -> Self {
-        self.elevated = true;
+    pub(crate) fn elevated(mut self, node: &Node) -> Self {
+        self.privilege_escalation_command = Some(node.privilege_escalation_command.iter().join(" "));
         self
+    }
+
+    pub(crate) const fn is_elevated(&self) -> bool {
+        self.privilege_escalation_command.is_some()
     }
 
     pub(crate) const fn log_stdout(mut self) -> Self {
