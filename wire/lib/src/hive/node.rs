@@ -171,6 +171,12 @@ pub struct Node {
 
     #[serde(rename(deserialize = "_hostPlatform", serialize = "host_platform"))]
     pub host_platform: Arc<str>,
+
+    #[serde(rename(
+        deserialize = "privilegeEscalationCommand",
+        serialize = "privilege_escalation_command"
+    ))]
+    pub privilege_escalation_command: im::Vector<Arc<str>>,
 }
 
 #[cfg(test)]
@@ -180,6 +186,7 @@ impl Default for Node {
             target: Target::default(),
             keys: im::Vector::new(),
             tags: im::HashSet::new(),
+            privilege_escalation_command: vec!["sudo".into(), "--".into()].into(),
             allow_local_deployment: true,
             build_remotely: false,
             host_platform: "x86_64-linux".into(),

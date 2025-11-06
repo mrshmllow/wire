@@ -134,7 +134,7 @@ pub enum HiveInitializationError {
 
     #[diagnostic(
         code(wire::hive_init::Parse),
-        help("Please create an issue!"),
+        help("If you cannot resolve this problem, please create an issue."),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
     #[error("Failed to parse internal wire json.")]
