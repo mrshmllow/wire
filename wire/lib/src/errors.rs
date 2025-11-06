@@ -276,6 +276,13 @@ pub enum CommandError {
     )]
     #[error("$XDG_RUNTIME_DIR could not be used.")]
     RuntimeDirectoryMissing(#[source] std::env::VarError),
+
+    #[diagnostic(
+        code(wire::command::OneshotRecvError),
+        url("{DOCS_URL}#{}", self.code().unwrap())
+    )]
+    #[error("Error waiting for begin message")]
+    OneshotRecvError(#[source] tokio::sync::oneshot::error::RecvError),
 }
 
 #[derive(Debug, Diagnostic, Error)]

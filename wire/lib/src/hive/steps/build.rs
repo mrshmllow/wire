@@ -47,7 +47,8 @@ impl ExecuteStep for Build {
                 .mode(crate::commands::ChildOutputMode::Nix)
                 .log_stdout(),
             std::collections::HashMap::new(),
-        )?
+        )
+        .await?
         .wait_till_success()
         .await
         .map_err(|source| HiveLibError::NixBuildError {

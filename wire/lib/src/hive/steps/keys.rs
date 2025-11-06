@@ -261,7 +261,8 @@ impl ExecuteStep for Keys {
                 .elevated(ctx.node)
                 .keep_stdin_open()
                 .log_stdout(),
-        )?;
+        )
+        .await?;
 
         let mut writer = SimpleLengthDelimWriter::new(async |data| child.write_stdin(data).await);
 
