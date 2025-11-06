@@ -1,7 +1,4 @@
 builds:
-  exclude: []
+  exclude:
+    - "checks.*.pre-commit"
   branch: main
-  include:
-    - "packages.*"
-    - "devShells.*"
-    - "formatter.*"
