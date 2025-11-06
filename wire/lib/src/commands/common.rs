@@ -78,9 +78,9 @@ pub async fn evaluate_hive_attribute(
                 &path.to_string_lossy(),
                 match goal {
                     EvalGoal::Inspect => "inspect".to_string(),
-                    EvalGoal::Shallow => "topLevels --apply \"builtins.attrNames\"".to_string(),
+                    EvalGoal::Shallow => "shallow".to_string(),
                     EvalGoal::GetTopLevel(node) => format!("topLevels.{node}"),
-                    EvalGoal::InspectNode(node) => format!("hive.inspect.nodes.{node}"),
+                    EvalGoal::InspectNode(node) => format!("inspect.nodes.{node}"),
                 }
             )
         }

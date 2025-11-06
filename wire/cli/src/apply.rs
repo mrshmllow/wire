@@ -91,7 +91,9 @@ pub async fn apply(
     let mut set = shallow
         .iter()
         .filter(|(name, node_tags)| {
-            args.on.is_empty() || names.contains(name) || node_tags.iter().any(|tag| tags.contains(tag))
+            args.on.is_empty()
+                || names.contains(name)
+                || node_tags.iter().any(|tag| tags.contains(tag))
         })
         .map(|(name, _)| (name, Hive::node_from_path(name, &location, modifiers)))
         .map(|(name, node)| {
@@ -114,9 +116,7 @@ pub async fn apply(
                     should_apply_locally,
                 };
 
-                GoalExecutor::new(context)
-                    .execute()
-                    .await
+                GoalExecutor::new(context).execute().await
             })
             .map(move |result| (name, result))
         })

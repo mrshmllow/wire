@@ -84,7 +84,7 @@ impl Hive {
         Ok(names)
     }
 
-    #[instrument(skip_all, name = "eval_names")]
+    #[instrument(skip_all, name = "eval_node")]
     pub async fn node_from_path<'a>(
         name: &'a Name,
         location: &'a HiveLocation,
