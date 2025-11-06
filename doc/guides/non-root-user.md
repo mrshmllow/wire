@@ -42,7 +42,7 @@ But it can be any user you want so long as it fits the requirements above.
 ```
 
 After this change, wire will prompt you for sudo authentication, and tell you
-the exact command wire wants privileged.
+the exact command wire wants privileged:
 
 ```sh{6}
 $ wire apply keys --on media
@@ -51,4 +51,22 @@ $ wire apply keys --on media
  INFO media | step="Upload key @ NoFilter" progress="3/4"
 me@node:22 | Authenticate for "sudo /nix/store/.../bin/key_agent":
 [sudo] password for deploy-user:
+```
+
+## Using alternative privilege escalation
+
+You may change the privilege escalation command with the
+[deployment.privilegeEscalationCommand](/reference/module.html#deployment-privilegeescalationcommand)
+option.
+
+For example, doas:
+
+```nix
+{
+  deployment.privilegeEscalationCommand = [
+    "sudo" # [!code --]
+    "--" # [!code --]
+    "doas" # [!code ++]
+  ];
+}
 ```

@@ -5,7 +5,6 @@ layout: home
 hero:
   name: wire
   text: a tool to deploy nixos systems
-  # tagline: My great project tagline
   actions:
     - theme: brand
       text: Read Tutorial
@@ -20,11 +19,14 @@ hero:
 features:
   - title: Deploy in Parallel
     details: Build and deploy many nodes at once.
+    link: /guides/parallelism
     icon: 💽
   - title: Manage Secrets
     details: Fast & Unopinionated secret management. Bring your own GPG, Age, or any other encryption tool.
+    link: /guides/keys
     icon: 🔑
   - title: Deploy as Any User
     details: Non-root deployments and interactive authentication is fully supported.
+    link: /guides/non-root-user
     icon: 🧑‍💻
 ---
