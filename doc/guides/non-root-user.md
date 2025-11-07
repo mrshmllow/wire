@@ -49,7 +49,7 @@ $ wire apply keys --on media
  INFO eval_hive: evaluating hive Flake("/path/to/hive")
 ...
  INFO media | step="Upload key @ NoFilter" progress="3/4"
-me@node:22 | Authenticate for "sudo /nix/store/.../bin/key_agent":
+deploy-user@node:22 | Authenticate for "sudo /nix/store/.../bin/key_agent":
 [sudo] password for deploy-user:
 ```
 
