@@ -326,13 +326,13 @@
       "locked": {
         "lastModified": 1758104393,
         "narHash": "sha256-ddXhp8hDFMKUiVf+V5Q71Ehfw8o1kGofxN9cAljyfOI=",
-        "owner": "wires-org",
+        "owner": "mrshmllow",
         "repo": "wire",
         "rev": "6c99f40273aa16dc6603375dc2c867b9265a289a",
         "type": "github"
       },
       "original": {
-        "owner": "wires-org",
+        "owner": "mrshmllow",
         "ref": "v0.5.0",
         "repo": "wire",
         "type": "github"

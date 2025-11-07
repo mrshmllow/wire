@@ -8,7 +8,12 @@ description: How to install wire tool.
 
 {{ $frontmatter.description }}
 
-It is recommended you stick to versioned tags, the latest is `0.5.0`.
+::: info
+
+The `wire` binary and the `wire.makeHive` function are tightly coupled, so it is
+recommended that you use the same version for both.
+
+:::
 
 ## Binary Cache
 
@@ -25,7 +30,7 @@ either editing `/etc/nix/nix.conf` or updating your NixOS configuration:
 ## Installation through flakes
 
 When using flakes, you should install wire through the same input you create
-your hive from.
+your hive from, sourced from the `stable` branch.
 
 ::: code-group
 <<< @/snippets/guides/installation/flake.nix{38} [flake.nix]
@@ -33,10 +38,14 @@ your hive from.
 
 ## Installation through npins
 
+With npins you may allow it to use release tags instead of the `stable`
+branch.
+
 ```sh
-$ npins add github mrshmllow wire --at v0.5.0
+$ npins add github mrshmllow wire
 ```
 
 ::: code-group
 <<< @/snippets/guides/installation/shell.nix{8} [shell.nix]
+<<< @/snippets/guides/installation/hive.nix{8} [hive.nix]
 :::
