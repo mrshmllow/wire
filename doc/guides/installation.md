@@ -41,6 +41,9 @@ your hive from, sourced from the `stable` branch.
 With npins you may allow it to use release tags instead of the `stable`
 branch.
 
+Using npins specifically is not required, you can pin your sources in any way
+you'd like, really.
+
 ```sh
 $ npins add github mrshmllow wire
 ```

@@ -89,6 +89,7 @@ export default withMermaid(
             collapsed: false,
             items: [
               { text: "Install wire", link: "/guides/installation" },
+              { text: "Migrate to wire", link: "/guides/migrate" },
               { text: "Apply your Config", link: "/guides/apply" },
               { text: "Use a non-root user", link: "/guides/non-root-user" },
               { text: "Target Nodes", link: "/guides/targeting" },
