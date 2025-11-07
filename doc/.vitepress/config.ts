@@ -90,9 +90,6 @@ export default withMermaid(
             items: [
               { text: "Install wire", link: "/guides/installation" },
               { text: "Migrate to wire", link: "/guides/migrate" },
-              { text: "Apply your Config", link: "/guides/apply" },
-              { text: "Use a non-root user", link: "/guides/non-root-user" },
-              { text: "Target Nodes", link: "/guides/targeting" },
               {
                 text: "Flakes",
                 items: [
@@ -103,9 +100,12 @@ export default withMermaid(
                   },
                 ],
               },
+              { text: "Apply your Config", link: "/guides/apply" },
+              { text: "Target Nodes", link: "/guides/targeting" },
               {
                 text: "Features",
                 items: [
+                  { text: "Use a non-root user", link: "/guides/non-root-user" },
                   { text: "Manage Secrets", link: "/guides/keys" },
                   { text: "Use Parallelism", link: "/guides/parallelism" },
                   { text: "Use hive.default", link: "/guides/hive-default" },
