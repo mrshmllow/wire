@@ -38,7 +38,7 @@ binary.
 ### Non-flake
 
 ::: tip
-You should also follow [installation](/guides/installation) to setup 
+You should also follow [installation](/guides/installation) to setup
 npins and install the binary.
 :::
 

@@ -105,7 +105,10 @@ export default withMermaid(
               {
                 text: "Features",
                 items: [
-                  { text: "Use a non-root user", link: "/guides/non-root-user" },
+                  {
+                    text: "Use a non-root user",
+                    link: "/guides/non-root-user",
+                  },
                   { text: "Manage Secrets", link: "/guides/keys" },
                   { text: "Use Parallelism", link: "/guides/parallelism" },
                   { text: "Use hive.default", link: "/guides/hive-default" },
