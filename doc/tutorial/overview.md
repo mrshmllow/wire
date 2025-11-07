@@ -52,7 +52,7 @@ Ready? Skip to [Nix Setup](./part-one/nix-setup).
 ### Speed
 
 wire is about >2x faster than colmena deploying [identical large
-hives](https://github.com/mrshmllow/wire/blob/main/bench/run.nix).
+hives](https://github.com/mrshmllow/wire/blob/trunk/bench/run.nix).
 
 | Command          |         Mean [s] | Min [s] | Max [s] |    Relative |
 | :--------------- | ---------------: | ------: | ------: | ----------: |

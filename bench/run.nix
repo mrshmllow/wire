@@ -33,7 +33,7 @@
           sleep 30
           echo "awake"
 
-          wire_main=$(nix build --print-out-paths github:mrshmllow/wire#wire-small --no-link)
+          wire_trunk=$(nix build --print-out-paths github:mrshmllow/wire#wire-small --no-link)
           wire_args="apply test --path ./wire -vv --ssh-accept-host -p 10"
           colmena_args="apply test --config ./colmena/hive.nix -v -p 10"
 
@@ -41,7 +41,7 @@
             --export-markdown stats.md \
             --export-json run.json \
             "${lib.getExe self'.packages.wire-small} $wire_args" -n "wire@HEAD" \
-            "$wire_main/bin/wire $wire_args" -n "wire@main" \
+            "$wire_trunk/bin/wire $wire_args" -n "wire@trunk" \
             "${lib.getExe' inputs.colmena_benchmarking.packages.x86_64-linux.colmena "colmena"} $colmena_args" \
                 -n "colmena@pinned"
         '';

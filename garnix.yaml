@@ -1,3 +1,3 @@
 builds:
   exclude: ["checks.*.*"]
-  branch: main
+  branch: trunk

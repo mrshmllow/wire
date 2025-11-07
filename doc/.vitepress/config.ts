@@ -20,7 +20,7 @@ export default withMermaid(
 
       footer: {
         message:
-          'Released under the <a href="https://github.com/mrshmllow/wire/blob/main/COPYING">AGPL-3.0 License</a>.',
+          'Released under the <a href="https://github.com/mrshmllow/wire/blob/trunk/COPYING">AGPL-3.0 License</a>.',
         copyright: "Copyright 2024-2025 wire Contributors",
       },
 
@@ -35,7 +35,7 @@ export default withMermaid(
           items: [
             {
               text: "Changelog",
-              link: "https://github.com/mrshmllow/wire/blob/main/CHANGELOG.md",
+              link: "https://github.com/mrshmllow/wire/blob/trunk/CHANGELOG.md",
             },
           ],
         },
@@ -128,7 +128,7 @@ export default withMermaid(
       },
 
       editLink: {
-        pattern: "https://github.com/mrshmllow/wire/edit/main/doc/:path",
+        pattern: "https://github.com/mrshmllow/wire/edit/trunk/doc/:path",
         text: "Edit this page on GitHub",
       },
 
