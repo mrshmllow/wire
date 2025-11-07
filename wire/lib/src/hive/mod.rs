@@ -14,7 +14,6 @@ use std::fmt::Display;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::sync::Arc;
 use tracing::{info, instrument};
 
 use crate::commands::common::evaluate_hive_attribute;
@@ -32,6 +31,8 @@ pub struct Hive {
     pub schema: u32,
 }
 
+pub type ShallowHive = HashMap<Name, Vec<String>>;
+
 pub enum Action<'a> {
     Inspect,
     EvaluateNode(OccupiedEntry<'a, String, Node>),
@@ -48,7 +49,7 @@ fn check_schema_version<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error
 }
 
 impl Hive {
-    pub const SCHEMA_VERSION: u32 = 1;
+    pub const SCHEMA_VERSION: u32 = 2;
 
     #[instrument(skip_all, name = "eval_hive")]
     pub async fn new_from_path(
@@ -66,22 +67,38 @@ impl Hive {
         Ok(hive)
     }
 
-    /// # Errors
-    ///
-    /// Returns an error if a node in nodes does not exist in the hive.
-    pub fn force_always_local(&mut self, nodes: Vec<String>) -> Result<(), HiveLibError> {
-        for node in nodes {
-            info!("Forcing a local build for {node}");
+    #[instrument(skip_all, name = "eval_names")]
+    pub async fn shallow_from_path(
+        location: &HiveLocation,
+        modifiers: SubCommandModifiers,
+    ) -> Result<ShallowHive, HiveLibError> {
+        info!("evaluating hive {location:?} names");
 
-            self.nodes
-                .get_mut(&Name(Arc::from(node.clone())))
-                .ok_or(HiveLibError::HiveInitializationError(
-                    HiveInitializationError::NodeDoesNotExist(node.clone()),
-                ))?
-                .build_remotely = false;
-        }
+        let output = evaluate_hive_attribute(location, &EvalGoal::Shallow, modifiers).await?;
 
-        Ok(())
+        let names: ShallowHive = serde_json::from_str(&output).map_err(|err| {
+            HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
+        })?;
+
+        Ok(names)
+    }
+
+    #[instrument(skip_all, name = "eval_node")]
+    pub async fn node_from_path<'a>(
+        name: &'a Name,
+        location: &'a HiveLocation,
+        modifiers: SubCommandModifiers,
+    ) -> Result<Node, HiveLibError> {
+        info!("evaluating {name:?} from {location:?}");
+
+        let output =
+            evaluate_hive_attribute(location, &EvalGoal::InspectNode(name), modifiers).await?;
+
+        let names: Node = serde_json::from_str(&output).map_err(|err| {
+            HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
+        })?;
+
+        Ok(names)
     }
 }
 
@@ -357,38 +374,6 @@ mod tests {
                 ..
             })
             if logs.contains("The option `deployment._keys' is read-only, but it's set multiple times.")
-        );
-    }
-
-    #[tokio::test]
-    async fn test_force_always_local() {
-        let mut location: PathBuf = env::var("WIRE_TEST_DIR").unwrap().into();
-        location.push("non_trivial_hive");
-        let location = location!(location);
-
-        let mut hive = Hive::new_from_path(&location, SubCommandModifiers::default())
-            .await
-            .unwrap();
-
-        assert_matches!(
-            hive.force_always_local(vec!["non-existant".to_string()]),
-            Err(HiveLibError::HiveInitializationError(
-                HiveInitializationError::NodeDoesNotExist(node)
-            )) if node == "non-existant"
-        );
-
-        for node in hive.nodes.values() {
-            assert!(node.build_remotely);
-        }
-
-        assert_matches!(hive.force_always_local(vec!["node-a".to_string()]), Ok(()));
-
-        assert!(
-            !hive
-                .nodes
-                .get(&Name("node-a".into()))
-                .unwrap()
-                .build_remotely
         );
     }
 }
