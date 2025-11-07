@@ -23,7 +23,7 @@ evaluating the node's NixOS system, building the node's NixOS system, and runnin
 The simplest way to apply is simply running:
 
 ```sh
-wire apply switch
+$ wire apply switch
 ```
 
 Which will `switch` to each node's NixOS system in your hive and push
@@ -110,7 +110,7 @@ the `wheel` group.
 Use the `--on` argument to specify which nodes in your hive to apply:
 
 ```sh
-wire apply --on node-a
+$ wire apply --on node-a
 ```
 
 Further examples, including how you can utilise tags, can be found on the [Targeting Nodes](./targeting) page.

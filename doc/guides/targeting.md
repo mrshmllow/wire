@@ -14,10 +14,23 @@ description: Tags, nodes, and how to target them with wire Tool.
 example:
 
 ```sh
-wire apply switch --on node-a,node-b
+$ wire apply switch --on node-a,node-b
 ```
 
 Will switch-to-configuration on node a, and node b.
+
+## Reading from Stdin
+
+Passing `--on -` will read whitespace-seperated nodes and tags from stdin. This
+can be combined with normal `--on` usage.
+
+For example:
+
+```sh
+$ echo "node-a node-b" | wire apply --on @other --on -
+```
+
+Will apply on `node-a`, `node-b`, and all nodes with the tag `@other`.
 
 ## Tag Basics
 
@@ -57,7 +70,7 @@ To target all nodes with a specific tag, prefix tags with an `@`.
 For example, to deploy only nodes with the `cloud` tag, use
 
 ```sh
-wire apply --on @cloud
+$ wire apply --on @cloud
 ```
 
 ## Further Examples
@@ -73,7 +86,7 @@ Other operations such as an `--ignore` argument are unimplemented as of wire `v0
 You can mix tags and node names with `--on`:
 
 ```sh
-wire apply --on @cloud node-5
+$ wire apply --on @cloud --on node-5
 ```
 
 This will deploy all nodes in `@cloud`, alongside the node `node-5`.
@@ -83,7 +96,7 @@ This will deploy all nodes in `@cloud`, alongside the node `node-5`.
 You can specify many tags together:
 
 ```sh
-wire apply --on @cloud @on-prem
+$ wire apply --on @cloud @on-prem
 ```
 
 This is a union between `@cloud` and `@on-prem`.

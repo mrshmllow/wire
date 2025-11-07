@@ -30,30 +30,24 @@ Ready? Skip to [Nix Setup](./part-one/nix-setup).
 
 ### Features
 
-| Features                           | wire               | Colmena            |
-| ---------------------------------- | ------------------ | ------------------ |
-| Node Tagging                       | :white_check_mark: | :white_check_mark: |
-| Secret Management                  | :white_check_mark: | :white_check_mark: |
-| Parallel Evaluation                | :white_check_mark: | :white_check_mark: |
-| Node Tagging                       | :white_check_mark: | :white_check_mark: |
-| Remote Builds                      | :white_check_mark: | :white_check_mark: |
-| Key Services                       | :white_check_mark: | :white_check_mark: |
-| Pipeline Support                   | :white_check_mark: | :x:[^2]            |
-| Non-Root Deployments[^4]           | :white_check_mark: | :x:[^3]            |
-| `--flake` accepts flakerefs        | :white_check_mark: | :x:                |
-| REPL & Eval expressions            | :x:                | :white_check_mark: |
-| Adhoc remote command execution[^5] | :x:                | :white_check_mark: |
+| Features                                                      | wire               | Colmena            |
+| ------------------------------------------------------------- | ------------------ | ------------------ |
+| [Node Tagging](/guides/targeting.html#tag-basics)             | :white_check_mark: | :white_check_mark: |
+| [Secret Management](/guides/keys.html)                        | :white_check_mark: | :white_check_mark: |
+| [Parallel Deployment](/guides/parallelism.html)               | :white_check_mark: | :white_check_mark: |
+| Remote Builds                                                 | :white_check_mark: | :white_check_mark: |
+| [Key Services](/guides/keys.html#using-keys-with-services)    | :white_check_mark: | :white_check_mark: |
+| [Pipeline Support](/guides/targeting.html#reading-from-stdin) | :white_check_mark: | :x:[^2]            |
+| [Non-Root Deployments](/guides/non-root-user)                 | :white_check_mark: | :x:[^3]            |
+| `--path` accepts flakerefs                                    | :white_check_mark: | :x:                |
+| REPL & Eval expressions                                       | :x:                | :white_check_mark: |
+| Adhoc remote command execution[^4]                            | :x:                | :white_check_mark: |
 
 [^2]: You need to write custom nix code to use Colmena hive metadata inside environments like CI pipelines, bash scripting, etc., which requires a knowledge of its internals. Recently it agained the [eval feature](https://colmena.cli.rs/unstable/features/eval.html) which has improved the situation since wire was first started.
 
 [^3]: See https://github.com/zhaofengli/colmena/issues/120
 
-[^4]:
-    You may deploy with _any_ user who can login through SSH, whether they be
-    `wheel` or not. You may need to enter your password multiple times for the various elevated
-    steps wire needs to perform.
-
-[^5]: wire lacks an equivalent to `colmena exec`.
+[^4]: wire lacks an equivalent to `colmena exec`.
 
 ### Speed
 

@@ -26,7 +26,7 @@ Now, if we run `wire show`, you will see that wire only finds
 the `nixosConfigurations`-es that also match a node in the hive.
 
 ```
-❯ nix run ~/Projects/wire#wire-small -- show
+$ wire show
 Hive {
     nodes: {
         Name(

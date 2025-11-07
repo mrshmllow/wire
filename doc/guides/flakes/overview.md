@@ -24,7 +24,7 @@ come from an input.
 :::
 
 ```
-❯ nix flake show
+$ nix flake show
 git+file:///some/path
 └───wire: unknown
 ```

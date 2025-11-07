@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Use Parallelism
-description: A deeper dive into parallelism with wire Tool.
+description: How to use parallelism with wire Tool.
 ---
 
 # {{ $frontmatter.title }}
@@ -17,7 +17,7 @@ The default number of parallel _node executions_ is `10`, which can be
 controlled with the `-p` / `--parallel` argument.
 
 ```sh
-wire apply -p <NUMBER>
+$ wire apply -p <NUMBER>
 ```
 
 ## Interaction with Nix's `max-jobs`
