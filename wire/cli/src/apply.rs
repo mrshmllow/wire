@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
-use futures::{FutureExt, StreamExt};
+use futures::{FutureExt, StreamExt, TryFutureExt};
 use itertools::{Either, Itertools};
 use lib::hive::node::{Context, GoalExecutor, Name, StepState, should_apply_locally};
-use lib::hive::{Hive, HiveLocation};
+use lib::hive::{Hive, HiveLocation, ShallowHive};
 use lib::{SubCommandModifiers, errors::HiveLibError};
 use miette::{Diagnostic, IntoDiagnostic, Result};
 use std::collections::HashSet;
@@ -49,16 +49,13 @@ fn read_apply_targets_from_stdin() -> Result<(Vec<String>, Vec<Name>)> {
 
 // #[instrument(skip_all, fields(goal = %args.goal, on = %args.on.iter().join(", ")))]
 pub async fn apply(
-    hive: &mut Hive,
+    shallow: ShallowHive,
     location: HiveLocation,
     args: ApplyArgs,
     mut modifiers: SubCommandModifiers,
 ) -> Result<()> {
     let header_span = Span::current();
     let location = Arc::new(location);
-
-    // Respect user's --always-build-local arg
-    hive.force_always_local(args.always_build_local)?;
 
     let header_span_enter = header_span.enter();
 
@@ -85,34 +82,51 @@ pub async fn apply(
         },
     );
 
-    let mut set = hive
-        .nodes
-        .iter_mut()
-        .filter(|(name, node)| {
+    // Filters nodes by name & tag, then creates a pipeline that evaluates the node
+    // and executes it.
+    let mut set = shallow
+        .iter()
+        .filter(|(name, node_tags)| {
             args.on.is_empty()
                 || names.contains(name)
-                || node.tags.iter().any(|tag| tags.contains(tag))
+                || node_tags.iter().any(|tag| tags.contains(tag))
         })
+        .map(|(name, _)| (name, Hive::node_from_path(name, &location, modifiers)))
         .map(|(name, node)| {
-            info!("Resolved {:?} to include {}", args.on, name);
+            node.map_ok(|mut node| {
+                // Respect user's --always-build-local arg
 
-            let should_apply_locally = should_apply_locally(node.allow_local_deployment, &name.0);
+                let name = &name.0.to_string();
+                if args.always_build_local.contains(name) {
+                    info!("Forcing a local build for {name}");
 
-            let context = Context {
-                node,
-                name,
-                goal: args.goal.clone().try_into().unwrap(),
-                state: StepState::default(),
-                no_keys: args.no_keys,
-                hive_location: location.clone(),
-                modifiers,
-                reboot: args.reboot,
-                should_apply_locally,
-            };
+                    node.build_remotely = false;
+                }
 
-            GoalExecutor::new(context)
-                .execute()
-                .map(move |result| (name, result))
+                node
+            })
+            .and_then(async |mut node| {
+                let name = name.clone();
+                info!("Resolved {:?} to include {}", args.on, name);
+
+                let should_apply_locally =
+                    should_apply_locally(node.allow_local_deployment, &name.0);
+
+                let context = Context {
+                    node: &mut node,
+                    name: &name,
+                    goal: args.goal.clone().try_into().unwrap(),
+                    state: StepState::default(),
+                    no_keys: args.no_keys,
+                    hive_location: location.clone(),
+                    modifiers,
+                    reboot: args.reboot,
+                    should_apply_locally,
+                };
+
+                GoalExecutor::new(context).execute().await
+            })
+            .map(move |result| (name, result))
         })
         .peekable();
 
