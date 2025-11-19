@@ -85,22 +85,27 @@ export default withMermaid(
             ],
           },
           {
-            text: "How-to Guides",
+            text: "How-To Guides",
             collapsed: false,
             items: [
               { text: "Install wire", link: "/guides/installation" },
-              { text: "Migrate to wire", link: "/guides/migrate" },
               {
-                text: "Flakes",
+                text: "Write a Hive",
+                link: "/guides/writing-a-hive",
+              },
+              {
+                text: "With Flakes",
+                link: "/guides/flakes/overview",
                 items: [
-                  { text: "Use Flakes", link: "/guides/flakes/overview" },
                   {
                     text: "Keep Using nixos-rebuild",
                     link: "/guides/flakes/nixos-rebuild",
                   },
                 ],
               },
+              { text: "Migrate to wire", link: "/guides/migrate" },
               { text: "Apply your Config", link: "/guides/apply" },
+              { text: "Use a non-root user", link: "/guides/non-root-user" },
               { text: "Target Nodes", link: "/guides/targeting" },
               {
                 text: "Features",

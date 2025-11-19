@@ -40,7 +40,7 @@ Note: Listed connections are tried from Left to Right
 
 ```
 
-The line `nodes: {}` means theres no "nodes" in our hive.
+The line `nodes: {}` means there is no "nodes" in our hive.
 
 ## Adding The First Node
 

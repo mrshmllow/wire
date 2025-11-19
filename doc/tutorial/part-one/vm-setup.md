@@ -10,6 +10,9 @@ description: Creating a NixOS virtual machine to use as a deployment target.
 
 ## Creating a `vm.nix`
 
+For this step, you'll need your ssh public key, which you can obtain from
+`ssh-add -L`.
+
 Open a text editor and edit `vm.nix`. Place in it this basic NixOS
 virtual machine configuration, which enables openssh and forwards it's 22 port:
 
@@ -22,6 +25,14 @@ in
 
   networking.hostName = "wire-tutorial";
 
+  users.users.root = {
+    initialPassword = "root";
+    openssh.authorizedKeys.keys = [
+      # I made this a nix syntax error so you're forced to deal with it!
+      <your ssh public-key as a string>
+    ];
+  };
+
   boot = {
     loader = {
       systemd-boot.enable = true;
@@ -29,6 +40,8 @@ in
     };
 
     kernelParams = [ "console=ttyS0" ];
+
+    boot.growPartition = true;
   };
 
   # enable openssh
@@ -41,13 +54,15 @@ in
     getty.autologinUser = "root";
   };
 
-  boot.growPartition = true;
-
   virtualisation = {
     graphics = false;
     useBootLoader = true;
 
+    # use a 5gb disk
     diskSize = 5 * 1024;
+
+    # grow the filesystem to fit the 5 gb we reserved
+    fileSystems."/".autoResize = true;
 
     # forward `openssh` port 22 to localhost:2222.
     forwardPorts = [
@@ -59,8 +74,6 @@ in
     ];
   };
 
-  users.users.root.initialPassword = "root";
-
   system.stateVersion = "23.11";
 }
 ```
@@ -70,7 +83,7 @@ configuration.
 
 ## Building & Running the virtual machine
 
-Open a seperate Terminal tab/window/instance, ensuring you enter the development
+Open a separate Terminal tab/window/instance, ensuring you enter the development
 shell with `nix-shell`.
 Then, build the virtual machine with a bootloader,
 taking our `vm.nix` as the nixos configuration.
@@ -79,6 +92,18 @@ taking our `vm.nix` as the nixos configuration.
 $ nix-shell
 [nix-shell]$ nix-build '<nixpkgs/nixos>' -A vmWithBootLoader -I nixos-config=./vm.nix
 ```
+
+::: tip HELP
+
+If you got an error such as
+
+```
+error: The option `...' in `...' is already declared in `...'.
+```
+
+make sure you ran the above command in the `nix-shell`!
+
+:::
 
 Building the virtual machine can take some time, but once it completes, start it
 by running:

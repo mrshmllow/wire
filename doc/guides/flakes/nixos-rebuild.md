@@ -15,7 +15,7 @@ nix keyword. `makeHive` will merge any nodes and nixosConfigurations that share
 the same name together.
 
 ::: tip
-It should be noted that there are a few downsides. For example, you cannot access `config.deployment` from `nixosConfigurations`. For this reason it would be best practice to limit configuration in `colmena` to simply defining keys and deployment options.
+You should include the wire module, which will provide the `deployment` options, even if nixos-rebuild can't directly use them.
 :::
 
 ::: code-group
@@ -24,31 +24,19 @@ It should be noted that there are a few downsides. For example, you cannot acces
 
 Now, if we run `wire show`, you will see that wire only finds
 the `nixosConfigurations`-es that also match a node in the hive.
+`some-other-host` is not included in the hive unless specified in `makeHive`.
 
 ```
 $ wire show
-Hive {
-    nodes: {
-        Name(
-            "node-a",
-        ): Node {
-            target: Target {
-                hosts: [
-                    "node-a",
-                ],
-                user: "root",
-                port: 22,
-                current_host: 0,
-            },
-            build_remotely: false,
-            allow_local_deployment: true,
-            tags: {},
-            keys: [],
-            host_platform: "x86_64-linux",
-        },
-    },
-    schema: 0,
-}
+Node node-a (x86_64-linux):
+
+ > Connection: {root@node-a:22}
+ > Build remotely `deployment.buildOnTarget`: false
+ > Local apply allowed `deployment.allowLocalDeployment`: true
+
+Summary: 1 total node(s), totalling 0 keys (0 distinct).
+Note: Listed connections are tried from Left to Right
+
 ```
 
 This way, you can continue using `nixos-rebuild` and wire at the same time.

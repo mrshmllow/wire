@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
             let mut hive = Hive::new_from_path(&location, modifiers).await?;
             apply::apply(&mut hive, location, apply_args, modifiers).await?;
         }
-        cli::Commands::Inspect { online: _, json } => println!("{}", {
+        cli::Commands::Inspect { json } => println!("{}", {
             let hive = Hive::new_from_path(&location, modifiers).await?;
             if json {
                 serde_json::to_string(&hive).into_diagnostic()?

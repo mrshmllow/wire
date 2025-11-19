@@ -2,6 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     wire.url = "github:mrshmllow/wire/stable";
+
+    # alternatively, you can use a tag instead:
+    # wire.url = "github:mrshmllow/wire/v1.0.0-alpha.0";
+
     systems.url = "github:nix-systems/default";
   };
 
@@ -14,7 +18,9 @@
     forAllSystems = nixpkgs.lib.genAttrs (import systems);
   in {
     wire = wire.makeHive {
-      # ...
+      nixpkgs = import nixpkgs {localSystem = "x86_64-linux";};
+
+      # Continue to next How-To guide to fill this section
     };
 
     devShells = forAllSystems (

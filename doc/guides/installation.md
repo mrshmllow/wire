@@ -15,17 +15,13 @@ recommended that you use the same version for both.
 
 :::
 
+It is recommended you stick to either using a tagged version of wire, or the `stable` branch which tracks the latest stable tag.
+
 ## Binary Cache
 
-You should trust the substituter `https://wires.cachix.org` by
-either editing `/etc/nix/nix.conf` or updating your NixOS configuration:
-
-::: code-group
-
-<<< @/snippets/getting-started/nix.conf
-<<< @/snippets/getting-started/cache.nix [configuration.nix]
-
-:::
+You must enable the [garnix binary cache](https://garnix.io/docs/caching) on all
+nodes in your wire hive, otherwise they will not accept the wire key agent and
+you will be compiling everything from source.
 
 ## Installation through flakes
 
@@ -45,10 +41,18 @@ Using npins specifically is not required, you can pin your sources in any way
 you'd like, really.
 
 ```sh
-$ npins add github mrshmllow wire
+$ npins add github mrshmllow wire --branch stable
 ```
+
+Alternatively, you can use a tag instead:
+
+```sh
+$ npins add github mrshmllow wire --at v1.0.0-alpha.0
+```
+
+Then, use this pinned version of wire for both your `hive.nix` and `shell.nix`:
 
 ::: code-group
 <<< @/snippets/guides/installation/shell.nix{8} [shell.nix]
-<<< @/snippets/guides/installation/hive.nix{8} [hive.nix]
+<<< @/snippets/guides/installation/hive.nix [hive.nix]
 :::

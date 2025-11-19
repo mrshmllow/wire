@@ -134,10 +134,6 @@ pub enum Commands {
     /// Inspect hive
     #[clap(visible_alias = "show")]
     Inspect {
-        /// Include liveliness
-        #[arg(short, long, default_value_t = false)]
-        online: bool,
-
         /// Return in JSON format
         #[arg(short, long, default_value_t = false)]
         json: bool,

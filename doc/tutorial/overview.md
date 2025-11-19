@@ -18,7 +18,9 @@ wire is alpha software, please use at your own risk. Many features listed in thi
 
 In this tutorial we will create and deploy a wire Hive. Along the way we will
 encounter [npins](https://github.com/andir/npins), simple NixOS
-configurations, virutal machines, and deployment keys.
+configurations, virtual machines, and deployment keys.
+
+You'll need at least 10~ GB of free disk space to complete this tutorial.
 
 <div class="tip custom-block" style="padding-top: 8px">
 

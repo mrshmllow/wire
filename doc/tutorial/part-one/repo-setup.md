@@ -27,21 +27,13 @@ Great! Now lets use Git & `npins` to create a new Git repo and initialise it.
 [nix-shell]$ git init wire-tutorial
 Initialized empty Git repository in /home/.../wire-tutorial/.git/
 [nix-shell]$ cd wire-tutorial/
-[nix-shell]$ npins init --bare
+[nix-shell]$ npins init
 [INFO ] Welcome to npins!
 [INFO ] Creating `npins` directory
 [INFO ] Writing default.nix
 [INFO ] Writing initial lock file (empty)
 [INFO ] Successfully written initial files to 'npins/sources.json'.
-[nix-shell]$ npins add github pkpbynum nixpkgs --branch pb/disk-size-bootloader
 ```
-
-::: details
-
-This tutorial is using a [PR](https://github.com/NixOS/nixpkgs/pull/449945) that
-fixes virutal machine bootloader disk sizes.
-
-:::
 
 This has created a pinned version of `nixpkgs` for us to use in our wire hive.
 
@@ -50,7 +42,7 @@ This has created a pinned version of `nixpkgs` for us to use in our wire hive.
 We can now need to tell `npins` to use `mrshmllow/wire` as a dependency.
 
 ```sh
-[nix-shell]$ npins add github mrshmllow wire
+[nix-shell]$ npins add github mrshmllow wire --branch stable
 [INFO ] Adding 'wire' …
     repository: https://github.com/mrshmllow/wire.git
     pre_releases: false
@@ -102,7 +94,9 @@ pkgs.mkShell {
     pkgs.git
   ];
 
-  NIX_PATH = "nixpkgs=${sources.nixpkgs.outPath}";
+  shellHook = ''
+    export NIX_PATH="nixpkgs=${sources.nixpkgs.outPath}"
+  '';
 }
 ```
 
@@ -113,6 +107,7 @@ shell should have wire in the $PATH:
 ```sh
 [nix-shell]$ exit
 exit
+$ cd wire-tutorial/
 $ nix-shell
 [nix-shell]$ wire --version
 wire 0.5.0

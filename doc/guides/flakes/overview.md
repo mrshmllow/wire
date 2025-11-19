@@ -27,4 +27,14 @@ come from an input.
 $ nix flake show
 git+file:///some/path
 └───wire: unknown
+
+$ wire show
+Node node-a (x86_64-linux):
+
+ > Connection: {root@node-a:22}
+ > Build remotely `deployment.buildOnTarget`: false
+ > Local apply allowed `deployment.allowLocalDeployment`: true
+
+Summary: 1 total node(s), totalling 0 keys (0 distinct).
+Note: Listed connections are tried from Left to Right
 ```

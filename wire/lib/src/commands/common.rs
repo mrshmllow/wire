@@ -8,7 +8,7 @@ use tracing::instrument;
 use crate::{
     EvalGoal, SubCommandModifiers,
     commands::{CommandArguments, Either, WireCommandChip, run_command, run_command_with_env},
-    errors::HiveLibError,
+    errors::{CommandError, HiveLibError},
     hive::{
         HiveLocation,
         node::{Context, Push},
@@ -50,6 +50,21 @@ pub async fn push(context: &Context<'_>, push: Push<'_>) -> Result<(), HiveLibEr
         })?;
 
     Ok(())
+}
+
+fn get_common_command_help(error: &CommandError) -> Option<String> {
+    if let CommandError::CommandFailed { logs, .. } = error
+        // marshmallow: your using this repo as a hive you idiot
+        && (logs.contains("attribute 'inspect' missing")
+            // using a flake that does not provide `wire`
+            || logs.contains("does not provide attribute 'packages.x86_64-linux.wire'")
+            // using a file called `hive.nix` that is not actually a hive
+            || logs.contains("attribute 'inspect' in selection path"))
+    {
+        Some("Double check this `--path` or `--flake` is a wire hive. You may be pointing to the wrong directory.".to_string())
+    } else {
+        None
+    }
 }
 
 /// Evaluates the hive in flakeref with regards to the given goal,
@@ -99,10 +114,20 @@ pub async fn evaluate_hive_attribute(
     )
     .await?;
 
-    child
-        .wait_till_success()
-        .await
-        .map_err(|source| HiveLibError::NixEvalError { attribute, source })
+    let status = child.wait_till_success().await;
+
+    let help = if let Err(ref error) = status {
+        get_common_command_help(error).map(Box::new)
+    } else {
+        None
+    };
+
+    status
+        .map_err(|source| HiveLibError::NixEvalError {
+            attribute,
+            source,
+            help,
+        })
         .map(|x| match x {
             Either::Left((_, stdout)) | Either::Right((_, stdout)) => stdout,
         })

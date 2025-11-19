@@ -121,7 +121,7 @@ fn create_starting_segment<S: AsRef<str>>(
     }
 }
 
-#[instrument(skip_all, name = "run-int", fields(elevated = %arguments.is_elevated()))]
+#[instrument(skip_all, name = "run-int", fields(elevated = %arguments.is_elevated(), mode = ?arguments.output_mode))]
 pub(crate) async fn interactive_command_with_env<S: AsRef<str>>(
     arguments: &CommandArguments<'_, S>,
     envs: std::collections::HashMap<String, String>,

@@ -345,6 +345,9 @@ pub enum HiveLibError {
 
         #[source]
         source: CommandError,
+
+        #[help]
+        help: Option<Box<String>>,
     },
 
     #[diagnostic(

@@ -22,6 +22,9 @@ deployment commands will likely fail with an error:
 - "Non-interactive SSH Auth" here most likely meaning an SSH key, anything that
   does not require keyboard input in the terminal.
 
+To put it simply, you cannot have a password on _ssh_, but you can have a
+password on _sudo_.
+
 ## Changing the user
 
 By default, the target is set to root:

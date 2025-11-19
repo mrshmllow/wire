@@ -9,14 +9,18 @@
     ...
   } @ inputs: {
     wire = wire.makeHive {
-      # Give wire our ninixosConfigurations
+      # Give wire our nixosConfigurations
       inherit (self) nixosConfigurations;
 
       meta = {
-        # ... from above
+        nixpkgs = import nixpkgs {localSystem = "x86_64-linux";};
       };
 
       node-a.deployment = {
+        tags = [
+          # some tags
+        ];
+
         # ...
       };
     };
@@ -26,13 +30,17 @@
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [
+          wire.nixosModules.default
           {
             nixpkgs.hostPlatform = "x86_64-linux";
+
+            # you can put deployment options here too!
+            deployment.target = "some-hostname";
           }
         ];
       };
 
-      node-b = nixpkgs.lib.nixosSystem {
+      some-other-host = nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
         specialArgs = {inherit inputs;};
         modules = [

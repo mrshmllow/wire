@@ -165,7 +165,10 @@ pub(super) fn handle_rawmode_data<W: std::io::Write>(
 
     let findings = search_string(aho_corasick, raw_mode_buffer, status_sender, began_tx);
 
-    if !matches!(findings, SearchFindings::None) {
+    if matches!(
+        findings,
+        SearchFindings::Started | SearchFindings::Terminate
+    ) {
         return Ok(findings);
     }
 
