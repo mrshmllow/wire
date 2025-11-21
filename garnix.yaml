@@ -1,3 +1,4 @@
 builds:
+  include: ["packages.*.*"]
   exclude: ["checks.*.*"]
   branch: trunk
