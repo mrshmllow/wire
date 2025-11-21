@@ -93,8 +93,9 @@ export default withMermaid(
                 text: "Write a Hive",
                 link: "/guides/writing-a-hive",
               },
+              { text: "Migrate to wire", link: "/guides/migrate" },
               {
-                text: "With Flakes",
+                text: "Use Flakes",
                 link: "/guides/flakes/overview",
                 items: [
                   {
@@ -103,9 +104,7 @@ export default withMermaid(
                   },
                 ],
               },
-              { text: "Migrate to wire", link: "/guides/migrate" },
               { text: "Apply your Config", link: "/guides/apply" },
-              { text: "Use a non-root user", link: "/guides/non-root-user" },
               { text: "Target Nodes", link: "/guides/targeting" },
               {
                 text: "Features",

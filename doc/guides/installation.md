@@ -29,7 +29,7 @@ When using flakes, you should install wire through the same input you create
 your hive from, sourced from the `stable` branch.
 
 ::: code-group
-<<< @/snippets/guides/installation/flake.nix{38} [flake.nix]
+<<< @/snippets/guides/installation/flake.nix [flake.nix]
 :::
 
 ## Installation through npins
