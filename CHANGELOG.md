@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `https://.../main.tar.gz`, etc).
 - `--flake` is now an alias for `--path`.
 - A terminal bell will be output if a sudo / ssh prompt is ever printed.
+- `--handle-unreachable` arg was added. You can use `--handle-unreachable ignore` to
+  ignore unreachable nodes in the status of the deployment.
 
 ### Fixed
 

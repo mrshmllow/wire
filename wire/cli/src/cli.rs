@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2024-2025 wire Contributors
 
+use clap::builder::PossibleValue;
 use clap::crate_version;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use clap_complete::Shell;
@@ -8,7 +9,7 @@ use clap_num::number_range;
 use clap_verbosity_flag::InfoLevel;
 use lib::SubCommandModifiers;
 use lib::hive::Hive;
-use lib::hive::node::{Goal as HiveGoal, Name, SwitchToConfigurationGoal};
+use lib::hive::node::{Goal as HiveGoal, HandleUnreachable, Name, SwitchToConfigurationGoal};
 
 use std::io::IsTerminal;
 use std::{
@@ -92,6 +93,43 @@ fn more_than_zero(s: &str) -> Result<usize, String> {
     number_range(s, 1, usize::MAX)
 }
 
+#[derive(Clone)]
+pub enum HandleUnreachableArg {
+    Ignore,
+    FailNode,
+}
+
+impl Display for HandleUnreachableArg {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Ignore => write!(f, "ignore"),
+            Self::FailNode => write!(f, "fail-node"),
+        }
+    }
+}
+
+impl clap::ValueEnum for HandleUnreachableArg {
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Ignore, Self::FailNode]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        match self {
+            Self::Ignore => Some(PossibleValue::new("ignore")),
+            Self::FailNode => Some(PossibleValue::new("fail-node")),
+        }
+    }
+}
+
+impl From<HandleUnreachableArg> for HandleUnreachable {
+    fn from(value: HandleUnreachableArg) -> Self {
+        match value {
+            HandleUnreachableArg::Ignore => Self::Ignore,
+            HandleUnreachableArg::FailNode => Self::FailNode,
+        }
+    }
+}
+
 #[derive(Args)]
 pub struct ApplyArgs {
     #[arg(value_enum, default_value_t)]
@@ -118,6 +156,13 @@ pub struct ApplyArgs {
     /// Reboot the nodes after activation
     #[arg(short, long, default_value_t = false)]
     pub reboot: bool,
+
+    /// How to handle an unreachable node in the ping step.
+    ///
+    /// This only effects the ping step.
+    /// wire will still fail the node if it becomes unreachable after activation
+    #[arg(long, default_value_t = HandleUnreachableArg::FailNode)]
+    pub handle_unreachable: HandleUnreachableArg,
 
     /// Unconditionally accept SSH host keys [!!]
     ///

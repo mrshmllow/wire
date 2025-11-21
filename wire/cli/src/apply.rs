@@ -108,6 +108,7 @@ pub async fn apply(
                 modifiers,
                 reboot: args.reboot,
                 should_apply_locally,
+                handle_unreachable: args.handle_unreachable.clone().into(),
             };
 
             GoalExecutor::new(context)

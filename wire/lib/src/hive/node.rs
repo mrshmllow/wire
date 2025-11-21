@@ -113,6 +113,7 @@ impl<'a> Context<'a> {
             goal: Goal::SwitchToConfiguration(SwitchToConfigurationGoal::Switch),
             reboot: false,
             should_apply_locally: false,
+            handle_unreachable: HandleUnreachable::default(),
         }
     }
 }
@@ -275,6 +276,15 @@ pub(crate) trait ExecuteStep: Send + Sync + Display + std::fmt::Debug {
     fn should_execute(&self, context: &Context) -> bool;
 }
 
+// may include other options such as FailAll in the future
+#[non_exhaustive]
+#[derive(Clone, Default)]
+pub enum HandleUnreachable {
+    Ignore,
+    #[default]
+    FailNode,
+}
+
 #[derive(Default)]
 pub struct StepState {
     pub evaluation: Option<Derivation>,
@@ -293,6 +303,7 @@ pub struct Context<'a> {
     pub goal: Goal,
     pub reboot: bool,
     pub should_apply_locally: bool,
+    pub handle_unreachable: HandleUnreachable,
 }
 
 #[enum_dispatch(ExecuteStep)]
@@ -428,6 +439,12 @@ impl<'a> GoalExecutor<'a> {
             }) {
                 // discard error from cleanup
                 let _ = CleanUp.execute(&mut self.context).await;
+
+                if matches!(step, Step::Ping(..))
+                    && matches!(self.context.handle_unreachable, HandleUnreachable::Ignore)
+                {
+                    return Ok(());
+                }
 
                 return Err(err);
             }
