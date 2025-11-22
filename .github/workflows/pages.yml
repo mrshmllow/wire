@@ -2,7 +2,9 @@
 name: "Pages"
 on:
   push:
-    branches: [stable]
+    branches: 
+      - stable
+      - trunk
   workflow_dispatch:
 jobs:
   pre-job:
