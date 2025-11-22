@@ -40,7 +40,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: clippy --fix
         run: nix develop --print-build-logs -v --command cargo clippy --fix
-      - name: nix fmt
+      - name: pre-commit run
         run: nix develop --print-build-logs -v --command pre-commit run --all-files
         continue-on-error: true
       - name: Upgrade Hash
