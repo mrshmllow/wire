@@ -4,9 +4,6 @@ description: |
   Sets up the Nix environment for wire, removing unnecessary bloat and installing Nix along with proper
   substituters being set
 inputs:
-  cachixToken:
-    description: Cachix token
-    required: true
   withQEMU:
     description: Enable QEMU
     default: false
@@ -28,6 +25,9 @@ runs:
             echo "extra-platforms = aarch64-linux i686-linux"
           fi
 
+          echo "substituters = https://cache.nixos.org?priority=1 https://cache.althaea.zone?priority=2 https://cache.garnix.io?priority=3"
+          echo "trusted-public-keys = cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY= cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g= cache.althaea.zone:BelRpa863X9q3Y+AOnl5SM7QFzre3qb+5I7g2s/mqHI="
+
           echo EOF
         } >> "$GITHUB_OUTPUT"
     - uses: cachix/install-nix-action@v31
@@ -48,7 +48,3 @@ runs:
       shell: bash
       run: |
         cat /proc/sys/fs/binfmt_misc/qemu-aarch64
-    - uses: cachix/cachix-action@v16
-      with:
-        name: wires
-        authToken: "${{ inputs.cachixToken }}"
