@@ -9,15 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `--handle-unreachable` arg was added. You can use `--handle-unreachable ignore` to
+  ignore unreachable nodes in the status of the deployment.
+
+### Changed
+
+- Reverted "Wire will now attempt to use SSH ControlMaster by default."
+- `show` subcommand looks nicer now.
+- `build` step will always build remotely when the node is going to be applied
+  locally.
+
+## [v1.0.0-alpha.0] - 2025-10-22
+
+### Added
+
 - `--ssh-accept-host` was added.
 - `--on -` will now read additional apply targets from stdin.
 - `{key.name}-key.{path,service}` systemd units where added.
 - `--path` now supports flakerefs (`github:foo/bar`, `git+file:///...`,
   `https://.../main.tar.gz`, etc).
 - `--flake` is now an alias for `--path`.
+- Wire will now attempt to use SSH ControlMaster by default.
 - A terminal bell will be output if a sudo / ssh prompt is ever printed.
-- `--handle-unreachable` arg was added. You can use `--handle-unreachable ignore` to
-  ignore unreachable nodes in the status of the deployment.
 
 ### Fixed
 
@@ -40,9 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the .drv is required
 - A node which is going to be applied locally will now never `push` or
   `cleanup`.
-- `show` subcommand looks nicer now.
-- `build` step will always build remotely when the node is going to be applied
-  locally.
 
 ### Documented
 
