@@ -8,6 +8,7 @@
   nodejs,
   pnpm,
   stdenv,
+  mode ? "unstable",
   ...
 }:
 let
@@ -65,4 +66,5 @@ stdenv.mkDerivation (finalAttrs: {
     nix-instantiate --eval --strict ./snippets > /dev/null
   '';
   DEBUG = "*";
+  MODE = mode;
 })

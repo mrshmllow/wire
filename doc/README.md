@@ -12,7 +12,7 @@ pnpm run dev
 ## Build
 
 ```sh
-nix build .#docs
+nix build .#docs-unstable
 
 # or
 

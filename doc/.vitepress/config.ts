@@ -8,10 +8,12 @@ import {
   localIconLoader,
 } from "vitepress-plugin-group-icons";
 
+const MODE = (process.env.MODE ?? "unstable") as "unstable" | "stable";
+
 // https://vitepress.dev/reference/site-config
 export default withMermaid(
   defineConfig({
-    title: "wire",
+    title: MODE === "stable" ? "wire" : "wire (unstable!)",
     description: "a tool to deploy nixos systems",
     themeConfig: {
       search: {
@@ -31,8 +33,17 @@ export default withMermaid(
         { text: "Guides", link: "/guides/installation" },
         { text: "Reference", link: "/reference/cli" },
         {
-          text: pkg.version,
+          text: MODE === "stable" ? pkg.version : "Unstable",
           items: [
+            MODE === "unstable"
+              ? {
+                  text: `View ${pkg.version}`,
+                  link: "https://wire.althaea.zone",
+                }
+              : {
+                  text: "View Unstable",
+                  link: "https://trunk.wire-docs.pages.dev",
+                },
             {
               text: "Changelog",
               link: "https://github.com/mrshmllow/wire/blob/trunk/CHANGELOG.md",
