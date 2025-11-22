@@ -336,6 +336,8 @@ pub enum HiveLibError {
         path: String,
         #[source]
         error: Box<CommandError>,
+        #[help]
+        help: Option<Box<String>>,
     },
 
     #[diagnostic(code(wire::Evaluate))]

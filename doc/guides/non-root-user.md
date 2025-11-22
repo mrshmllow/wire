@@ -1,7 +1,7 @@
 ---
 comment: true
 title: Use a non-root user
-description: Deploy as any user with wire.
+description: Deploy without root permissions with wire.
 ---
 
 # {{ $frontmatter.title }}
@@ -13,17 +13,21 @@ description: Deploy as any user with wire.
 If your selected deployment user does not fit the following requirements, the
 deployment commands will likely fail with an error:
 
-|                                    | Password-based SSH | Non-interactive SSH Auth |
-| :--------------------------------- | -----------------: | -----------------------: |
-| In `wheel` (Sudo User)             |   ❌ Not Supported |             ✅ Supported |
-| Not In `wheel` (Unprivileged user) |   ❌ Not Supported |         ❌ Not Supported |
+| `deployment.target.user` is... | ❌ Will Not Work | 🟧 Deploys w/o Keys | ✅ Deploys w/ Keys |
+| :----------------------------- | :--------------: | :-----------------: | :----------------: |
+| In `wheel` (Sudo User)         |        No        |         Yes         |        Yes         |
+| Has Non-Interactive SSH Auth   |        -         |         Yes         |        Yes         |
+| A Trusted User                 |        -         |         No          |        Yes         |
+
+When using a non-trusted user, `wire apply` will likely fail if the deploying user is
+not trusted, see [Manage Secrets - Prerequisites](/guides/keys.html#prerequisites).
 
 - "In `wheel`" here meaning a sudoer, whether it be `root` or not.
 - "Non-interactive SSH Auth" here most likely meaning an SSH key, anything that
   does not require keyboard input in the terminal.
 
-To put it simply, you cannot have a password on _ssh_, but you can have a
-password on _sudo_.
+To put it simply, wire can currently prompt for your password on `sudo`,
+but not `ssh`.
 
 ## Changing the user
 

@@ -21,6 +21,29 @@ work well with wire keys include:
 - [Age](https://github.com/FiloSottile/age)
 - Anything that non-interactively decrypts to `stdout`.
 
+### Prerequisites
+
+wire uses a Rust binary to recieve encrypted key data, so your deploying
+user must be trusted or you must add garnix as a trusted public key:
+
+```nix
+{ config, ... }:
+{
+  nix.settings.trusted-users = [
+    config.deployment.target.user # [!code ++]
+  ];
+}
+```
+
+Otherwise, you may see errors such as:
+
+```
+error: cannot add path '/nix/store/...-wire-tool-key_agent-x86_64-linux-...' because it lacks a signature by a trusted key
+```
+
+This is a requirement because `nix copy` is used to copy the binary.
+As a benefit to this approach, key deployments are significantly faster!
+
 ### A Trivial "Key"
 
 ```nix:line-numbers [hive.nix]
