@@ -48,6 +48,10 @@ export default withMermaid(
               text: "Changelog",
               link: "https://github.com/mrshmllow/wire/blob/trunk/CHANGELOG.md",
             },
+            {
+              text: "CI Server",
+              link: "https://buildbot.althaea.zone/#/projects/1",
+            },
           ],
         },
       ],
