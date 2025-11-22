@@ -18,7 +18,7 @@ use std::sync::Arc;
 use tracing::{info, instrument};
 
 use crate::commands::common::evaluate_hive_attribute;
-use crate::errors::{HiveInitializationError, HiveLocationError};
+use crate::errors::{HiveInitialisationError, HiveLocationError};
 use crate::{EvalGoal, HiveLibError, SubCommandModifiers};
 pub mod node;
 pub mod steps;
@@ -60,7 +60,7 @@ impl Hive {
         let output = evaluate_hive_attribute(location, &EvalGoal::Inspect, modifiers).await?;
 
         let hive: Hive = serde_json::from_str(&output).map_err(|err| {
-            HiveLibError::HiveInitializationError(HiveInitializationError::ParseEvaluateError(err))
+            HiveLibError::HiveInitialisationError(HiveInitialisationError::ParseEvaluateError(err))
         })?;
 
         Ok(hive)
@@ -75,8 +75,8 @@ impl Hive {
 
             self.nodes
                 .get_mut(&Name(Arc::from(node.clone())))
-                .ok_or(HiveLibError::HiveInitializationError(
-                    HiveInitializationError::NodeDoesNotExist(node.clone()),
+                .ok_or(HiveLibError::HiveInitialisationError(
+                    HiveInitialisationError::NodeDoesNotExist(node.clone()),
                 ))?
                 .build_remotely = false;
         }
@@ -371,10 +371,10 @@ mod tests {
             .unwrap();
 
         assert_matches!(
-            hive.force_always_local(vec!["non-existant".to_string()]),
-            Err(HiveLibError::HiveInitializationError(
-                HiveInitializationError::NodeDoesNotExist(node)
-            )) if node == "non-existant"
+            hive.force_always_local(vec!["non-existent".to_string()]),
+            Err(HiveLibError::HiveInitialisationError(
+                HiveInitialisationError::NodeDoesNotExist(node)
+            )) if node == "non-existent"
         );
 
         for node in hive.nodes.values() {

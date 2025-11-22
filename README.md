@@ -18,7 +18,7 @@ wire
 │  ├── cli
 │  │  └── Rust binary, using `lib`
 │  └── key_agent
-│     └── Rust binary ran on a target node. recieves key file bytes and metadata w/ protobuf over SSH stdin
+│     └── Rust binary ran on a target node. receives key file bytes and metadata w/ protobuf over SSH stdin
 ├── doc
 │  └── a [vitepress](https://vitepress.dev/) site
 ├── runtime

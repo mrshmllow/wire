@@ -121,7 +121,7 @@ pub enum NetworkError {
 }
 
 #[derive(Debug, Diagnostic, Error)]
-pub enum HiveInitializationError {
+pub enum HiveInitialisationError {
     #[diagnostic(
         code(wire::hive_init::NoHiveFound),
         help(
@@ -213,7 +213,7 @@ pub enum CommandError {
     WaitForStatus(#[source] std::io::Error),
 
     #[diagnostic(
-        code(wire::detatched::NoHandle),
+        code(wire::detached::NoHandle),
         help("This should never happen, please create an issue!"),
         url("{DOCS_URL}#{}", self.code().unwrap())
     )]
@@ -247,7 +247,7 @@ pub enum CommandError {
         url("{DOCS_URL}#{}", self.code().unwrap()),
         help("please create an issue!"),
     )]
-    #[error("Thread paniced")]
+    #[error("Thread panicked")]
     ThreadPanic,
 
     #[diagnostic(
@@ -289,7 +289,7 @@ pub enum CommandError {
 pub enum HiveLibError {
     #[error(transparent)]
     #[diagnostic(transparent)]
-    HiveInitializationError(HiveInitializationError),
+    HiveInitialisationError(HiveInitialisationError),
 
     #[error(transparent)]
     #[diagnostic(transparent)]

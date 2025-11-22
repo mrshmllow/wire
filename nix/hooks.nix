@@ -31,6 +31,12 @@
               name = "nix fmt";
               entry = "${lib.getExe config.formatter} --no-cache";
             };
+            typos = {
+              enable = true;
+              settings = {
+                configPath = "typos.toml";
+              };
+            };
 
           };
 

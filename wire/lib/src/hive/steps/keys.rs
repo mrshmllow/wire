@@ -144,7 +144,7 @@ async fn process_key(key: &Key) -> Result<(key_agent::keys::KeySpec, Vec<u8>), K
             length: buf
                 .len()
                 .try_into()
-                .expect("Failed to conver usize buf length to i32"),
+                .expect("Failed to convert usize buf length to i32"),
             user: key.user.clone(),
             group: key.group.clone(),
             permissions: get_u32_permission(key)?,

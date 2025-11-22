@@ -307,7 +307,7 @@ fn build_command<S: AsRef<str>>(
     let mut command = if let Some(target) = arguments.target {
         let mut command = create_int_ssh_command(target, arguments.modifiers)?;
 
-        // force ssh to use our pesudo terminal
+        // force ssh to use our pseudo terminal
         command.arg("-tt");
 
         command

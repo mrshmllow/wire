@@ -53,7 +53,7 @@
       def perform_routine(target, target_object, non_interactive):
           test_keys(target, target_object, non_interactive)
 
-          # only check systemd units on receiver since deployer applys are one time only
+          # only check systemd units on receiver since deployer apply's are one time only
           if target == "receiver":
               target_object.succeed("systemctl start source_string_name-key.path")
               target_object.succeed("systemctl start command-key.path")
@@ -87,10 +87,10 @@
         (deployer, new_deployer_store_objects),
         (receiver, new_receiver_store_objects),
       ]:
-        assert_store_not_posioned(node, "hello_world_source", objects)
-        assert_store_not_posioned(node, "hello_world_file", objects)
-        assert_store_not_posioned(node, "hello_world_command", objects)
-        assert_store_not_posioned(node, "string_from_environment", objects)
+        assert_store_not_poisoned(node, "hello_world_source", objects)
+        assert_store_not_poisoned(node, "hello_world_file", objects)
+        assert_store_not_poisoned(node, "hello_world_command", objects)
+        assert_store_not_poisoned(node, "string_from_environment", objects)
     '';
   };
 }

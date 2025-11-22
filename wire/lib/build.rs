@@ -21,14 +21,14 @@ macro_rules! p {
 }
 
 #[derive(Debug)]
-struct DerviedError {
+struct DerivedError {
     code: Option<String>,
     help: Option<String>,
     message: Option<String>,
     doc_string: String,
 }
 
-impl Display for DerviedError {
+impl Display for DerivedError {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -61,7 +61,7 @@ impl Display for DerviedError {
     }
 }
 
-impl DerviedError {
+impl DerivedError {
     fn get_error(&mut self, list: &MetaList) -> Result<(), miette::Error> {
         if list.path.segments.last().unwrap().ident != "error" {
             return Err(miette!("Not an error"));
@@ -153,12 +153,12 @@ fn main() -> Result<()> {
     let syntax_tree = parse_file(&src)
         .into_diagnostic()
         .wrap_err("parsing errors.rs")?;
-    let mut entries: Vec<DerviedError> = Vec::new();
+    let mut entries: Vec<DerivedError> = Vec::new();
 
     for item in &syntax_tree.items {
         if let Item::Enum(ItemEnum { variants, .. }) = item {
             for variant in variants {
-                let mut entry = DerviedError {
+                let mut entry = DerivedError {
                     code: None,
                     help: None,
                     message: None,

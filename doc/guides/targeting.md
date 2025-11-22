@@ -21,7 +21,7 @@ Will switch-to-configuration on node a, and node b.
 
 ## Reading from Stdin
 
-Passing `--on -` will read whitespace-seperated nodes and tags from stdin. This
+Passing `--on -` will read whitespace-separated nodes and tags from stdin. This
 can be combined with normal `--on` usage.
 
 For example:

@@ -44,7 +44,7 @@ async fn main() -> Result<()> {
     }
 
     if !matches!(args.command, cli::Commands::Completions { .. }) && !check_nix_available() {
-        miette::bail!("Nix is not availabile on this system.");
+        miette::bail!("Nix is not available on this system.");
     }
 
     let location = get_hive_location(args.path)?;

@@ -23,7 +23,7 @@ work well with wire keys include:
 
 ### Prerequisites
 
-wire uses a Rust binary to recieve encrypted key data, so your deploying
+wire uses a Rust binary to receive encrypted key data, so your deploying
 user must be trusted or you must add garnix as a trusted public key:
 
 ```nix

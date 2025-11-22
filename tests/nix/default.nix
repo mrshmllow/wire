@@ -86,9 +86,9 @@ in
         let
           # TODO: Update once #126 is solved.
           nixPackage = nixpkgs.legacyPackages.lix;
-          sanitizeName =
+          sanitiseName =
             str: lib.strings.sanitizeDerivationName (builtins.replaceStrings [ "." ] [ "_" ] str);
-          identifier = sanitizeName "${nixpkgs.legacyPackages.lib.trivial.release}-${nixPackage.name}";
+          identifier = sanitiseName "${nixpkgs.legacyPackages.lib.trivial.release}-${nixPackage.name}";
           path = "tests/nix/suite/${testName}";
 
           flakeDirFileset = lib.fileset.toSource {

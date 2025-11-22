@@ -84,13 +84,13 @@ in
 
     replaceUnknownProfiles = lib.mkOption {
       type = types.bool;
-      description = "No-op, colmena compatability";
+      description = "No-op, colmena compatibility";
       default = true;
     };
 
     sshOptions = lib.mkOption {
       type = types.listOf types.str;
-      description = "No-op, colmena compatability";
+      description = "No-op, colmena compatibility";
       default = [ ];
     };
 

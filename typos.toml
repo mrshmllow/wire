@@ -1,0 +1,16 @@
+[files]
+extend-exclude = ["COPYING"]
+
+[default]
+locale = "en-au"
+
+[type.nix]
+# nixpkgs
+extend-ignore-re = ["authorizedKeys", "sanitizeDerivationName"]
+
+[type.md]
+extend-ignore-re = ["authorizedKeys", "Initialized empty Git"]
+
+[type.rust.extend-words]
+# serde
+serialize = "serialize"

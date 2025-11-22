@@ -111,14 +111,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - There is a new package output, `wire-small`, for testing purposes.
   It only compiles the key agent for the host that builds `wire-small`.
 - `--no-progress` now defaults to true if stdin does not refer to a tty (unix pipelines, in CI).
-- Added an error for the internal hive evluation parse failure.
+- Added an error for the internal hive evaluation parse failure.
 - The `inspect` command now has `show` as an alias.
 - Remove `log` command as there are currently no plans to implement the feature
 - The `completions` command is now hidden from the help page
 
 ### Fixed
 
-- A non-existant key owner user/group would not default to gid/uid `0`.
+- A non-existent key owner user/group would not default to gid/uid `0`.
 - Keys can now be deployed to localhost.
 
 ## [0.2.0] - 2025-04-21
