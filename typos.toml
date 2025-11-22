@@ -14,3 +14,11 @@ extend-ignore-re = ["authorizedKeys", "Initialized empty Git"]
 [type.rust.extend-words]
 # serde
 serialize = "serialize"
+
+[type.yaml.extend-words]
+# github
+labeler = "labeler"
+
+[type.ts.extend-words]
+# vite
+optimize = "optimize"
