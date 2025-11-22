@@ -13,11 +13,11 @@ description: Deploy without root permissions with wire.
 If your selected deployment user does not fit the following requirements, the
 deployment commands will likely fail with an error:
 
-| `deployment.target.user` is... | ❌ Will Not Work | 🟧 Deploys w/o Keys | ✅ Deploys w/ Keys |
-| :----------------------------- | :--------------: | :-----------------: | :----------------: |
-| In `wheel` (Sudo User)         |        No        |         Yes         |        Yes         |
-| Has Non-Interactive SSH Auth   |        -         |         Yes         |        Yes         |
-| A Trusted User                 |        -         |         No          |        Yes         |
+| `deployment.target.user` has/is... | ❌ Will Not Work | 🟧 Deploys w/o Keys | ✅ Deploys w/ Keys |
+| :--------------------------------- | :--------------: | :-----------------: | :----------------: |
+| In `wheel` (Sudo User)             |        No        |         Yes         |        Yes         |
+| Has Non-Interactive SSH Auth       |        -         |         Yes         |        Yes         |
+| A Trusted User                     |        -         |         No          |        Yes         |
 
 When using a non-trusted user, `wire apply` will likely fail if the deploying user is
 not trusted, see [Manage Secrets - Prerequisites](/guides/keys.html#prerequisites).
