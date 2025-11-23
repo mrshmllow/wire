@@ -294,7 +294,6 @@ pub struct StepState {
     pub key_agent_directory: Option<String>,
 }
 
-#[allow(clippy::struct_excessive_bools)]
 pub struct Context<'a> {
     pub name: &'a Name,
     pub node: &'a mut Node,
