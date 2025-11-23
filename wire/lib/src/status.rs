@@ -24,7 +24,7 @@ pub enum NodeStatus {
 pub struct Status {
     statuses: HashMap<String, NodeStatus>,
     began: Instant,
-    show_progress: bool
+    show_progress: bool,
 }
 
 /// global status used for the progress bar in the cli crate
@@ -35,7 +35,7 @@ impl Status {
         Self {
             statuses: HashMap::default(),
             began: Instant::now(),
-            show_progress: false
+            show_progress: false,
         }
     }
 
@@ -120,13 +120,7 @@ impl Status {
 
         let _ = write!(&mut msg, "]");
 
-        let _ = write!(
-            &mut msg,
-            " {}s",
-            self.began
-                .elapsed()
-                .as_secs()
-        );
+        let _ = write!(&mut msg, " {}s", self.began.elapsed().as_secs());
 
         msg
     }
