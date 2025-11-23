@@ -38,7 +38,6 @@ num_enum = "0.7.5"
 gjson = "0.8.1"
 owo-colors = { workspace = true }
 termion = "4.0.6"
-humanize-duration = "0.0.7"
 
 [dev-dependencies]
 tempdir = "0.3"
