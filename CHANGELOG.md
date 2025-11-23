@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `--handle-unreachable` arg was added. You can use `--handle-unreachable ignore` to
   ignore unreachable nodes in the status of the deployment.
+- A basic progress bar
 
 ### Changed
 
